@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" x-data="{ isMobileSidebarOpen: false, isModalOpen: false }">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartClaim - Cash Advances & Float</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
+    :class="isModalOpen || isMobileSidebarOpen ? 'overflow-hidden' : ''">
+
+    <div class="flex min-h-screen flex-col lg:flex-row">
+
+        <!-- Centralized Staff Sidebar Component -->
+        @include('layouts.partials.staff-sidebar')
+
+        <!-- Main Content Workspace -->
+        <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-hidden">
+            <div class="space-y-6">
+
+                <!-- Header Actions -->
+                <div
+                    class="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-200 gap-4">
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Cash Advance
+                            Requisition Desk</h1>
+                        <p class="text-xs md:text-sm text-slate-500">Request upfront corporate float and settle against
+                            future receipt claims.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="hidden lg:block">
+                            @include('layouts.partials.notification-bell')
+                        </div>
+
+                        <button type="button" @click="isModalOpen = true"
+                            class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer flex items-center gap-2">
+                            <i class="fa-solid fa-hand-holding-dollar"></i> Request Float Advance
+                        </button>
+                    </div>
+                </div>
+
+                @if(session('success'))
+                    <div
+                        class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-2xl flex items-center gap-2 shadow-3xs">
+                        <i class="fa-solid fa-circle-check text-emerald-500 text-sm"></i>
+                        <span>{{ session('success') }}</span>
+                    </div>
+                @endif
+
+                <!-- Active Float Summary Card -->
+                <div
+                    class="p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-3xl shadow-md flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Outstanding
+                            Unsettled Float</span>
+                        <h2 class="text-2xl md:text-3xl font-black mt-1 font-mono text-emerald-400">RM
+                            {{ number_format($totalActiveAdvance ?? 0, 2) }}</h2>
+                    </div>
+                    <div
+                        class="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-xl text-emerald-400">
+                        <i class="fa-solid fa-vault"></i>
+                    </div>
+                </div>
+
+                <!-- Advances Table -->
+                <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs min-w-[650px]">
+                            <thead
+                                class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                                <tr>
+                                    <th class="p-3.5">Requisition Title</th>
+                                    <th class="p-3.5">Required Date</th>
+                                    <th class="p-3.5 text-right">Requested</th>
+                                    <th class="p-3.5 text-right">Unsettled Balance</th>
+                                    <th class="p-3.5 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 font-medium">
+                                @forelse($advances as $adv)
+                                    <tr class="hover:bg-slate-50/50">
+                                        <td class="p-3.5 font-bold text-slate-900">
+                                            #ADV-{{ $adv->advance_id }} — {{ $adv->title }}
+                                            <span
+                                                class="block text-[10px] text-slate-400 font-normal italic">{{ Str::limit($adv->purpose, 50) }}</span>
+                                        </td>
+                                        <td class="p-3.5 text-slate-600 font-mono">
+                                            {{ $adv->required_date->format('d/m/Y') }}</td>
+                                        <td class="p-3.5 text-right font-black text-slate-900">RM
+                                            {{ number_format($adv->requested_amount, 2) }}</td>
+                                        <td class="p-3.5 text-right font-bold text-emerald-700 font-mono">RM
+                                            {{ number_format($adv->remaining_balance, 2) }}</td>
+                                        <td class="p-3.5 text-center">
+                                            <span
+                                                class="px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider
+                                                    {{ $adv->status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : '' }}
+                                                    {{ $adv->status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' : '' }}
+                                                    {{ $adv->status === 'Settled' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : '' }}
+                                                    {{ $adv->status === 'Rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200' : '' }}">
+                                                {{ $adv->status }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="p-8 text-center text-slate-400">No cash advance float records
+                                            logged yet.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                    @if(method_exists($advances, 'links'))
+                        <div class="p-4 border-t border-slate-100">
+                            {{ $advances->links() }}
+                        </div>
+                    @endif
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- New Advance Modal -->
+    <div x-show="isModalOpen" x-cloak
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl" @click.away="isModalOpen = false">
+            <h3 class="text-base font-bold text-slate-900">New Cash Advance Request</h3>
+            <form action="{{ route('advances.store') }}" method="POST" class="space-y-3 text-xs">
+                @csrf
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Requisition Title / Event</label>
+                    <input type="text" name="title" required placeholder="e.g. Aero Art Site Survey Johor"
+                        class="w-full p-2.5 border rounded-xl bg-slate-50">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Requested Amount (RM)</label>
+                        <input type="number" step="0.01" name="requested_amount" required placeholder="500.00"
+                            class="w-full p-2.5 border rounded-xl bg-slate-50">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Required By Date</label>
+                        <input type="date" name="required_date" required
+                            class="w-full p-2.5 border rounded-xl bg-slate-50">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Business Purpose Justification</label>
+                    <textarea name="purpose" rows="3" required
+                        placeholder="State exact institutional operational need..."
+                        class="w-full p-2.5 border rounded-xl bg-slate-50"></textarea>
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" @click="isModalOpen = false"
+                        class="px-4 py-2 border rounded-xl font-bold text-slate-600 cursor-pointer">Cancel</button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl cursor-pointer">Submit
+                        Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+
+</html>

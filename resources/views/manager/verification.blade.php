@@ -8,227 +8,20 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
 </head>
 
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
     :class="isModalOpen || isMobileSidebarOpen ? 'overflow-hidden' : ''">
 
-    <div class="flex min-h-screen flex-col lg:flex-row">
+    <div class="flex min-h-screen">
 
-        <header
-            class="lg:hidden bg-[#0f172a] px-4 py-4 flex items-center justify-between sticky top-0 z-40 shadow-sm text-slate-200">
-            <div class="flex items-center gap-2.5">
-                <i class="fa-solid fa-crown text-amber-400 text-xl"></i>
-                <div>
-                    <span class="font-black text-sm tracking-tight text-white block leading-tight">SmartClaim</span>
-                    <span class="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Aero Art Manager</span>
-                </div>
-            </div>
-            <button type="button" @click="isMobileSidebarOpen = true"
-                class="w-9 h-9 flex items-center justify-center bg-slate-800 rounded-xl text-white cursor-pointer transition-all">
-                <i class="fa-solid fa-bars text-base"></i>
-            </button>
-        </header>
-
-        <div x-show="isMobileSidebarOpen" x-cloak class="lg:hidden fixed inset-0 z-50 flex" role="dialog"
-            aria-modal="true">
-            <div x-show="isMobileSidebarOpen" x-transition:enter="transition-opacity ease-linear duration-300"
-                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100"
-                x-transition:leave-end="opacity-0" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
-                @click="isMobileSidebarOpen = false"></div>
-
-            <div x-show="isMobileSidebarOpen" x-transition:enter="transition ease-in-out duration-300 transform"
-                x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
-                x-transition:leave="transition ease-in-out duration-300 transform"
-                x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
-                class="relative flex w-full max-w-xs flex-1 flex-col bg-[#0f172a] pt-5 pb-4 text-slate-200">
-                <div class="absolute top-4 right-4">
-                    <button type="button" @click="isMobileSidebarOpen = false"
-                        class="w-8 h-8 flex items-center justify-center bg-slate-800 rounded-lg text-slate-400 cursor-pointer">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-                <div class="px-6 pb-4 border-b border-slate-800 flex items-center gap-2.5">
-                    <i class="fa-solid fa-crown text-amber-400 text-xl"></i>
-                    <div>
-                        <span class="font-black text-sm tracking-tight text-white block leading-tight">SmartClaim</span>
-                        <span class="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">Aero Art Manager
-                            Portal</span>
-                    </div>
-                </div>
-
-                <nav class="mt-4 flex-1 px-4 space-y-1 overflow-y-auto"
-                    x-data="{ isAuditingOpenMobile: true, isAdminOpenMobile: false }">
-                    <a href="{{ route('manager.dashboard') }}"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white">
-                        <i class="fa-solid fa-chart-pie text-base"></i> Dashboard
-                    </a>
-                    <div>
-                        <button type="button" @click.prevent="isAuditingOpenMobile = !isAuditingOpenMobile"
-                            class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold bg-slate-800 text-white cursor-pointer">
-                            <span class="flex items-center gap-3"><i
-                                    class="fa-solid fa-shield-check text-emerald-400"></i> Claims Verification</span>
-                            <i class="fa-solid text-[10px]"
-                                :class="isAuditingOpenMobile ? 'fa-chevron-down rotate-180' : 'fa-chevron-right'"></i>
-                        </button>
-                        <div x-show="isAuditingOpenMobile"
-                            class="pl-6 mt-1 space-y-1 py-1 bg-slate-900/40 rounded-xl border border-slate-800">
-                            <a href="{{ route('manager.verification') }}?status=Pre-Approved"
-                                :class="statusTab === 'Pending' || statusTab === 'Pre-Approved' ? 'text-emerald-400 font-bold bg-slate-800/60' : 'text-slate-400'"
-                                class="w-full px-3 py-2 rounded-lg text-xs flex items-center justify-between gap-2">
-                                <span class="flex items-center gap-2"><i
-                                        class="fa-solid fa-hourglass-half text-[11px]"></i> Pending Review</span>
-                                @if(($preApprovedCount ?? 0) > 0) <span
-                                    class="px-1.5 py-0.5 bg-amber-500 text-slate-950 font-black rounded-sm text-[8px] font-mono">{{ $preApprovedCount }}</span>
-                                @endif
-                            </a>
-                            <a href="{{ route('manager.verification') }}?status=Approved"
-                                :class="statusTab === 'Approved' ? 'text-emerald-400 font-bold bg-slate-800/60' : 'text-slate-400'"
-                                class="w-full px-3 py-2 rounded-lg text-xs flex items-center gap-2"><i
-                                    class="fa-solid fa-circle-check text-[11px]"></i> Accepted Review</a>
-                        </div>
-                    </div>
-
-                    <div>
-                        <button type="button" @click.prevent="isAdminOpenMobile = !isAdminOpenMobile"
-                            :class="isAdminOpenMobile ? 'text-white font-semibold' : 'text-slate-400 hover:text-white'"
-                            class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all cursor-pointer">
-                            <span class="flex items-center gap-3">
-                                <i class="fa-solid fa-sliders-file text-base"
-                                    :class="isAdminOpenMobile ? 'text-emerald-400' : 'text-slate-400'"></i>
-                                <span>Administration</span>
-                            </span>
-                            <i class="fa-solid text-[10px] transition-transform duration-200"
-                                :class="isAdminOpenMobile ? 'fa-chevron-down rotate-180' : 'fa-chevron-right'"></i>
-                        </button>
-
-                        <div x-show="isAdminOpenMobile" x-cloak
-                            class="pl-6 mt-1 space-y-1 py-1 bg-slate-900/40 rounded-xl border border-slate-800 flex flex-col">
-                            <a href="{{ route('manager.mileage_rates') }}"
-                                :class="request()->routeIs('manager.mileage_rates') ? 'text-emerald-400 font-bold bg-slate-800' : 'text-slate-400 hover:text-white'"
-                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2">
-                                <i class="fa-solid fa-car-tunnel text-[11px]"></i> Mileage Rates
-                            </a>
-                            <a href="{{ route('manager.expense_categories') }}"
-                                :class="request()->routeIs('manager.expense_categories') ? 'text-emerald-400 font-bold bg-slate-800' : 'text-slate-400 hover:text-white'"
-                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2">
-                                <i class="fa-solid fa-folder-tree text-[11px]"></i> Expense Categories
-                            </a>
-                            <a href="{{ route('manager.user_management') }}"
-                                :class="request()->routeIs('manager.user_management') ? 'text-emerald-400 font-bold bg-slate-800' : 'text-slate-400 hover:text-white'"
-                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
-                                <i class="fa-solid fa-users-gear text-[11px]"></i> User Management
-                            </a>
-                            <a href="{{ route('manager.vehicles') }}"
-                                :class="request()->routeIs('manager.vehicles') ? 'text-emerald-400 font-bold bg-slate-800' : 'text-slate-400 hover:text-white'"
-                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2">
-                                <i class="fa-solid fa-car text-[11px]"></i> Company Fleet CRUD
-                            </a>
-                            <a href="{{ route('manager.audit_logs') }}"
-                                :class="request()->routeIs('manager.audit_logs') ? 'text-emerald-400 font-bold bg-slate-800' : 'text-slate-400 hover:text-white'"
-                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2">
-                                <i class="fa-solid fa-scroll text-[11px]"></i> Audit Logs
-                            </a>
-                        </div>
-                    </div>
-                    <a href="{{ route('manager.reports') }}"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-white"><i
-                            class="fa-solid fa-chart-line text-base"></i> Reports & BI Analytics</a>
-                    <a href="{{ route('manager.profile') }}"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-white"><i
-                            class="fa-solid fa-user-shield text-base"></i> My Profile</a>
-                    <a href="{{ route('logout') }}"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-rose-950/60 hover:text-rose-400"><i
-                            class="fa-solid fa-door-open text-base"></i> Sign Out</a>
-                </nav>
-            </div>
-        </div>
-
-        <aside
-            class="hidden lg:flex fixed inset-y-0 left-0 z-50 w-64 bg-[#0f172a] flex-col h-screen sticky top-0 text-slate-200"
-            x-data="{ isAuditingOpen: true, isAdminOpen: false }">
-            <div class="px-6 py-5 border-b border-slate-800 flex items-center gap-2.5">
-                <i class="fa-solid fa-crown text-amber-400 text-2xl"></i>
-                <div>
-                    <span class="font-black text-base tracking-tight text-white block leading-tight">SmartClaim</span>
-                    <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Aero Art Manager
-                        Portal</span>
-                </div>
-            </div>
-            <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-                <a href="{{ route('manager.dashboard') }}"
-                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all">
-                    <i class="fa-solid fa-chart-pie text-base"></i> Dashboard
-                </a>
-                <div>
-                    <button type="button" @click.prevent="isAuditingOpen = !isAuditingOpen"
-                        class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold bg-slate-800 text-white transition-all cursor-pointer">
-                        <span class="flex items-center gap-3 pointer-events-none"><i
-                                class="fa-solid fa-shield-check text-emerald-400 text-base"></i> Claims
-                            Verification</span>
-                        <i class="fa-solid text-[10px] transition-transform duration-200 pointer-events-none"
-                            :class="isAuditingOpen ? 'fa-chevron-down rotate-180' : 'fa-chevron-right'"></i>
-                    </button>
-                    <div x-show="isAuditingOpen" x-cloak x-transition
-                        class="pl-6 mt-1 space-y-1 py-1 bg-slate-900/40 rounded-xl border border-slate-800">
-                        <a href="{{ route('manager.verification') }}?status=Pre-Approved"
-                            :class="statusTab === 'Pending' || statusTab === 'Pre-Approved' ? 'text-emerald-400 font-bold bg-slate-800/60' : 'text-slate-400'"
-                            class="w-full px-3 py-2 text-left rounded-lg text-xs font-medium hover:text-white flex items-center justify-between gap-1 cursor-pointer">
-                            <span class="flex items-center gap-2"><i class="fa-solid fa-hourglass-half text-[11px]"></i>
-                                Pending Review</span>
-                            @if(($preApprovedCount ?? 0) > 0) <span
-                                class="px-1.5 py-0.5 bg-amber-500 text-slate-950 font-black rounded-sm text-[8px] font-mono">{{ $preApprovedCount }}</span>
-                            @endif
-                        </a>
-                        <a href="{{ route('manager.verification') }}?status=Approved"
-                            :class="statusTab === 'Approved' ? 'text-emerald-400 font-bold bg-slate-800/60' : 'text-slate-400'"
-                            class="w-full px-3 py-2 text-left rounded-lg text-xs font-medium hover:text-white flex items-center gap-2 cursor-pointer"><i
-                                class="fa-solid fa-circle-check text-[11px]"></i> Accepted Review</a>
-                    </div>
-                </div>
-                <div>
-                    <button type="button" @click.prevent="isAdminOpen = !isAdminOpen"
-                        :class="isAdminOpen ? 'bg-slate-900 text-white font-semibold' : 'text-slate-400 hover:bg-slate-900 hover:text-white'"
-                        class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all cursor-pointer">
-                        <span class="flex items-center gap-3 pointer-events-none">
-                            <i class="fa-solid fa-sliders-file text-base"
-                                :class="isAdminOpen ? 'text-emerald-400' : 'text-slate-400'"></i> Administration
-                        </span>
-                        <i class="fa-solid text-[10px] transition-transform duration-200 pointer-events-none"
-                            :class="isAdminOpen ? 'fa-chevron-down rotate-180 text-white' : 'fa-chevron-right text-slate-400'"></i>
-                    </button>
-
-                    <div x-show="isAdminOpen" x-cloak x-transition
-                        class="pl-6 mt-1 space-y-1 py-1 bg-slate-900/40 rounded-xl border border-slate-800 flex flex-col">
-                        <a href="{{ route('manager.mileage_rates') }}"
-                            class="w-full text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2 {{ request()->routeIs('manager.mileage_rates') ? 'text-emerald-400 font-bold bg-slate-800' : 'text-slate-400 hover:text-white' }}"><i
-                                class="fa-solid fa-car-tunnel text-[11px]"></i> Mileage Rates</a>
-                        <a href="{{ route('manager.expense_categories') }}"
-                            class="w-full text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2 {{ request()->routeIs('manager.expense_categories') ? 'text-emerald-400 font-bold bg-slate-800' : 'text-slate-400 hover:text-white' }}"><i
-                                class="fa-solid fa-folder-tree text-[11px]"></i> Expense Categories</a>
-                        <a href="{{ route('manager.user_management') }}"
-                            class="w-full text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2 {{ request()->routeIs('manager.user_management') ? 'text-emerald-400 font-bold bg-slate-800' : 'text-slate-400 hover:text-white' }}"><i
-                                class="fa-solid fa-users-gear text-[11px]"></i> User Management</a>
-                        <a href="{{ route('manager.vehicles') }}"
-                            class="w-full text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2 {{ request()->routeIs('manager.vehicles') ? 'text-emerald-400 font-bold bg-slate-800' : 'text-slate-400 hover:text-white' }}"><i
-                                class="fa-solid fa-car text-[11px]"></i> Company Fleet CRUD</a>
-                        <a href="{{ route('manager.audit_logs') }}"
-                            class="w-full text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2 {{ request()->routeIs('manager.audit_logs') ? 'text-emerald-400 font-bold bg-slate-800' : 'text-slate-400 hover:text-white' }}"><i
-                                class="fa-solid fa-scroll text-[11px]"></i> Audit Logs</a>
-                    </div>
-                </div>
-                <a href="{{ route('manager.reports') }}"
-                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i
-                        class="fa-solid fa-chart-line text-base"></i> Reports & BI Analytics</a>
-                <a href="{{ route('manager.profile') }}"
-                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-900 hover:text-white transition-all"><i
-                        class="fa-solid fa-user-shield text-base"></i> My Profile</a>
-                <a href="{{ route('logout') }}"
-                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-rose-950/60 hover:text-rose-400 transition-all"><i
-                        class="fa-solid fa-door-open text-base"></i> Sign Out</a>
-            </nav>
-        </aside>
+        <!-- Global Centralized Manager Sidebar Partial -->
+        @include('layouts.partials.manager-sidebar')
 
         <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-hidden">
             <div class="space-y-6">
@@ -265,26 +58,26 @@
                 </div>
 
                 <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden" x-data="{
-        allClaims: {{ json_encode($claims->map(fn($c) => array_merge($c->toArray(), [
+                    allClaims: {{ json_encode($claims->map(fn($c) => array_merge($c->toArray(), [
     'user_name' => $c->user->name ?? 'Staff User',
     'items' => $c->items->toArray()
 ]))) }},
-        currentPage: 1,
-        perPage: 5,
-        get filteredClaims() {
-            return this.allClaims.filter(c => {
-                return this.statusTab === c.status ||
-                    (this.statusTab === 'Pre-Approved' && c.status === 'Pending');
-            });
-        },
-        get totalRecords() { return this.filteredClaims.length },
-        get totalPages() { return Math.max(1, Math.ceil(this.totalRecords / this.perPage)) },
-        get pagedItems() {
-            let start = (this.currentPage - 1) * this.perPage;
-            return this.filteredClaims.slice(start, start + this.perPage);
-        },
-        resetPage() { this.currentPage = 1; }
-    }" x-init="$watch('statusTab', () => resetPage())">
+                    currentPage: 1,
+                    perPage: 5,
+                    get filteredClaims() {
+                        return this.allClaims.filter(c => {
+                            return this.statusTab === c.status ||
+                                (this.statusTab === 'Pre-Approved' && c.status === 'Pending');
+                        });
+                    },
+                    get totalRecords() { return this.filteredClaims.length },
+                    get totalPages() { return Math.max(1, Math.ceil(this.totalRecords / this.perPage)) },
+                    get pagedItems() {
+                        let start = (this.currentPage - 1) * this.perPage;
+                        return this.filteredClaims.slice(start, start + this.perPage);
+                    },
+                    resetPage() { this.currentPage = 1; }
+                }" x-init="$watch('statusTab', () => resetPage())">
 
                     <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                         <span class="text-xs font-bold text-slate-700 uppercase tracking-wide">
@@ -318,14 +111,35 @@
                                         <td class="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap"
                                             x-text="'CLM-' + claim.claim_id"></td>
 
-                                        <td class="py-3.5 px-4 font-bold text-slate-950 truncate max-w-[160px]"
-                                            x-text="claim.claim_type === 'Mileage' ? (claim.title || 'Travel Allowance Claim') : claim.merchant_name">
+                                        <td class="py-3.5 px-4 max-w-[180px]">
+                                            <span class="font-bold text-slate-950 block truncate"
+                                                x-text="claim.claim_type === 'Mileage' ? (claim.title || 'Travel Allowance Claim') : claim.merchant_name"></span>
+
+                                            <div class="flex flex-wrap items-center gap-1 mt-0.5">
+                                                <template x-if="claim.is_policy_violation">
+                                                    <span
+                                                        class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-100 text-rose-700 text-[9px] font-black rounded-md uppercase tracking-wider">
+                                                        <i class="fa-solid fa-triangle-exclamation text-[8px]"></i>
+                                                        Policy Breach
+                                                    </span>
+                                                </template>
+
+                                                <!-- Risk Gauge Mini Badge -->
+                                                <template x-if="claim.risk_score && claim.risk_score > 0">
+                                                    <span
+                                                        class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase font-mono tracking-wider"
+                                                        :class="claim.risk_score >= 50 ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-amber-100 text-amber-800 border border-amber-200'">
+                                                        <i class="fa-solid fa-shield-halved text-[8px]"></i>
+                                                        Risk: <span x-text="claim.risk_score + '%'"></span>
+                                                    </span>
+                                                </template>
+                                            </div>
                                         </td>
 
                                         <td class="py-3.5 px-4 whitespace-nowrap">
                                             <span class="px-2 py-0.5 rounded font-bold text-[10px]" :class="claim.claim_type === 'Mileage'
-                                    ? 'bg-blue-50 text-blue-600'
-                                    : 'bg-slate-100 text-slate-600'" x-text="claim.claim_type">
+                                                ? 'bg-blue-50 text-blue-600'
+                                                : 'bg-slate-100 text-slate-600'" x-text="claim.claim_type">
                                             </span>
                                         </td>
 
@@ -336,10 +150,10 @@
                                             <span
                                                 class="px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wide"
                                                 :class="{
-                                    'bg-emerald-50 text-emerald-700 border border-emerald-200': claim.status === 'Approved',
-                                    'bg-indigo-50 text-indigo-700 border border-indigo-200': claim.status === 'Pending' || claim.status === 'Pre-Approved',
-                                    'bg-rose-50 text-rose-700 border border-rose-200': claim.status === 'Rejected'
-                                }" x-text="claim.status === 'Pending' ? 'Pre-Approved' : claim.status">
+                                                    'bg-emerald-50 text-emerald-700 border border-emerald-200': claim.status === 'Approved',
+                                                    'bg-indigo-50 text-indigo-700 border border-indigo-200': claim.status === 'Pending' || claim.status === 'Pre-Approved',
+                                                    'bg-rose-50 text-rose-700 border border-rose-200': claim.status === 'Rejected'
+                                                }" x-text="claim.status === 'Pending' ? 'Pre-Approved' : claim.status">
                                             </span>
                                         </td>
 
@@ -352,7 +166,6 @@
                                     </tr>
                                 </template>
 
-                                {{-- Empty state --}}
                                 <template x-if="totalRecords === 0">
                                     <tr>
                                         <td colspan="7" class="py-12 text-center text-slate-400 font-semibold">
@@ -366,7 +179,7 @@
                         </table>
                     </div>
 
-                    {{-- Pagination --}}
+                    <!-- Pagination -->
                     <div
                         class="px-5 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold">
                         <div class="text-slate-400 font-medium">
@@ -376,23 +189,22 @@
                             to
                             <span class="text-slate-700" x-text="Math.min(currentPage * perPage, totalRecords)"></span>
                             of
-                            <span class="text-slate-700" x-text="totalRecords"></span>
-                            records
+                            <span class="text-slate-700" x-text="totalRecords"></span> records
                         </div>
 
                         <div class="flex items-center gap-1.5">
                             <button type="button" @click="if(currentPage > 1) currentPage--"
                                 :disabled="currentPage === 1" :class="currentPage === 1
-                    ? 'text-slate-300 cursor-not-allowed bg-slate-50 border-slate-100'
-                    : 'text-slate-700 hover:border-slate-400 bg-white border-slate-200 cursor-pointer'"
+                                    ? 'text-slate-300 cursor-not-allowed bg-slate-50 border-slate-100'
+                                    : 'text-slate-700 hover:border-slate-400 bg-white border-slate-200 cursor-pointer'"
                                 class="px-3 py-2 border rounded-xl transition-all flex items-center gap-1.5">
                                 <i class="fa-solid fa-chevron-left text-[10px]"></i> Previous
                             </button>
 
                             <template x-for="page in totalPages" :key="page">
                                 <button type="button" @click="currentPage = page" :class="currentPage === page
-                        ? 'bg-[#0f172a] text-white border-[#0f172a]'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400 cursor-pointer'"
+                                    ? 'bg-[#0f172a] text-white border-[#0f172a]'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400 cursor-pointer'"
                                     class="w-8 h-8 border rounded-xl transition-all text-xs font-bold" x-text="page"
                                     x-show="totalPages <= 7 || page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1">
                                 </button>
@@ -400,8 +212,8 @@
 
                             <button type="button" @click="if(currentPage < totalPages) currentPage++"
                                 :disabled="currentPage === totalPages" :class="currentPage === totalPages
-                    ? 'text-slate-300 cursor-not-allowed bg-slate-50 border-slate-100'
-                    : 'text-slate-700 hover:border-slate-400 bg-white border-slate-200 cursor-pointer'"
+                                    ? 'text-slate-300 cursor-not-allowed bg-slate-50 border-slate-100'
+                                    : 'text-slate-700 hover:border-slate-400 bg-white border-slate-200 cursor-pointer'"
                                 class="px-3 py-2 border rounded-xl transition-all flex items-center gap-1.5">
                                 Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
                             </button>
@@ -413,6 +225,7 @@
         </main>
     </div>
 
+    <!-- Sign-off Modal Screen -->
     <div x-show="isModalOpen" x-cloak
         class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-all duration-300">
         <div class="relative bg-white rounded-3xl p-4 md:p-6 max-w-5xl w-full shadow-2xl flex flex-col md:flex-row gap-5 max-h-[90vh] overflow-hidden border border-slate-100"
@@ -427,6 +240,53 @@
                     <h3 class="text-base font-bold text-slate-900"
                         x-text="'CLM-' + activeClaim.claim_id + ' | ' + (activeClaim.claim_type === 'Mileage' ? (activeClaim.title ? activeClaim.title : 'Travel Allowance Packet') : activeClaim.merchant_name)">
                     </h3>
+                </div>
+
+                <!-- Real-time Policy Violation Alert Banner -->
+                <div x-show="activeClaim.is_policy_violation" x-cloak
+                    class="p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-800 text-xs">
+                    <i class="fa-solid fa-triangle-exclamation text-rose-500 text-sm mt-0.5 animate-pulse"></i>
+                    <div>
+                        <strong class="font-bold text-rose-900 block uppercase text-[10px] tracking-wider">Compliance
+                            Warning: Policy Limit Breached</strong>
+                        <span class="font-medium"
+                            x-text="activeClaim.policy_violation_reason || 'This claim exceeds institutional policy thresholds.'"></span>
+                    </div>
+                </div>
+
+                <!-- Forensic Integrity Score & Fraud Flags Breakdown Box -->
+                <div x-show="activeClaim.risk_score && activeClaim.risk_score > 0" x-cloak
+                    class="p-3.5 bg-slate-900 text-white rounded-2xl space-y-2.5 text-xs shadow-md border border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <span
+                            class="text-[10px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-fingerprint text-rose-400 text-sm"></i> Forensic Integrity & Risk
+                            Evaluation
+                        </span>
+                        <span
+                            class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-black uppercase tracking-wider"
+                            :class="activeClaim.risk_score >= 50 ? 'bg-rose-500 text-white' : 'bg-amber-400 text-slate-950'"
+                            x-text="'RISK: ' + (activeClaim.risk_score || 0) + '%'">
+                        </span>
+                    </div>
+
+                    <div class="space-y-1 pt-1 border-t border-slate-800">
+                        <template x-for="(flag, fidx) in (activeClaim.fraud_flags || [])" :key="fidx">
+                            <div class="flex items-start gap-2 text-[11px] text-slate-300 font-medium">
+                                <i class="fa-solid fa-circle-exclamation text-rose-400 text-[10px] mt-0.5 shrink-0"></i>
+                                <span x-text="flag"></span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <template x-if="activeClaim.exif_date_taken">
+                        <div
+                            class="pt-1.5 text-[10px] text-slate-400 font-mono flex items-center gap-1.5 border-t border-slate-800/80">
+                            <i class="fa-solid fa-camera text-slate-400"></i>
+                            <span>EXIF Capture Timestamp: <strong class="text-slate-200"
+                                    x-text="activeClaim.exif_date_taken"></strong></span>
+                        </div>
+                    </template>
                 </div>
 
                 <div
@@ -541,8 +401,9 @@
                 </div>
 
                 <div class="space-y-2 border-t border-slate-100 pt-3">
-                    <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400"><i
-                            class="fa-solid fa-calculator"></i> Verified Cost Matrix Breakdowns</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <i class="fa-solid fa-calculator"></i> Verified Cost Matrix Breakdowns
+                    </h4>
                     <div class="space-y-1.5 max-h-[160px] overflow-y-auto">
                         <template x-if="activeClaim.claim_type === 'Mileage'">
                             <div class="overflow-hidden border border-slate-200 rounded-xl bg-white shadow-3xs">
@@ -615,6 +476,10 @@
                             </form>
                         </div>
                     </template>
+                    <a :href="'/claims/' + activeClaim.claim_id + '/voucher-pdf'" target="_blank"
+                        class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition">
+                        <i class="fa-solid fa-file-pdf text-rose-600"></i> Download Forensic Payment Voucher (PDF)
+                    </a>
                     <button type="button" @click="isModalOpen = false"
                         class="text-xs text-slate-400 font-bold hover:underline text-center">Dismiss Screen</button>
                 </div>
@@ -650,9 +515,10 @@
 
         </div>
     </div>
+
+    <!-- Raw Asset Lightbox Modal -->
     <div x-show="isHistoryModalOpen" x-cloak
         class="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs transition-all duration-300">
-
         <div class="relative bg-white rounded-3xl p-3 max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             @click.away="isHistoryModalOpen = false" x-transition:enter="transition ease-out duration-300 transform"
             x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
@@ -673,16 +539,22 @@
             </div>
         </div>
     </div>
+
     <script>
         function managerWorkspace() {
             return {
                 isMobileSidebarOpen: false,
                 statusTab: (new URLSearchParams(window.location.search)).get('status') || 'Pre-Approved',
-                isModalOpen: false, activeClaim: {}, activeUser: '',
-                // ⚡ INSTALLED MANAGER LIGHTBOX MATRIX NODES ⚡
+                isModalOpen: false,
+                activeClaim: {},
+                activeUser: '',
                 isHistoryModalOpen: false,
                 modalPreviewSrc: '',
-                openModal(claim, username) { this.activeClaim = claim; this.activeUser = username; this.isModalOpen = true; }
+                openModal(claim, username) {
+                    this.activeClaim = claim;
+                    this.activeUser = username;
+                    this.isModalOpen = true;
+                }
             }
         }
     </script>

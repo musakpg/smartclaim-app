@@ -3,42 +3,339 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Vehicle;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class VehicleController extends Controller
 {
-    /**
-     * READ: Display the corporate fleet interface with dynamic forensic audit logs.
-     */
-    public function index()
-    {
-        $vehicles = DB::table('vehicles')->orderBy('vehicle_id', 'desc')->get();
-        
-        // Fetch the 5 most recent logistical lifecycle event streams
-        $logs = DB::table('vehicle_logs')->orderBy('log_id', 'desc')->take(5)->get();
+    /* =========================================================================
+     * SECTION 1: STAFF PERSONAL VEHICLE PORTAL
+     * ========================================================================= */
 
-        return view('manager.vehicles', compact('vehicles', 'logs'));
+    /**
+     * Display authenticated staff's personal registered vehicles.
+     */
+    public function staffIndex()
+    {
+        $currentUserId = Auth::id() ?? 1;
+
+        $vehicles = Vehicle::where('user_id', $currentUserId)
+            ->where('ownership_type', 'personal')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('vehicles.index', compact('vehicles'));
     }
 
     /**
-     * CREATE: Persist a newly deployed transport asset node and log the event.
+     * Show form for staff to register a new personal vehicle.
      */
-    public function store(Request $request)
+    public function staffCreate()
+    {
+        return view('vehicles.create');
+    }
+
+    /**
+     * Store new personal vehicle application with MyJPJ / grant uploads.
+     */
+    public function staffStore(Request $request)
+    {
+        $currentUserId = Auth::id() ?? 1;
+
+        $request->validate([
+            'plate_number' => [
+                'required',
+                'string',
+                'max:20',
+                'unique:vehicles,plate_number',
+                'regex:/[A-Za-z]/',
+                'regex:/[0-9]/',
+            ],
+            'brand_model' => 'required|string|min:3|max:255',
+            'vehicle_type' => 'required|in:Car,Motorcycle',
+            'engine_capacity' => 'nullable|numeric',
+            'roadtax_expiry' => 'required|date|after_or_equal:today',
+            'grant_document' => 'required|image|max:5120',
+            'roadtax_document' => 'required|image|max:5120',
+        ], [
+            'plate_number.regex' => 'The vehicle plate number must contain letters and numbers (e.g. JWA 1234).',
+        ]);
+
+        $cleanPlate = strtoupper(trim($request->plate_number));
+        $grantPath = $request->file('grant_document')->store('vehicles/grants', 'public');
+        $roadtaxPath = $request->file('roadtax_document')->store('vehicles/roadtax', 'public');
+
+        DB::beginTransaction();
+        try {
+            $vehicle = Vehicle::create([
+                'user_id' => $currentUserId,
+                'plate_number' => $cleanPlate,
+                'brand_model' => strtoupper(trim($request->brand_model)),
+                'vehicle_type' => $request->vehicle_type,
+                'engine_capacity' => $request->engine_capacity,
+                'ownership_type' => 'personal',
+                'roadtax_expiry' => $request->roadtax_expiry,
+                'grant_document_path' => $grantPath,
+                'roadtax_document_path' => $roadtaxPath,
+                'status' => 'Active',
+                'approval_status' => 'Pending',
+                'roadtax_renewal_status' => 'None',
+            ]);
+
+            DB::table('vehicle_logs')->insert([
+                'operator_name' => Auth::user()->name ?? 'Staff Employee',
+                'action_event' => 'STAFF_VEHICLE_SUBMIT',
+                'plate_index' => $cleanPlate,
+                'description' => "Submitted personal vehicle application: {$vehicle->brand_model} ({$vehicle->vehicle_type}). Awaiting Manager approval.",
+                'ip_address' => $request->ip() ?? '127.0.0.1',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+            return redirect()->route('vehicles.index')->with('success', 'Vehicle application submitted successfully and queued for Manager verification.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => 'Application submission fault: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    /**
+     * Show form for staff to edit details while Pending or Rejected.
+     */
+    public function staffEdit($id)
+    {
+        $currentUserId = Auth::id() ?? 1;
+        $vehicle = Vehicle::where('vehicle_id', $id)
+            ->where('user_id', $currentUserId)
+            ->firstOrFail();
+
+        if (!$vehicle->can_be_edited) {
+            return redirect()->route('vehicles.index')->withErrors(['error' => 'Approved vehicles cannot be modified directly.']);
+        }
+
+        return view('vehicles.edit', compact('vehicle'));
+    }
+
+    /**
+     * Update personal vehicle details & optionally replace documents.
+     */
+    public function staffUpdate(Request $request, $id)
+    {
+        $currentUserId = Auth::id() ?? 1;
+        $vehicle = Vehicle::where('vehicle_id', $id)
+            ->where('user_id', $currentUserId)
+            ->firstOrFail();
+
+        if (!$vehicle->can_be_edited) {
+            return redirect()->route('vehicles.index')->withErrors(['error' => 'Approved vehicles cannot be modified.']);
+        }
+
+        $request->validate([
+            'plate_number' => 'required|string|max:20|unique:vehicles,plate_number,' . $vehicle->vehicle_id . ',vehicle_id',
+            'brand_model' => 'required|string|min:3|max:255',
+            'vehicle_type' => 'required|in:Car,Motorcycle',
+            'engine_capacity' => 'nullable|numeric',
+            'roadtax_expiry' => 'required|date|after_or_equal:today',
+            'grant_document' => 'nullable|image|max:5120',
+            'roadtax_document' => 'nullable|image|max:5120',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            if ($request->hasFile('grant_document')) {
+                if ($vehicle->grant_document_path && Storage::disk('public')->exists($vehicle->grant_document_path)) {
+                    Storage::disk('public')->delete($vehicle->grant_document_path);
+                }
+                $vehicle->grant_document_path = $request->file('grant_document')->store('vehicles/grants', 'public');
+            }
+
+            if ($request->hasFile('roadtax_document')) {
+                if ($vehicle->roadtax_document_path && Storage::disk('public')->exists($vehicle->roadtax_document_path)) {
+                    Storage::disk('public')->delete($vehicle->roadtax_document_path);
+                }
+                $vehicle->roadtax_document_path = $request->file('roadtax_document')->store('vehicles/roadtax', 'public');
+            }
+
+            $cleanPlate = strtoupper(trim($request->plate_number));
+            $vehicle->plate_number = $cleanPlate;
+            $vehicle->brand_model = strtoupper(trim($request->brand_model));
+            $vehicle->vehicle_type = $request->vehicle_type;
+            $vehicle->engine_capacity = $request->engine_capacity;
+            $vehicle->roadtax_expiry = $request->roadtax_expiry;
+            $vehicle->approval_status = 'Pending';
+            $vehicle->rejection_reason = null;
+            $vehicle->save();
+
+            DB::table('vehicle_logs')->insert([
+                'operator_name' => Auth::user()->name ?? 'Staff Employee',
+                'action_event' => 'STAFF_VEHICLE_UPDATE',
+                'plate_index' => $cleanPlate,
+                'description' => "Updated personal vehicle application parameters. Status reset to Pending review.",
+                'ip_address' => $request->ip() ?? '127.0.0.1',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+            return redirect()->route('vehicles.index')->with('success', 'Vehicle application updated and resubmitted for verification.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => 'Update failure: ' . $e->getMessage()])->withInput();
+        }
+    }
+
+    /**
+     * Submit roadtax renewal certificate (Window <= 30 days).
+     */
+    public function renewRoadtax(Request $request, $id)
+    {
+        $currentUserId = Auth::id() ?? 1;
+        $vehicle = Vehicle::where('vehicle_id', $id)
+            ->where('user_id', $currentUserId)
+            ->firstOrFail();
+
+        $request->validate([
+            'new_roadtax_expiry' => 'required|date|after:today',
+            'new_roadtax_document' => 'required|image|max:5120',
+        ]);
+
+        $roadtaxPath = $request->file('new_roadtax_document')->store('vehicles/roadtax', 'public');
+
+        $vehicle->roadtax_expiry = $request->new_roadtax_expiry;
+        $vehicle->roadtax_document_path = $roadtaxPath;
+        $vehicle->roadtax_renewal_status = 'Pending_Review';
+        $vehicle->save();
+
+        DB::table('vehicle_logs')->insert([
+            'operator_name' => Auth::user()->name ?? 'Staff Employee',
+            'action_event' => 'ROADTAX_RENEWAL_SUBMIT',
+            'plate_index' => $vehicle->plate_number,
+            'description' => "Uploaded updated roadtax certificate expiring on {$request->new_roadtax_expiry}. Queued for Manager approval.",
+            'ip_address' => $request->ip() ?? '127.0.0.1',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->route('vehicles.index')->with('success', 'Roadtax renewal proof submitted for Manager verification.');
+    }
+
+    /**
+     * Cancel or delete personal vehicle registration (only while Pending/Rejected).
+     */
+    public function staffDestroy($id)
+    {
+        $currentUserId = Auth::id() ?? 1;
+        $vehicle = Vehicle::where('vehicle_id', $id)
+            ->where('user_id', $currentUserId)
+            ->firstOrFail();
+
+        if (!$vehicle->can_be_edited) {
+            return redirect()->route('vehicles.index')->withErrors(['error' => 'Active approved vehicles cannot be deleted if referenced in historical ledgers.']);
+        }
+
+        if ($vehicle->grant_document_path && Storage::disk('public')->exists($vehicle->grant_document_path)) {
+            Storage::disk('public')->delete($vehicle->grant_document_path);
+        }
+        if ($vehicle->roadtax_document_path && Storage::disk('public')->exists($vehicle->roadtax_document_path)) {
+            Storage::disk('public')->delete($vehicle->roadtax_document_path);
+        }
+
+        $plate = $vehicle->plate_number;
+        $vehicle->delete();
+
+        DB::table('vehicle_logs')->insert([
+            'operator_name' => Auth::user()->name ?? 'Staff Employee',
+            'action_event' => 'STAFF_VEHICLE_DELETE',
+            'plate_index' => $plate,
+            'description' => "Cancelled personal vehicle application for plate {$plate}.",
+            'ip_address' => request()->ip() ?? '127.0.0.1',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->route('vehicles.index')->with('success', 'Vehicle application removed successfully.');
+    }
+
+
+    /* =========================================================================
+     * SECTION 2: MANAGER FLEET & VERIFICATION DESK
+     * ========================================================================= */
+
+    /**
+     * Manager view: Company fleet and personal vehicle verification requests.
+     */
+    public function managerIndex()
+    {
+        $companyVehicles = Vehicle::where('ownership_type', 'company')->orderBy('vehicle_id', 'desc')->get();
+        $pendingVehicles = Vehicle::with('owner')->where('ownership_type', 'personal')->where('approval_status', 'Pending')->orderBy('created_at', 'asc')->get();
+        $approvedPersonalVehicles = Vehicle::with('owner')->where('ownership_type', 'personal')->where('approval_status', 'Approved')->orderBy('updated_at', 'desc')->get();
+        $rejectedVehicles = Vehicle::with('owner')->where('ownership_type', 'personal')->where('approval_status', 'Rejected')->orderBy('updated_at', 'desc')->get();
+
+        $logs = DB::table('vehicle_logs')->orderBy('log_id', 'desc')->take(10)->get();
+
+        return view('manager.vehicles', compact(
+            'companyVehicles',
+            'pendingVehicles',
+            'approvedPersonalVehicles',
+            'rejectedVehicles',
+            'logs'
+        ));
+    }
+
+    /**
+     * Manager action: Approve or Reject a staff's personal vehicle.
+     */
+    public function verifyStaffVehicle(Request $request, $id)
+    {
+        $request->validate([
+            'decision' => 'required|in:Approved,Rejected',
+            'rejection_reason' => 'required_if:decision,Rejected|nullable|string|max:500',
+        ]);
+
+        $vehicle = Vehicle::where('vehicle_id', $id)->firstOrFail();
+        $managerId = Auth::id() ?? 1;
+        $managerName = Auth::user()->name ?? 'Executive Manager';
+
+        $vehicle->approval_status = $request->decision;
+        $vehicle->approved_by = ($request->decision === 'Approved') ? $managerId : null;
+        $vehicle->approved_at = ($request->decision === 'Approved') ? now() : null;
+        $vehicle->rejection_reason = ($request->decision === 'Rejected') ? $request->rejection_reason : null;
+        $vehicle->roadtax_renewal_status = 'None';
+        $vehicle->save();
+
+        DB::table('vehicle_logs')->insert([
+            'operator_name' => $managerName,
+            'action_event' => 'VEHICLE_VERIFICATION_' . strtoupper($request->decision),
+            'plate_index' => $vehicle->plate_number,
+            'description' => "Manager {$managerName} marked personal vehicle {$vehicle->plate_number} as {$request->decision}." . ($request->decision === 'Rejected' ? " Reason: {$request->rejection_reason}" : ""),
+            'ip_address' => $request->ip() ?? '127.0.0.1',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', "Vehicle {$vehicle->plate_number} successfully marked as {$request->decision}.");
+    }
+
+    /**
+     * Manager creates a company fleet asset.
+     */
+    public function storeCompanyFleet(Request $request)
     {
         $request->validate([
             'plate_number' => [
-                'required', 'string', 'unique:vehicles,plate_number',
-                'regex:/[A-Za-z]/', 'regex:/[0-9]/',    
+                'required',
+                'string',
+                'unique:vehicles,plate_number',
+                'regex:/[A-Za-z]/',
+                'regex:/[0-9]/',
             ],
-            'model' => [
-                'required', 'string', 'min:5', 'regex:/^[A-Za-z0-9\s\-]+$/' 
-            ],
+            'model' => ['required', 'string', 'min:3', 'regex:/^[A-Za-z0-9\s\-]+$/'],
             'type' => 'required|in:Car,Motorcycle',
-        ], [
-            'plate_number.regex' => 'The vehicle plate number must contain a combination of both letters and numbers (e.g., WRA2003).',
-            'model.min'          => 'The brand and model description must be at least 5 characters long.',
-            'model.regex'        => 'The brand and model name can only contain alphanumeric characters, spaces, or hyphens.',
+            'roadtax_expiry' => 'nullable|date',
         ]);
 
         $cleanPlate = strtoupper(str_replace(' ', '', $request->plate_number));
@@ -46,109 +343,107 @@ class VehicleController extends Controller
 
         DB::beginTransaction();
         try {
-            DB::table('vehicles')->insert([
+            Vehicle::create([
+                'user_id' => null,
                 'plate_number' => $cleanPlate,
-                'brand_model'  => $formattedModel,
+                'brand_model' => $formattedModel,
                 'vehicle_type' => $request->type,
-                'status'       => 'Active', 
-                'created_at'   => now(),
-                'updated_at'   => now(),
+                'ownership_type' => 'company',
+                'roadtax_expiry' => $request->roadtax_expiry ?? now()->addYear(),
+                'status' => 'Active',
+                'approval_status' => 'Approved',
+                'approved_by' => Auth::id() ?? 1,
+                'approved_at' => now(),
             ]);
 
-            // 📝 FORENSIC AUDIT LOG INJECTION
             DB::table('vehicle_logs')->insert([
                 'operator_name' => Auth::user()->name ?? 'Executive Manager',
-                'action_event'  => 'VEHICLE_CREATE',
-                'plate_index'   => $cleanPlate,
-                'description'   => "Registered new company asset node: {$formattedModel} ({$request->type}) with deployment status set to Active.",
-                'ip_address'    => $request->ip() ?? '127.0.0.1',
-                'created_at'    => now(),
-                'updated_at'    => now(),
+                'action_event' => 'COMPANY_FLEET_CREATE',
+                'plate_index' => $cleanPlate,
+                'description' => "Registered new corporate fleet vehicle: {$formattedModel} ({$request->type}).",
+                'ip_address' => $request->ip() ?? '127.0.0.1',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             DB::commit();
-            return redirect()->route('manager.vehicles')->with('success', 'Corporate fleet vehicle successfully registered into system infrastructure.');
+            return redirect()->route('manager.vehicles')->with('success', 'Corporate fleet vehicle successfully registered.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withErrors(['error' => 'Database persistence fault: ' . $e->getMessage()]);
+            return redirect()->back()->withErrors(['error' => 'Database error: ' . $e->getMessage()]);
         }
     }
 
     /**
-     * UPDATE: Mutate administrative asset configuration and log the modification parameters.
+     * Manager updates company fleet metadata.
      */
-    public function update(Request $request, $id)
+    public function updateCompanyFleet(Request $request, $id)
     {
         $request->validate([
-            'model' => ['required', 'string', 'min:5', 'regex:/^[A-Za-z0-9\s\-]+$/'],
-            'type'   => 'required|in:Car,Motorcycle',
-            'status' => 'required|in:Active,Inactive', 
-        ], [
-            'model.min'   => 'The brand and model description must be at least 5 characters long.',
-            'model.regex' => 'The brand and model name can only contain alphanumeric characters, spaces, or hyphens.',
+            'model' => ['required', 'string', 'min:3', 'regex:/^[A-Za-z0-9\s\-]+$/'],
+            'type' => 'required|in:Car,Motorcycle',
+            'status' => 'required|in:Active,Inactive',
+            'roadtax_expiry' => 'nullable|date',
         ]);
 
+        $vehicle = Vehicle::where('vehicle_id', $id)->firstOrFail();
         $formattedModel = strtoupper(trim($request->model));
 
         DB::beginTransaction();
         try {
-            $oldVehicle = DB::table('vehicles')->where('vehicle_id', $id)->first();
-            if (!$oldVehicle) throw new \Exception('Target vehicle asset node not found.');
+            $vehicle->brand_model = $formattedModel;
+            $vehicle->vehicle_type = $request->type;
+            $vehicle->status = $request->status;
+            if ($request->filled('roadtax_expiry')) {
+                $vehicle->roadtax_expiry = $request->roadtax_expiry;
+            }
+            $vehicle->save();
 
-            DB::table('vehicles')->where('vehicle_id', $id)->update([
-                'brand_model'  => $formattedModel,
-                'vehicle_type' => $request->type,
-                'status'       => $request->status,
-                'updated_at'   => now(),
-            ]);
-
-            // 📝 FORENSIC AUDIT LOG INJECTION
             DB::table('vehicle_logs')->insert([
                 'operator_name' => Auth::user()->name ?? 'Executive Manager',
-                'action_event'  => 'VEHICLE_UPDATE',
-                'plate_index'   => $oldVehicle->plate_number,
-                'description'   => "Modified asset metadata configuration. Altered descriptors onto: {$formattedModel} ({$request->type}) | Operational state flipped onto: {$request->status}.",
-                'ip_address'    => $request->ip() ?? '127.0.0.1',
-                'created_at'    => now(),
-                'updated_at'    => now(),
+                'action_event' => 'COMPANY_FLEET_UPDATE',
+                'plate_index' => $vehicle->plate_number,
+                'description' => "Updated corporate asset: {$formattedModel} ({$request->type}) | Status: {$request->status}.",
+                'ip_address' => $request->ip() ?? '127.0.0.1',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             DB::commit();
-            return redirect()->route('manager.vehicles')->with('success', 'Asset logistics configuration matrix modified successfully.');
+            return redirect()->route('manager.vehicles')->with('success', 'Corporate asset configuration updated.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withErrors(['error' => 'Database mutation fault: ' . $e->getMessage()]);
+            return redirect()->back()->withErrors(['error' => 'Update failure: ' . $e->getMessage()]);
         }
     }
 
     /**
-     * DELETE: Purge a transport asset node and log the hard destructive transaction event.
+     * Manager deletes a company fleet asset.
      */
-    public function destroy($id)
+    public function destroyCompanyFleet($id)
     {
+        $vehicle = Vehicle::where('vehicle_id', $id)->firstOrFail();
+        $plate = $vehicle->plate_number;
+
         DB::beginTransaction();
         try {
-            $vehicle = DB::table('vehicles')->where('vehicle_id', $id)->first();
-            if (!$vehicle) throw new \Exception('Target vehicle asset node not found.');
+            $vehicle->delete();
 
-            DB::table('vehicles')->where('vehicle_id', $id)->delete();
-
-            // 📝 FORENSIC AUDIT LOG INJECTION
             DB::table('vehicle_logs')->insert([
                 'operator_name' => Auth::user()->name ?? 'Executive Manager',
-                'action_event'  => 'VEHICLE_DELETE',
-                'plate_index'   => $vehicle->plate_number,
-                'description'   => "Hard executed destructive purge on corporate asset: {$vehicle->brand_model}. Record removed permanently from active ledgers.",
-                'ip_address'    => request()->ip() ?? '127.0.0.1',
-                'created_at'    => now(),
-                'updated_at'    => now(),
+                'action_event' => 'COMPANY_FLEET_DELETE',
+                'plate_index' => $plate,
+                'description' => "Purged corporate asset {$plate} from system registry.",
+                'ip_address' => request()->ip() ?? '127.0.0.1',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
             DB::commit();
-            return redirect()->route('manager.vehicles')->with('success', 'Logistics transport asset purged from system database ledger.');
+            return redirect()->route('manager.vehicles')->with('success', 'Corporate asset removed from registry.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->withErrors(['error' => 'Database deletion fault: ' . $e->getMessage()]);
+            return redirect()->back()->withErrors(['error' => 'Deletion error: ' . $e->getMessage()]);
         }
     }
 }

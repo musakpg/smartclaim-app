@@ -1,203 +1,342 @@
 <!DOCTYPE html>
-<html lang="en" x-data="{ isMobileSidebarOpen: false, isClaimsOpen: false }">
+<html lang="en" x-data="{ 
+    isMobileSidebarOpen: false, 
+    isDetailModalOpen: false, 
+    isZoomModalOpen: false,
+    zoomImageUrl: '',
+    zoomImageTitle: '',
+    selectedClaim: null 
+}">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartClaim - Reimbursement Status</title>
+    <title>SmartClaim - Reimbursement Settlement Status</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 </head>
-<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased">
+
+<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
+    :class="(isDetailModalOpen || isZoomModalOpen || isMobileSidebarOpen) ? 'overflow-hidden' : ''">
 
     <div class="flex min-h-screen flex-col lg:flex-row">
-        
-        <header class="lg:hidden bg-white border-b border-[#e2e8f0] px-4 py-4 flex items-center justify-between sticky top-0 z-40 shadow-2xs">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-wallet text-slate-800 text-xl"></i>
-                <span class="font-bold text-lg tracking-tight text-slate-900">SmartClaim</span>
+
+        <!-- Centralized Staff Sidebar Component -->
+        @include('layouts.partials.staff-sidebar')
+
+        <!-- Main Content Workspace -->
+        <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-y-auto space-y-6">
+
+            <!-- Header Banner -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-200 gap-4">
+                <div>
+                    <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Reimbursement Payouts</h1>
+                    <p class="text-xs md:text-sm text-slate-500">Track approved expense vouchers, estimated payout schedules, and bank transfer reference IDs.</p>
+                </div>
+                <div class="hidden lg:block">
+                    @include('layouts.partials.notification-bell')
+                </div>
             </div>
-            <button type="button" @click="isMobileSidebarOpen = true" class="w-9 h-9 flex items-center justify-center bg-slate-100 rounded-xl text-slate-700 cursor-pointer">
-                <i class="fa-solid fa-bars text-base"></i>
-            </button>
-        </header>
 
-        <div x-show="isMobileSidebarOpen" x-cloak class="lg:hidden fixed inset-0 z-50 flex" role="dialog" aria-modal="true">
-            <div x-show="isMobileSidebarOpen" x-transition:enter="transition-opacity ease-linear duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" @click="isMobileSidebarOpen = false"></div>
+            <!-- Metric KPI Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs space-y-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Approved Entitlement</span>
+                    <h2 class="text-2xl font-black text-slate-900 font-mono">RM {{ number_format($approvedTotal ?? 0, 2) }}</h2>
+                    <span class="text-xs text-slate-500 font-medium">{{ count($approvedClaims ?? []) }} claim record(s)</span>
+                </div>
 
-            <div x-show="isMobileSidebarOpen" x-transition:enter="transition ease-in-out duration-300 transform" x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0" x-transition:leave="transition ease-in-out duration-300 transform" x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full" class="relative flex w-full max-w-xs flex-1 flex-col bg-white pt-5 pb-4 border-r border-[#e2e8f0]">
-                <div class="absolute top-4 right-4">
-                    <button type="button" @click="isMobileSidebarOpen = false" class="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-lg text-slate-500 cursor-pointer">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
+                <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs space-y-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block">Successfully Disbursed</span>
+                    <h2 class="text-2xl font-black text-emerald-600 font-mono">RM {{ number_format($paidTotal ?? 0, 2) }}</h2>
+                    <span class="text-xs text-emerald-700/80 font-medium">Credited to staff bank account</span>
                 </div>
-                <div class="px-6 pb-4 border-b border-[#f1f5f9] flex items-center gap-2">
-                    <i class="fa-solid fa-wallet text-slate-800 text-xl"></i>
-                    <span class="font-bold text-lg tracking-tight text-slate-900">SmartClaim</span>
+
+                <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs space-y-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-amber-600 block">Awaiting Bank Transfer</span>
+                    <h2 class="text-2xl font-black text-amber-600 font-mono">RM {{ number_format($processingTotal ?? 0, 2) }}</h2>
+                    <span class="text-xs text-amber-700/80 font-medium">Scheduled for upcoming payout batch</span>
                 </div>
-                <nav class="mt-4 flex-1 px-4 space-y-1 overflow-y-auto" x-data="{ isClaimsOpenMobile: false }">
-                    <a href="{{ route('dashboard') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50">
-                        <i class="fa-solid fa-house"></i> Dashboard
-                    </a>
-                    <div>
-                        <button type="button" @click.prevent="isClaimsOpenMobile = !isClaimsOpenMobile" class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 cursor-pointer">
-                            <span class="flex items-center gap-3"><i class="fa-solid fa-file-pen"></i> Claims</span>
-                            <i class="fa-solid text-[10px]" :class="isClaimsOpenMobile ? 'fa-chevron-down rotate-180' : 'fa-chevron-right'"></i>
-                        </button>
-                        <div x-show="isClaimsOpenMobile" class="pl-6 mt-1 space-y-1 py-1 bg-slate-50 rounded-xl border border-slate-100">
-                            <a href="{{ route('claims.create') }}?type=Receipt" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-500 flex items-center gap-2"><i class="fa-solid fa-file-invoice text-[11px]"></i> Based on Receipt (OCR)</a>
-                            <a href="{{ route('claims.create') }}?type=Mileage" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-500 flex items-center gap-2"><i class="fa-solid fa-motorcycle text-[11px]"></i> Mileage Allowance</a>
-                            <a href="{{ route('claims.history') }}" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-500 flex items-center gap-2"><i class="fa-solid fa-clipboard-list text-[11px]"></i> My Claims</a>
+            </div>
+
+            <!-- Reimbursement Ledger Table -->
+            <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden">
+                <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        <i class="fa-solid fa-money-bill-transfer text-emerald-600 mr-1.5"></i> Bank Settlement Ledger
+                    </span>
+                    <span class="text-[11px] text-slate-400 font-mono">Click row to view full forensic audit & proof</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs min-w-[700px]">
+                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                            <tr>
+                                <th class="p-3.5">Voucher Reference</th>
+                                <th class="p-3.5">Expense Details</th>
+                                <th class="p-3.5">Reimbursement Total</th>
+                                <th class="p-3.5">Disbursement Status</th>
+                                <th class="p-3.5">Bank Reference / TX ID</th>
+                                <th class="p-3.5">Settlement Date</th>
+                                <th class="p-3.5 text-right">Audit</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 font-medium">
+                            @forelse($approvedClaims ?? [] as $claim)
+                                <tr class="hover:bg-slate-50/60 cursor-pointer transition"
+                                    @click="selectedClaim = {{ json_encode($claim->load('items')) }}; isDetailModalOpen = true;">
+                                    <td class="p-3.5 whitespace-nowrap">
+                                        <span class="font-black text-slate-900 block font-mono">#CLM-{{ $claim->claim_id }}</span>
+                                        <span class="text-[10px] text-slate-400 font-mono">Inv: {{ $claim->receipt_invoice_no ?? 'N/A' }}</span>
+                                    </td>
+                                    <td class="p-3.5">
+                                        <span class="font-bold text-slate-800 block">{{ $claim->merchant_name }}</span>
+                                        <span class="text-[10px] text-slate-400">{{ $claim->predicted_category }}</span>
+                                    </td>
+                                    <td class="p-3.5 whitespace-nowrap">
+                                        <span class="text-sm font-black text-slate-900 font-mono">RM {{ number_format($claim->amount, 2) }}</span>
+                                    </td>
+                                    <td class="p-3.5 whitespace-nowrap">
+                                        @if($claim->status === 'Reimbursed')
+                                            <span class="px-2.5 py-1 rounded-xl font-bold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1">
+                                                <i class="fa-solid fa-circle-check text-[9px]"></i> Disbursed / Paid
+                                            </span>
+                                        @else
+                                            <span class="px-2.5 py-1 rounded-xl font-bold text-[10px] bg-amber-50 text-amber-700 border border-amber-200 inline-flex items-center gap-1">
+                                                <i class="fa-solid fa-clock-rotate-left text-[9px]"></i> Scheduled Payout
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="p-3.5 whitespace-nowrap font-mono">
+                                        @if($claim->payment_reference)
+                                            <span class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-800 font-bold text-[11px]">
+                                                {{ $claim->payment_reference }}
+                                            </span>
+                                        @else
+                                            <span class="text-slate-400 text-[11px]">Pending Bank Settlement</span>
+                                        @endif
+                                    </td>
+                                    <td class="p-3.5 whitespace-nowrap text-slate-500 font-mono text-[11px]">
+                                        @if($claim->paid_at)
+                                            {{ \Carbon\Carbon::parse($claim->paid_at)->format('d/m/Y') }}
+                                        @else
+                                            Est: {{ $claim->estimated_payout_date ? \Carbon\Carbon::parse($claim->estimated_payout_date)->format('d/m/Y') : '5 Days' }}
+                                        @endif
+                                    </td>
+                                    <td class="p-3.5 text-right">
+                                        <button type="button" class="text-blue-600 hover:text-blue-800 font-bold text-xs">
+                                            Details <i class="fa-solid fa-chevron-right text-[10px] ml-0.5"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="p-10 text-center text-slate-400 font-medium">
+                                        <i class="fa-solid fa-receipt block text-3xl mb-2 text-slate-300"></i>
+                                        No approved claims scheduled for reimbursement yet.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Forensic Audit Detail Modal (Dual Resource Layout) -->
+    <div x-show="isDetailModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+        <div class="bg-white rounded-3xl p-6 max-w-4xl w-full shadow-2xl border border-slate-100 space-y-6 max-h-[90vh] overflow-y-auto"
+            @click.away="isDetailModalOpen = false">
+
+            <template x-if="selectedClaim">
+                <div class="space-y-6">
+                    <!-- Header -->
+                    <div class="flex items-start justify-between border-b border-slate-100 pb-4">
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block" x-text="'CLAIM ID: CLM-' + selectedClaim.claim_id"></span>
+                            <h2 class="text-xl font-black text-slate-900" x-text="selectedClaim.merchant_name"></h2>
                         </div>
+                        <span class="px-3 py-1 rounded-full font-bold text-xs uppercase tracking-wider"
+                            :class="selectedClaim.status === 'Reimbursed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'"
+                            x-text="selectedClaim.status"></span>
                     </div>
-                    <a href="{{ route('reimbursement.index') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold bg-[#f1f5f9] text-blue-600">
-                        <i class="fa-solid fa-hand-holding-dollar"></i> Reimbursement Status
-                    </a>
-                    <a href="{{ route('profile.index') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50">
-                        <i class="fa-solid fa-user"></i> My Profile
-                    </a>
-                    <a href="{{ route('policy.index') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50">
-                        <i class="fa-solid fa-file-shield"></i> Company Policy
-                    </a>
-                    <a href="{{ route('logout') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600">
-                        <i class="fa-solid fa-door-open"></i> Sign Out
-                    </a>
-                </nav>
+
+                    <!-- 2-Column Split Details -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                        
+                        <!-- Left Column: Claim Details & Banking Reconciliation -->
+                        <div class="space-y-4">
+                            <!-- Basic Metadata -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase block">Invoice No</span>
+                                    <span class="font-bold text-slate-800 font-mono" x-text="selectedClaim.receipt_invoice_no"></span>
+                                </div>
+                                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase block">Transaction Date</span>
+                                    <span class="font-bold text-slate-800 font-mono" x-text="selectedClaim.transaction_date"></span>
+                                </div>
+                                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase block">Category</span>
+                                    <span class="font-bold text-slate-800" x-text="selectedClaim.predicted_category"></span>
+                                </div>
+                                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase block">Payment Method</span>
+                                    <span class="font-bold text-slate-800" x-text="selectedClaim.payment_method"></span>
+                                </div>
+                            </div>
+
+                            <!-- Itemized Cost Breakdown -->
+                            <div class="space-y-2">
+                                <span class="font-bold text-slate-700 uppercase tracking-wider text-[11px] block">Itemized Cost Breakdown</span>
+                                <div class="bg-slate-50 rounded-2xl border border-slate-100 p-3 space-y-2 max-h-40 overflow-y-auto">
+                                    <template x-for="item in selectedClaim.items" :key="item.item_id">
+                                        <div class="flex items-center justify-between border-b border-slate-200/60 pb-1.5 last:border-0 last:pb-0">
+                                            <div>
+                                                <span class="font-bold text-slate-800 block" x-text="item.item_name"></span>
+                                                <span class="text-[10px] text-slate-400 font-mono" x-text="item.quantity + ' x RM ' + parseFloat(item.unit_price).toFixed(2)"></span>
+                                            </div>
+                                            <span class="font-bold font-mono text-slate-900" x-text="'RM ' + parseFloat(item.subtotal).toFixed(2)"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="!selectedClaim.items || selectedClaim.items.length === 0">
+                                        <div class="text-center text-slate-400 py-2">No individual breakdown items recorded.</div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Finance Bank Disbursement Audit Card -->
+                            <div class="p-4 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl space-y-2 shadow-xs">
+                                <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">
+                                    <i class="fa-solid fa-building-columns mr-1"></i> Finance Bank Settlement Audit
+                                </span>
+                                <div class="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                                    <div>
+                                        <span class="text-slate-400 block text-[9px]">Bank Reference ID</span>
+                                        <span class="font-bold text-white break-all" x-text="selectedClaim.payment_reference || 'Pending Payout'"></span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-400 block text-[9px]">Settlement Timestamp</span>
+                                        <span class="font-bold text-white" x-text="selectedClaim.paid_at ? new Date(selectedClaim.paid_at).toLocaleString('en-MY') : 'In Queue'"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Dual Images / Proof Viewers -->
+                        <div class="space-y-4">
+                            <!-- 1. Merchant Upload Receipt -->
+                            <div class="space-y-1.5">
+                                <span class="font-bold text-slate-700 uppercase tracking-wider text-[11px] block">
+                                    <i class="fa-solid fa-receipt text-blue-600 mr-1"></i> Original Merchant Receipt
+                                </span>
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-2 max-h-56 overflow-hidden flex items-center justify-center relative group">
+                                    <template x-if="selectedClaim.receipt_image_path">
+                                        <div class="w-full h-full flex items-center justify-center cursor-zoom-in"
+                                            @click="zoomImageUrl = '/storage/' + selectedClaim.receipt_image_path; zoomImageTitle = 'Original Merchant Receipt'; isZoomModalOpen = true;">
+                                            <img :src="'/storage/' + selectedClaim.receipt_image_path" alt="Merchant Receipt"
+                                                class="max-h-52 object-contain rounded-xl transition group-hover:scale-[1.02]">
+                                            <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-2xl transition text-white font-bold gap-1 text-xs backdrop-blur-3xs">
+                                                <i class="fa-solid fa-magnifying-glass-plus"></i> Click to Zoom
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- 2. Finance Proof of Payment Slip (Smart PDF & Image Handler) -->
+                            <div class="space-y-1.5">
+                                <span class="font-bold text-slate-700 uppercase tracking-wider text-[11px] block">
+                                    <i class="fa-solid fa-file-invoice-dollar text-emerald-600 mr-1"></i> Official Bank Transfer Proof
+                                </span>
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-2 min-h-36 max-h-56 overflow-hidden flex items-center justify-center relative group">
+                                    
+                                    <!-- Case A: Proof is a PDF Document -->
+                                    <template x-if="selectedClaim.payment_proof_path && selectedClaim.payment_proof_path.toLowerCase().endsWith('.pdf')">
+                                        <div class="w-full text-center p-4 space-y-2">
+                                            <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto text-xl border border-rose-100 shadow-3xs">
+                                                <i class="fa-solid fa-file-pdf"></i>
+                                            </div>
+                                            <div>
+                                                <span class="font-bold text-slate-800 block">Bank Transfer Slip (PDF)</span>
+                                                <span class="text-[10px] text-slate-400 font-mono truncate max-w-xs block mx-auto" x-text="selectedClaim.payment_proof_path.split('/').pop()"></span>
+                                            </div>
+                                            <a :href="'/storage/' + selectedClaim.payment_proof_path" target="_blank"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-xs">
+                                                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> View / Download PDF
+                                            </a>
+                                        </div>
+                                    </template>
+
+                                    <!-- Case B: Proof is an Image (JPG/PNG) -->
+                                    <template x-if="selectedClaim.payment_proof_path && !selectedClaim.payment_proof_path.toLowerCase().endsWith('.pdf')">
+                                        <div class="w-full h-full flex items-center justify-center cursor-zoom-in"
+                                            @click="zoomImageUrl = '/storage/' + selectedClaim.payment_proof_path; zoomImageTitle = 'Bank Transfer Slip'; isZoomModalOpen = true;">
+                                            <img :src="'/storage/' + selectedClaim.payment_proof_path" alt="Bank Transfer Slip"
+                                                class="max-h-52 object-contain rounded-xl transition group-hover:scale-[1.02]">
+                                            <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-2xl transition text-white font-bold gap-1 text-xs backdrop-blur-3xs">
+                                                <i class="fa-solid fa-magnifying-glass-plus"></i> Click to Zoom
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <!-- Case C: No Proof Attached Yet -->
+                                    <template x-if="!selectedClaim.payment_proof_path">
+                                        <div class="p-8 text-center text-slate-400 font-medium text-xs">
+                                            <i class="fa-solid fa-hourglass-half block text-2xl mb-1 text-slate-300"></i>
+                                            Awaiting Finance bank payment slip upload.
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                        <div>
+                            <span class="text-[10px] text-slate-400 font-bold uppercase block">Total Disbursed Cost</span>
+                            <span class="text-xl font-black text-slate-900 font-mono" x-text="'RM ' + parseFloat(selectedClaim.amount).toFixed(2)"></span>
+                        </div>
+                        <button type="button" @click="isDetailModalOpen = false"
+                            class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer">
+                            Close Window
+                        </button>
+                    </div>
+                </div>
+            </template>
+
+        </div>
+    </div>
+
+    <!-- Interactive Lightbox Image Zoom Modal -->
+    <div x-show="isZoomModalOpen" x-cloak
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all duration-300">
+        <div class="relative bg-white rounded-3xl p-4 max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh]"
+            @click.away="isZoomModalOpen = false">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-receipt text-blue-600"></i> <span x-text="zoomImageTitle"></span>
+                </span>
+                <button type="button" @click="isZoomModalOpen = false"
+                    class="text-slate-400 hover:text-rose-600 text-lg p-1 transition cursor-pointer">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-auto flex items-center justify-center p-2 bg-slate-50 rounded-2xl min-h-0">
+                <img :src="zoomImageUrl" alt="Zoomed Document" class="max-w-full max-h-[75vh] object-contain rounded-xl shadow-xs">
             </div>
         </div>
-
-        <aside class="hidden lg:flex fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-[#e2e8f0] flex-col h-screen sticky top-0">
-            <div class="px-6 py-5 border-b border-[#f1f5f9] flex items-center gap-2">
-                <i class="fa-solid fa-wallet text-slate-800 text-2xl"></i>
-                <span class="font-bold text-xl tracking-tight text-slate-900">SmartClaim</span>
-            </div>
-            <nav class="flex-1 px-4 py-4 space-y-1">
-                <a href="{{ route('dashboard') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 transition-all">
-                    <i class="fa-solid fa-house text-base"></i> Dashboard
-                </a>
-                <div>
-                    <button type="button" @click.prevent="isClaimsOpen = !isClaimsOpen" class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer">
-                        <span class="flex items-center gap-3 pointer-events-none">
-                            <i class="fa-solid fa-file-pen text-base"></i> Claims
-                        </span>
-                        <i class="fa-solid text-[10px] transition-transform duration-200 pointer-events-none" :class="isClaimsOpen ? 'fa-chevron-down rotate-180' : 'fa-chevron-right'"></i>
-                    </button>
-                    <div x-show="isClaimsOpen" x-cloak x-transition class="pl-6 mt-1 space-y-1 py-1 bg-slate-50 rounded-xl border border-slate-100">
-                        <a href="{{ route('claims.create') }}?type=Receipt" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 transition-all flex items-center gap-2"><i class="fa-solid fa-file-invoice text-[11px]"></i> Based on Receipt (OCR)</a>
-                        <a href="{{ route('claims.create') }}?type=Mileage" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 transition-all flex items-center gap-2"><i class="fa-solid fa-motorcycle text-[11px]"></i> Mileage Allowance</a>
-                        <a href="{{ route('claims.history') }}" class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-900 transition-all flex items-center gap-2"><i class="fa-solid fa-clipboard-list text-[11px]"></i> My Claims</a>
-                    </div>
-                </div>
-                
-                <a href="{{ route('reimbursement.index') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold bg-[#f1f5f9] text-blue-600 transition-all">
-                    <i class="fa-solid fa-hand-holding-dollar text-base"></i> Reimbursement Status
-                </a>
-                
-                <a href="{{ route('profile.index') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 transition-all"><i class="fa-solid fa-user text-base"></i> My Profile</a>
-                <a href="{{ route('policy.index') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 transition-all"><i class="fa-solid fa-file-shield text-base"></i> Company Policy</a>
-                <a href="{{ route('logout') }}" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all"><i class="fa-solid fa-door-open text-base"></i> Sign Out</a>
-            </nav>
-        </aside>
-
-        <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-hidden">
-            <div class="space-y-6">
-                
-                <div class="border-b border-slate-200 pb-5">
-                    <h1 class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">Reimbursement Pipeline</h1>
-                    <p class="text-xs md:text-sm text-slate-500">Track the reimbursement status of funds for approved expenses.</p>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5">
-                    
-                    <div class="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-2xs flex items-center justify-between">
-                        <div class="space-y-0.5 truncate">
-                            <span class="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Approved</span>
-                            <h3 class="text-base md:text-xl font-bold text-slate-900 font-mono tracking-tight">RM {{ number_format($approvedTotal, 2) }}</h3>
-                        </div>
-                        <div class="w-9 h-9 md:w-10 md:h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 shrink-0 ml-2">
-                            <i class="fa-solid fa-wallet text-slate-600 text-xs md:text-sm"></i>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-2xs flex items-center justify-between">
-                        <div class="space-y-0.5 truncate">
-                            <span class="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Paid</span>
-                            <h3 class="text-base md:text-xl font-bold text-emerald-600 font-mono tracking-tight">RM {{ number_format($paidTotal, 2) }}</h3>
-                        </div>
-                        <div class="w-9 h-9 md:w-10 md:h-10 bg-emerald-50 rounded-xl flex items-center justify-center border border-emerald-100 shrink-0 ml-2">
-                            <i class="fa-solid fa-circle-check text-emerald-600 text-xs md:text-sm"></i>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-2xs flex items-center justify-between">
-                        <div class="space-y-0.5 truncate">
-                            <span class="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Processing</span>
-                            <h3 class="text-base md:text-xl font-bold text-amber-600 font-mono tracking-tight">RM {{ number_format($processingTotal, 2) }}</h3>
-                        </div>
-                        <div class="w-9 h-9 md:w-10 md:h-10 bg-amber-50 rounded-xl flex items-center justify-center border border-amber-100 shrink-0 ml-2">
-                            <i class="fa-solid fa-arrows-rotate text-amber-600 text-xs md:text-sm animate-spin"></i>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="bg-white p-4 md:p-6 rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-2xs space-y-4">
-                    <h3 class="text-xs md:text-sm font-bold text-slate-800 tracking-tight">Voucher Settlement Logs</h3>
-                    
-                    <div class="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-                        <table class="w-full text-left border-collapse text-xs min-w-[650px] sm:min-w-full">
-                            <thead>
-                                <tr class="border-b border-slate-100 text-slate-400 font-bold tracking-wide uppercase bg-slate-50/50 rounded-xl">
-                                    <th class="py-3 px-3 md:px-4">Claim ID</th>
-                                    <th class="py-3 px-3 md:px-4">Particulars</th>
-                                    <th class="py-3 px-3 md:px-4">Method</th>
-                                    <th class="py-3 px-3 md:px-4 font-mono">Approved Date</th>
-                                    <th class="py-3 px-3 md:px-4 text-right">Amount</th>
-                                    <th class="py-3 px-3 md:px-4 text-center">Disbursement Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-50 text-slate-700 font-medium">
-                                @forelse($approvedClaims as $claim)
-                                    <tr class="hover:bg-slate-50/60 transition-all">
-                                        <td class="py-3.5 px-3 md:px-4 font-bold font-mono text-slate-400 whitespace-nowrap">CLM-{{ $claim->claim_id }}</td>
-                                        <td class="py-3.5 px-3 md:px-4 font-bold text-slate-950 max-w-[150px] truncate" title="{{ $claim->merchant_name }}">{{ $claim->merchant_name }}</td>
-                                        <td class="py-3.5 px-3 md:px-4 whitespace-nowrap"><span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md font-bold text-[10px]">{{ $claim->payment_method }}</span></td>
-                                        <td class="py-3.5 px-3 md:px-4 font-mono text-slate-500 whitespace-nowrap">{{ $claim->updated_at->format('Y-m-d H:i') }}</td>
-                                        <td class="py-3.5 px-3 md:px-4 text-right font-black text-slate-900 whitespace-nowrap">RM {{ number_format($claim->amount, 2) }}</td>
-                                        <td class="py-3.5 px-3 md:px-4 text-center whitespace-nowrap">
-                                            <span class="px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wide
-                                                {{ $claim->claim_id % 2 === 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100 animate-pulse' }}">
-                                                {{ $claim->claim_id % 2 === 0 ? 'Success / Paid' : 'Processing Transfer' }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="6" class="py-12 text-center text-slate-400 font-semibold">
-                                            <i class="fa-solid fa-receipt block text-xl mb-1.5 text-slate-300"></i> Tiada rekod tuntutan yang diluluskan untuk pembayaran balik.
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div>
-        </main>
-
-        <nav class="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#e2e8f0] h-16 flex items-center justify-around z-40 px-2 shadow-md">
-            <a href="{{ route('dashboard') }}" class="flex flex-col items-center justify-center flex-1 h-full py-2 text-slate-400">
-                <i class="fa-solid fa-chart-pie text-xl block mb-0.5"></i><span class="text-[10px] font-bold">Dashboard</span>
-            </a>
-            <a href="{{ route('claims.create') }}?type=Receipt" class="flex flex-col items-center justify-center flex-1 h-full py-2 text-slate-400">
-                <i class="fa-solid fa-file-circle-plus text-xl block mb-0.5"></i><span class="text-[10px] font-bold">New Claim</span>
-            </a>
-            <a href="{{ route('claims.history') }}" class="flex flex-col items-center justify-center flex-1 h-full py-2 text-slate-400">
-                <i class="fa-solid fa-clock-rotate-left text-xl block mb-0.5"></i><span class="text-[10px] font-bold">History</span>
-            </a>
-        </nav>
-
     </div>
+
 </body>
 </html>

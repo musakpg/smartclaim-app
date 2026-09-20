@@ -1,123 +1,181 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\CashAdvanceController;
+use App\Http\Controllers\ExportController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\Manager\VehicleUsageHistoryController;
+use App\Http\Controllers\Manager\ModelEvaluationController;
+use App\Http\Controllers\Manager\ExpensePolicyController;
+use App\Http\Controllers\Manager\AiFeedbackController;
+
+use App\Models\User;
+use App\Notifications\WebPushNotification;
+use NotificationChannels\WebPush\PushSubscription;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes - SmartClaim Expense Management System
 |--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Optimized with synchronized names.
-|
 */
 
-/**
- * Authentication Gateways
- * Routes dedicated to handling user entry, credentials, and sessions.
- */
+/*
+|--------------------------------------------------------------------------
+| 1. Authentication Gateways
+|--------------------------------------------------------------------------
+*/
 Route::get('/', [AuthController::class, 'showLogin'])->name('login');
-
-// Synchronized target naming convention to match login.blade.php form submission
 Route::post('/login/process', [AuthController::class, 'processLogin'])->name('login.process');
+Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
 
-/**
- * SmartClaim Protected Core Application Routes
- * Handles relational database synchronization, dynamic metrics, and OCR views.
- */
-Route::group([], function () {
+/*
+|--------------------------------------------------------------------------
+| 2. 👑 Executive Approving Workspace (Manager Portal)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->prefix('manager')->name('manager.')->group(function () {
+    Route::get('/user-management', [ClaimController::class, 'userManagementIndex'])->name('user_management');
+    // Dashboard & Claims Verification Desks
+    Route::get('/dashboard', [ClaimController::class, 'managerIndex'])->name('dashboard');
+    Route::get('/verification', [ClaimController::class, 'managerVerificationIndex'])->name('verification');
+    Route::post('/claims/{id}/status', [ClaimController::class, 'updateStatus'])->name('claims.status');
 
-    // =================================================================
-    // 🏠 EMPLOYEE / STAFF AREA ROUTES
-    // =================================================================
+    // Fleet Management & Vehicle Auditing
+    Route::get('/vehicles', [VehicleController::class, 'managerIndex'])->name('vehicles');
+    Route::post('/vehicles', [VehicleController::class, 'storeCompanyFleet'])->name('vehicles.store');
+    Route::put('/vehicles/{id}', [VehicleController::class, 'updateCompanyFleet'])->name('vehicles.update');
+    Route::delete('/vehicles/{id}', [VehicleController::class, 'destroyCompanyFleet'])->name('vehicles.destroy');
+    Route::post('/vehicles/{id}/verify', [VehicleController::class, 'verifyStaffVehicle'])->name('vehicles.verify');
+    Route::get('/vehicle-usage-history', [VehicleUsageHistoryController::class, 'index'])->name('vehicle_history');
+    Route::get('/vehicle-usage-history/export', [VehicleUsageHistoryController::class, 'exportCsv'])->name('vehicle_history.export');
 
-    // Core Analytics Dashboard Interface View Route
+    // Administration Configuration
+    Route::get('/user-management', [ClaimController::class, 'userManagementIndex'])->name('user_management');
+    Route::get('/expense-policies', [ExpensePolicyController::class, 'index'])->name('expense_policies');
+    Route::put('/expense-policies/{id}', [ExpensePolicyController::class, 'update'])->name('expense_policies.update');
+    Route::get('/expense-categories', [ClaimController::class, 'expenseCategoriesIndex'])->name('expense_categories');
+    Route::get('/mileage-rates', [ClaimController::class, 'mileageRatesIndex'])->name('mileage_rates');
+    Route::get('/audit-logs', [ClaimController::class, 'auditLogsIndex'])->name('audit_logs');
+
+    // AI & NLP Model Benchmark Evaluation
+    Route::get('/model-evaluation', [ModelEvaluationController::class, 'index'])->name('model-evaluation');
+    Route::post('/model-evaluation/run', [ModelEvaluationController::class, 'runBenchmark'])->name('model-evaluation.run');
+    Route::post('/model-evaluation/upload', [ModelEvaluationController::class, 'uploadAndEvaluate'])->name('model-evaluation.upload');
+    Route::get('/ai-feedback', [AiFeedbackController::class, 'index'])->name('ai_feedback');
+    Route::post('/ai-feedback/{id}/toggle', [AiFeedbackController::class, 'toggle'])->name('ai_feedback.toggle');
+
+    // Intelligence, Analytics & Export
+    Route::get('/price-intelligence', [ClaimController::class, 'priceIntelligenceIndex'])->name('price_intelligence');
+    Route::get('/reports', [ClaimController::class, 'managerReportsIndex'])->name('reports');
+    Route::get('/export/claims-csv', [ExportController::class, 'exportClaimsCsv'])->name('export.claims_csv');
+    Route::get('/profile', [ClaimController::class, 'managerProfileIndex'])->name('profile');
+
+    // Manager Cash Advances Desk
+    Route::get('/cash-advances', [CashAdvanceController::class, 'managerIndex'])->name('advances.index');
+    Route::post('/cash-advances/{id}/status', [CashAdvanceController::class, 'updateStatus'])->name('advances.status');
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| 3. 💸 Account Ledger Auditor Workspace (Finance Portal)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->prefix('finance')->name('finance.')->group(function () {
+    Route::get('/staff-directory', [ClaimController::class, 'financeStaffDirectoryIndex'])->name('staff_directory');
+    // Dashboard & Auditing
+    Route::get('/dashboard', [ClaimController::class, 'financeIndex'])->name('dashboard');
+    Route::get('/auditing', [ClaimController::class, 'auditingIndex'])->name('auditing');
+    Route::post('/claims/{id}/status', [ClaimController::class, 'updateStatus'])->name('claims.status');
+
+    // Unified Payment Disbursement Desk (Single & Batch with AI Slip OCR)
+    Route::get('/disbursement', [ClaimController::class, 'financeDisbursementIndex'])->name('disbursement');
+    Route::post('/disbursement/{id}/settle', [ClaimController::class, 'processDisbursement'])->name('disbursement.settle');
+    Route::post('/disbursement/batch-settle', [ClaimController::class, 'processBatchDisbursement'])->name('disbursement.batch_settle');
+    Route::post('/disbursement/scan-slip', [ClaimController::class, 'asyncScanBankSlip'])->name('disbursement.scan_slip');
+
+    // Reports & Profile
+    Route::get('/reports', [ClaimController::class, 'financeReportsIndex'])->name('reports');
+    Route::get('/profile', [ClaimController::class, 'financeProfileIndex'])->name('profile');
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| 4. 🏠 Employee / Staff Area Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
+
+    // Core Claims Management
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    // New Claim Submission Form View Route (SaaS Design layout)
     Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
-
-    // Complete Historical Transactions Database Logs View Route
     Route::get('/claims/history', [ClaimController::class, 'history'])->name('claims.history');
-
-    // Form Action Target: Handles Image Storage and OCR Engine Extraction 
     Route::post('/claims/store', [ClaimController::class, 'store'])->name('claims.store');
+    Route::post('/claims/async-scan', [ClaimController::class, 'asyncScan'])->name('claims.asyncScan');
+    Route::post('/claims/check-duplicate', [ClaimController::class, 'checkDuplicate'])->name('claims.checkDuplicate');
+    Route::get('/claims/{id}/voucher-pdf', [ExportController::class, 'downloadVoucherPdf'])->name('claims.voucher_pdf');
 
-    // Structural view routing for profiles, rules policies, and reimbursements
-    Route::get('/profile', [ClaimController::class, 'profileIndex'])->name('profile.index');
+    // Information & Payout Status for Staff
     Route::get('/policy', [ClaimController::class, 'policyIndex'])->name('policy.index');
     Route::get('/reimbursement', [ClaimController::class, 'reimbursementIndex'])->name('reimbursement.index');
+    Route::get('/profile', [ClaimController::class, 'profileIndex'])->name('profile.index');
+    Route::put('/profile/update', [ClaimController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/profile/password', [ClaimController::class, 'updatePassword'])->name('profile.password');
 
-    // =================================================================
-    // 🔍 AUTOMATED AI OCR & LOGISTICS UTILITY DATA ENGINE PIPELINES
-    // =================================================================
+    // Staff Personal Vehicles Management
+    Route::get('/vehicles', [VehicleController::class, 'staffIndex'])->name('vehicles.index');
+    Route::get('/vehicles/create', [VehicleController::class, 'staffCreate'])->name('vehicles.create');
+    Route::post('/vehicles', [VehicleController::class, 'staffStore'])->name('vehicles.store');
+    Route::get('/vehicles/{id}/edit', [VehicleController::class, 'staffEdit'])->name('vehicles.edit');
+    Route::put('/vehicles/{id}', [VehicleController::class, 'staffUpdate'])->name('vehicles.update');
+    Route::post('/vehicles/{id}/renew', [VehicleController::class, 'renewRoadtax'])->name('vehicles.renew');
+    Route::delete('/vehicles/{id}', [VehicleController::class, 'staffDestroy'])->name('vehicles.destroy');
 
-    // Route for dynamic async real-time OCR extraction when receipt file is selected
-    Route::post('/claims/async-scan', [ClaimController::class, 'asyncScan'])->name('claims.asyncScan');
+    // Staff Cash Advances
+    Route::get('/cash-advances', [CashAdvanceController::class, 'index'])->name('advances.index');
+    Route::post('/cash-advances', [CashAdvanceController::class, 'store'])->name('advances.store');
 
-    // Route for runtime tracking check validations on database duplicates logs
-    Route::post('/claims/check-duplicate', [ClaimController::class, 'checkDuplicate'])->name('claims.checkDuplicate');
-
-    // =================================================================
-    // 💸 ACCOUNT LEDGER AUDITOR WORKSPACE (FINANCE PORTAL AREA)
-    // =================================================================
-
-    // Main Executive Finance Board monitoring view route
-    Route::get('/finance/dashboard', [ClaimController::class, 'financeIndex'])->name('finance.dashboard');
-
-    // Standalone dedicated workspace desk for live auditing operations
-    Route::get('/finance/auditing', [ClaimController::class, 'auditingIndex'])->name('finance.auditing');
-
-    // Action validation route to update claim data states (Shared between Finance and Manager tiers)
-    Route::post('/finance/claims/{id}/status', [ClaimController::class, 'updateStatus'])->name('finance.claims.status');
-
-    // Remaining clean compliance view routing paths for Finance Auditing Portal
-    Route::get('/finance/reports', [ClaimController::class, 'financeReportsIndex'])->name('finance.reports');
-    Route::get('/finance/profile', [ClaimController::class, 'financeProfileIndex'])->name('finance.profile');
-
-    // =================================================================
-    // 👑 EXECUTIVE APPROVING WORKSPACE (MANAGER PORTAL AREA)
-    // =================================================================
-
-    // High-tier decision interface desk for final executive authorization sign-offs
-    Route::get('/manager/dashboard', [ClaimController::class, 'managerIndex'])->name('manager.dashboard');
-
-    // Dedicated high-tier decision interface desk for claim authorization actions
-    Route::get('/manager/verification', [ClaimController::class, 'managerVerificationIndex'])->name('manager.verification');
-
-    // 🟢 SYNCHRONIZED ADMINISTRATIVE MANAGEMENT CONFIGURATION PANELS
-    // Re-mapped from finance layer to manager authority node mapping schema to enforce separation of duties.
-    Route::get('/manager/mileage-rates', [ClaimController::class, 'mileageRatesIndex'])->name('manager.mileage_rates');
-    Route::get('/manager/expense-categories', [ClaimController::class, 'expenseCategoriesIndex'])->name('manager.expense_categories');
-    Route::get('/manager/user-management', [ClaimController::class, 'userManagementIndex'])->name('manager.user_management');
-    Route::get('/manager/audit-logs', [ClaimController::class, 'auditLogsIndex'])->name('manager.audit_logs');
-
-    // 🟢 COMPANY FLEET VEHICLES FULL FUNCTIONAL CRUD MANAGEMENT CONTROL PIPELINES
-    // Re-routed from ClaimController to VehicleController to process raw database mutations seamlessly.
-    Route::get('/manager/vehicles', [VehicleController::class, 'index'])->name('manager.vehicles');
-    Route::post('/manager/vehicles', [VehicleController::class, 'store'])->name('manager.vehicles.store');
-    Route::put('/manager/vehicles/{id}', [VehicleController::class, 'update'])->name('manager.vehicles.update');
-    Route::delete('/manager/vehicles/{id}', [VehicleController::class, 'destroy'])->name('manager.vehicles.destroy');
+    // Shared Notifications & Push Subscriptions
+    Route::get('/api/notifications/latest', [NotificationController::class, 'fetchLatest'])->name('notifications.latest');
+    Route::post('/api/notifications/mark-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark_read');
+    Route::post('/push-subscriptions', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
+});
 
 
-// Pastikan guna method POST
-    Route::post('/manager/claims/{id}/status', [ClaimController::class, 'updateStatus'])->name('manager.claims.status');    // Reeport PAGES
+/*
+|--------------------------------------------------------------------------
+| 5. Development & Testing Diagnostics
+|--------------------------------------------------------------------------
+*/
+Route::get('/test-push', function () {
+    $subCount = PushSubscription::count();
+    if ($subCount === 0) {
+        return 'Tiada peranti berdaftar dalam database table push_subscriptions. Sila tekan Sync Device di telefon dahulu.';
+    }
 
-    Route::get('/manager/reports', [ClaimController::class, 'managerReportsIndex'])->name('manager.reports');
+    $sub = PushSubscription::latest()->first();
+    $user = User::where('user_id', $sub->subscribable_id)->first();
 
-    // MANAGER PROFILE PAGES
-    Route::get('/manager/profile', [ClaimController::class, 'managerProfileIndex'])->name('manager.profile');
-    // =================================================================
-    // 🚪 SESSION TERMINATION LOGOUT
-    // =================================================================
+    if (!$user) {
+        return "User dengan user_id: {$sub->subscribable_id} tidak dijumpai.";
+    }
 
-    // Terminate active authenticated user session route
-    Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
+    try {
+        $user->notify(new WebPushNotification(
+            '🔔 Status Tuntutan Dikemas Kini!',
+            'Baucar anda #CLM-5 telah disahkan oleh Finance.',
+            url('/dashboard')
+        ));
 
+        return "BERJAYA: Signal notifikasi telah dihantar kepada User ID: {$user->user_id}! Sila semak telefon anda sekarang.";
+    } catch (\Throwable $e) {
+        return 'Ralat Penghantaran WebPush: ' . $e->getMessage();
+    }
 });

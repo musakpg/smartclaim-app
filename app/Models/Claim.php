@@ -15,29 +15,46 @@ class Claim extends Model
     // Mass-assignment guards enabled for secure transactional database entries
     protected $fillable = [
         'user_id',
+        'vehicle_id',            // ✅ Ditambah
         'claim_type',
         'title',
-        'merchant_name',        // Extracted via Google Vision OCR
-        'location_address',      // NEW: Branch Address
-        'receipt_invoice_no',    // NEW: Receipt Hash Reference Code
-        'transaction_date',      // Extracted via Google Vision OCR
+        'merchant_name',         // Extracted via Google Vision OCR
+        'location_address',       // Branch Address
+        'receipt_invoice_no',     // Receipt Reference Code
+        'transaction_date',       // Extracted via Google Vision OCR
         'receipt_image_path',
         'extracted_raw_text',
         'predicted_category',
-        'business_purpose',      // NEW: User justification notes
-        'vehicle_plate_number',  // NEW: Required field for Fuel category claims
+        'business_purpose',       // User justification notes
+        'vehicle_plate_number',   // Plate number snapshot
         'amount',
-        'payment_method',        // NEW: Cash, Card, e-Wallet, Touch'n Go
+        'payment_method',         // Cash, Card, e-Wallet, Touch'n Go, Allowance
         'status',
-        'mileage_km',  // ✅ Added
-        'vehicle_type', // ✅ Added
-        'start_location',       // ✅ Added
-        'destination_location', // ✅ Added
+        'estimated_payout_date', // ✅ Ditambah (SLA Tracking)
+        'mileage_km',
+        'vehicle_type',
+        'start_location',
+        'destination_location',
+        'is_policy_violation',
+        'policy_violation_reason',
+        'receipt_image_hash',
+        'risk_score',
+        'fraud_flags',
+        'exif_date_taken',
     ];
+
+    protected $casts = [
+        'transaction_date' => 'date',
+        'estimated_payout_date' => 'date',
+        'amount' => 'decimal:2',
+        'mileage_km' => 'decimal:2',
+        'fraud_flags' => 'array',
+        'is_policy_violation' => 'boolean',
+        'risk_score' => 'integer',
+    ];
+
     /**
      * One-to-Many Relationship Configuration.
-     * Defines that one claim voucher can have multiple itemized breakdown lines.
-     * Overrides the default foreign key lookup to match your 'claim_id' primary key.
      */
     public function items()
     {
@@ -45,38 +62,56 @@ class Claim extends Model
     }
 
     /**
-     * Relationship anchor linking the claim voucher back to its submitting staff employee.
-     * Maps strictly to your custom 'user_id' primary key constraint.
+     * Relationship linking the claim voucher back to its submitting staff employee.
      */
     public function user()
     {
-        // Tells Laravel that a claim belongs to a single User record
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
+    }
+
+    /**
+     * Relationship linking the claim voucher to the chosen vehicle.
+     */
+    public function vehicle()
+    {
+        return $this->belongsTo(Vehicle::class, 'vehicle_id', 'vehicle_id');
     }
 
     public function getCalculatedAmountAttribute()
     {
-        if ($this->claim_type !== 'Mileage')
+        if ($this->claim_type !== 'Mileage') {
             return $this->amount;
+        }
 
-        $km = $this->mileage_km;
-        $type = $this->vehicle_type; // Pastikan ada column vehicle_type di table claims
+        $km = (float) $this->mileage_km;
+        $type = $this->vehicle_type;
 
         $rates = \App\Models\MileageRate::where('vehicle_type', $type)->get();
-        $total = 0;
+        if ($rates->isEmpty()) {
+            return $this->amount;
+        }
 
-        // Logik kira-kira
+        $rate50 = $rates->firstWhere('max_km', 50)->rate ?? 0.80;
+        $rate150 = $rates->firstWhere('max_km', 150)->rate ?? 0.70;
+        $rateMax = $rates->firstWhere('max_km', 9999)->rate ?? 0.60;
+
         if ($km <= 50) {
-            $total = $km * $rates->where('max_km', 50)->first()->rate;
+            $total = $km * $rate50;
         } elseif ($km <= 150) {
-            $total = (50 * $rates->where('max_km', 50)->first()->rate) +
-                (($km - 50) * $rates->where('max_km', 150)->first()->rate);
+            $total = (50 * $rate50) + (($km - 50) * $rate150);
         } else {
-            $total = (50 * $rates->where('max_km', 50)->first()->rate) +
-                (100 * $rates->where('max_km', 150)->first()->rate) +
-                (($km - 150) * $rates->where('max_km', 9999)->first()->rate);
+            $total = (50 * $rate50) + (100 * $rate150) + (($km - 150) * $rateMax);
         }
 
         return $total;
+    }
+    public function reimburser()
+    {
+        return $this->belongsTo(User::class, 'reimbursed_by', 'user_id');
+    }
+
+    public function cashAdvance()
+    {
+        return $this->belongsTo(CashAdvance::class, 'cash_advance_id', 'advance_id');
     }
 }
