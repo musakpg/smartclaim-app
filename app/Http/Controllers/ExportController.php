@@ -2,85 +2,106 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Claim;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Models\Claim;
+use App\Models\AuditLog;
+use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
 
 class ExportController extends Controller
 {
-    /**
-     * Generate and download single claim formal forensic PDF voucher.
-     */
-    public function downloadVoucherPdf($id)
+    // Comment: Stream and export authoritative claims ledger into CSV spreadsheet format
+    public function exportClaimsCsv(Request $request)
     {
-        $claim = Claim::with(['user', 'vehicle', 'items'])->findOrFail($id);
+        $user = Auth::user();
+        $isPrivileged = in_array($user->role ?? '', ['Finance', 'Manager', 'Admin', 'finance', 'manager', 'admin']);
 
-        $pdf = Pdf::loadView('exports.claim-voucher-pdf', compact('claim'))
-            ->setPaper('a4', 'portrait');
+        if (!$isPrivileged) {
+            abort(403, 'Unauthorized access to corporate financial export ledger.');
+        }
 
-        return $pdf->download("VOUCHER_CLM-{$claim->claim_id}.pdf");
-    }
+        $year = $request->input('year', date('Y'));
+        $status = $request->input('status');
 
-    /**
-     * Stream CSV dataset export for approved disbursement records.
-     */
-    public function exportClaimsCsv(Request $request): StreamedResponse
-    {
-        $status = $request->input('status', 'Approved');
-        $fileName = "SmartClaim_Disbursement_Export_" . date('Ymd_His') . ".csv";
+        $query = Claim::with(['user', 'vehicle'])
+            ->whereYear('transaction_date', $year);
 
-        $claims = Claim::with('user')
-            ->when($status !== 'All', fn($q) => $q->where('status', $status))
-            ->orderBy('transaction_date', 'desc')
-            ->get();
+        if ($status && $status !== 'All') {
+            $query->where('status', $status);
+        }
+
+        $claims = $query->orderBy('claim_id', 'desc')->get();
+
+        $fileName = 'SmartClaim_Audit_Ledger_' . $year . '_' . date('Ymd_His') . '.csv';
 
         $headers = [
-            "Content-type" => "text/csv",
-            "Content-Disposition" => "attachment; filename={$fileName}",
-            "Pragma" => "no-cache",
-            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
-            "Expires" => "0"
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
         $columns = [
-            'Claim ID',
-            'Employee Name',
-            'Type',
-            'Merchant / Title',
-            'Invoice No',
+            'Voucher ID',
+            'Staff Employee Name',
+            'Staff Email',
+            'Claim Type',
             'Category',
+            'Merchant / Title',
+            'Receipt / Invoice No',
             'Transaction Date',
-            'Amount (MYR)',
+            'Claim Amount (RM)',
             'Payment Method',
+            'Vehicle Plate',
+            'Mileage Distance (KM)',
             'Status',
-            'Fraud Risk Score (%)',
-            'Policy Violation Status'
+            'Disbursement Payment Ref',
+            'Settled Date',
+            'Submission Timestamp'
         ];
 
         $callback = function () use ($claims, $columns) {
             $file = fopen('php://output', 'w');
+
+            // Comment: UTF-8 BOM for clean Excel UTF-8 character recognition
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
             fputcsv($file, $columns);
 
             foreach ($claims as $claim) {
                 fputcsv($file, [
-                    "CLM-{$claim->claim_id}",
-                    $claim->user->name ?? 'Staff User',
-                    $claim->claim_type,
-                    $claim->claim_type === 'Mileage' ? $claim->title : $claim->merchant_name,
-                    $claim->receipt_invoice_no,
-                    $claim->predicted_category,
-                    $claim->transaction_date ? date('d/m/Y', strtotime($claim->transaction_date)) : 'N/A',
+                    '#CLM-' . str_pad($claim->claim_id, 4, '0', STR_PAD_LEFT),
+                    $claim->user->name ?? 'Unknown Staff',
+                    $claim->user->email ?? 'N/A',
+                    $claim->claim_type ?? 'Receipt',
+                    $claim->predicted_category ?? 'General',
+                    $claim->claim_type === 'Mileage' ? ($claim->title ?? 'Mileage Allowance') : $claim->merchant_name,
+                    $claim->receipt_invoice_no ?? 'N/A',
+                    $claim->transaction_date ? Carbon::parse($claim->transaction_date)->format('Y-m-d') : 'N/A',
                     number_format($claim->amount, 2, '.', ''),
-                    $claim->payment_method,
+                    $claim->payment_method ?? 'Cash',
+                    $claim->vehicle_plate_number ?? ($claim->vehicle->plate_number ?? 'N/A'),
+                    $claim->mileage_km ? number_format($claim->mileage_km, 2, '.', '') : '0.00',
                     $claim->status,
-                    $claim->risk_score ?? 0,
-                    $claim->is_policy_violation ? 'Yes' : 'No'
+                    $claim->payment_reference ?? 'Pending Payout',
+                    $claim->paid_at ? Carbon::parse($claim->paid_at)->format('Y-m-d H:i') : 'Unsettled',
+                    $claim->created_at->format('Y-m-d H:i:s')
                 ]);
             }
 
             fclose($file);
         };
+
+        // Record Audit Trail
+        if (class_exists(AuditLog::class)) {
+            AuditLog::log(
+                'REPORT_EXPORTED_CSV',
+                null,
+                null,
+                ['fiscal_year' => $year, 'total_records' => count($claims), 'exported_by' => $user->name ?? 'Manager']
+            );
+        }
 
         return response()->stream($callback, 200, $headers);
     }

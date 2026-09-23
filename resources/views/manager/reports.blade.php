@@ -42,7 +42,8 @@
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <a href="{{ route('manager.export.claims_csv') }}?status=Approved"
+                    <!-- Dynamic Year Export CSV Button -->
+                    <a href="{{ route('manager.export.claims_csv') }}?status=Approved&year={{ $year }}"
                         class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 transition cursor-pointer">
                         <i class="fa-solid fa-file-csv"></i> Export Approved Claims (CSV)
                     </a>
@@ -195,7 +196,7 @@
                             </div>
                         </div>
                         <button type="button" @click="isStaffModalOpen = false"
-                            class="text-slate-400 hover:text-rose-600 text-lg">
+                            class="text-slate-400 hover:text-rose-600 text-lg cursor-pointer">
                             <i class="fa-solid fa-circle-xmark"></i>
                         </button>
                     </div>
@@ -224,13 +225,12 @@
                                 </thead>
                                 <tbody class="divide-y divide-slate-200/60 font-medium">
                                     <template x-for="claim in selectedStaff.claims_list" :key="claim.claim_id">
-                                        <tr class="hover:bg-white transition cursor-pointer"
-                                            @click="inspectingClaim = claim">
+                                        <tr class="hover:bg-white transition">
                                             <td class="p-3 font-mono font-bold text-slate-900"
                                                 x-text="'#CLM-' + claim.claim_id"></td>
                                             <td class="p-3">
                                                 <span class="font-bold text-slate-800 block"
-                                                    x-text="claim.merchant_name"></span>
+                                                    x-text="claim.claim_type === 'Mileage' ? (claim.title ?? 'Mileage Allowance') : claim.merchant_name"></span>
                                                 <span class="text-[10px] text-slate-400 font-mono"
                                                     x-text="'Inv: ' + (claim.receipt_invoice_no || 'N/A')"></span>
                                             </td>
@@ -250,8 +250,18 @@
                                                     :class="claim.status === 'Reimbursed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-teal-50 text-teal-700 border border-teal-200'"
                                                     x-text="claim.status"></span>
                                             </td>
-                                            <td class="p-3 text-right">
-                                                <span class="text-blue-600 font-bold text-[11px]">View Receipt →</span>
+                                            <td class="p-3 text-right space-x-1.5 whitespace-nowrap">
+                                                <!-- Download PDF Action -->
+                                                <a :href="'/claims/' + claim.claim_id + '/download-pdf'" target="_blank"
+                                                    @click.stop
+                                                    class="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition shadow-3xs">
+                                                    <i class="fa-solid fa-file-pdf text-rose-600"></i> PDF
+                                                </a>
+                                                <!-- Inspect Modal View -->
+                                                <button type="button" @click="inspectingClaim = claim"
+                                                    class="text-blue-600 hover:text-blue-800 font-bold text-[11px] cursor-pointer">
+                                                    Inspect →
+                                                </button>
                                             </td>
                                         </tr>
                                     </template>
@@ -275,16 +285,24 @@
             <!-- LEVEL 2 VIEW: Detailed Forensic Audit with Dual Slips -->
             <template x-if="inspectingClaim">
                 <div class="space-y-5">
-                    <!-- Top Navigation Bar (Back to Staff List) -->
+                    <!-- Top Navigation Bar -->
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <button type="button" @click="inspectingClaim = null"
                             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer">
                             <i class="fa-solid fa-arrow-left"></i> Back to <span x-text="selectedStaff.name"></span>
                             Claims
                         </button>
-                        <span class="px-3 py-1 rounded-full font-bold text-xs uppercase tracking-wider"
-                            :class="inspectingClaim.status === 'Reimbursed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'"
-                            x-text="inspectingClaim.status"></span>
+
+                        <div class="flex items-center gap-2">
+                            <!-- Download Voucher PDF Button in Detailed Inspection -->
+                            <a :href="'/claims/' + inspectingClaim.claim_id + '/download-pdf'" target="_blank"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl transition shadow-3xs">
+                                <i class="fa-solid fa-file-pdf"></i> Voucher PDF
+                            </a>
+                            <span class="px-3 py-1 rounded-full font-bold text-xs uppercase tracking-wider"
+                                :class="inspectingClaim.status === 'Reimbursed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'"
+                                x-text="inspectingClaim.status"></span>
+                        </div>
                     </div>
 
                     <!-- Claim Header Banner -->
@@ -292,7 +310,9 @@
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block"
                                 x-text="'CLAIM ID: CLM-' + inspectingClaim.claim_id"></span>
-                            <h2 class="text-xl font-black text-slate-900" x-text="inspectingClaim.merchant_name"></h2>
+                            <h2 class="text-xl font-black text-slate-900"
+                                x-text="inspectingClaim.claim_type === 'Mileage' ? (inspectingClaim.title ?? 'Mileage Allowance') : inspectingClaim.merchant_name">
+                            </h2>
                         </div>
                         <div class="text-right">
                             <span class="text-[10px] text-slate-400 font-bold uppercase block">Claim Cost</span>
@@ -303,10 +323,8 @@
 
                     <!-- 2-Column Split Details -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-
-                        <!-- Left Column: Metadata, Itemized Breakdown & Settlement Info -->
+                        <!-- Left Column: Metadata & Settlement Info -->
                         <div class="space-y-4">
-                            <!-- Quick Grid Data -->
                             <div class="grid grid-cols-2 gap-2.5">
                                 <div class="p-2.5 bg-slate-50 rounded-2xl border border-slate-100">
                                     <span class="text-[9px] font-bold text-slate-400 uppercase block">Invoice No</span>
@@ -385,7 +403,7 @@
                             <!-- 1. Original Merchant Receipt -->
                             <div class="space-y-1.5">
                                 <span class="font-bold text-slate-700 uppercase tracking-wider text-[10px] block">
-                                    <i class="fa-solid fa-receipt text-blue-600 mr-1"></i> Original Merchant Receipt
+                                    <i class="fa-solid fa-receipt text-blue-600 mr-1"></i> Original Document Asset
                                 </span>
                                 <div
                                     class="rounded-2xl border border-slate-200 bg-slate-50 p-2 max-h-48 overflow-hidden flex items-center justify-center relative group">
@@ -455,7 +473,6 @@
                                 </div>
                             </div>
                         </div>
-
                     </div>
 
                     <!-- Bottom Action Controls -->

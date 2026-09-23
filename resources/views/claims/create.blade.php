@@ -20,7 +20,7 @@
     :class="isModalOpen || isMobileSidebarOpen ? 'overflow-hidden' : ''">
 
     <div class="flex min-h-screen flex-col lg:flex-row">
-        <!-- Reusable Staff Navigation Sidebar (Mobile, Desktop & Bottom Nav) -->
+        <!-- Reusable Staff Navigation Sidebar -->
         @include('layouts.partials.staff-sidebar')
 
         <!-- Main Workspace Area -->
@@ -217,12 +217,16 @@
                                             @change="checkDuplicateAndPopup()" :required="activeForm === 'Receipt'"
                                             class="w-full px-4 py-2.5 md:py-3 bg-white border border-slate-200 rounded-xl outline-none text-xs md:text-sm shadow-2xs appearance-none transition-all">
                                             <option value="" disabled selected>Select a category</option>
-                                            <option value="Meals & Entertainment">Meals & Entertainment</option>
-                                            <option value="Travel">Travel</option>
-                                            <option value="Transportation">Transportation</option>
-                                            <option value="Office Supplies">Office Supplies</option>
-                                            <option value="Fuel / Automotive">Fuel / Automotive (Corporate Fleet)
-                                            </option>
+                                            <option value="Site Tools & Hardware">Site Tools & Hardware (Mr. DIY, Tools,
+                                                Repairs)</option>
+                                            <option value="Office Pantry & Amenities">Office Pantry & Amenities
+                                                (Groceries, Supplies)</option>
+                                            <option value="Staff Operational Meals">Staff Operational Meals</option>
+                                            <option value="Fuel & Fleet Logistics">Fuel & Fleet Logistics (Corporate
+                                                Fleet / Petrol)</option>
+                                            <option value="Office Supplies">Office Supplies & Stationery</option>
+                                            <option value="Travel">Travel & Lodging</option>
+                                            <option value="Transportation">Transportation & Toll</option>
                                         </select>
                                         <span
                                             class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
@@ -231,16 +235,14 @@
                                     </div>
                                 </div>
 
-                                <!-- Company Fleet Dropdown -->
-                                <div class="space-y-1.5"
-                                    x-show="(category === 'Fuel / Automotive' || category === 'Fuel')" x-transition
-                                    x-cloak>
+                                <!-- Company Fleet Dropdown (Terkini: Menyokong Fuel & Fleet Logistics) -->
+                                <div class="space-y-1.5" x-show="isFuelCategory()" x-transition x-cloak>
                                     <label class="block text-xs font-bold text-rose-700 tracking-wide">
                                         <i class="fa-solid fa-truck-ramp-box"></i> Select Company Fleet Vehicle *
                                     </label>
                                     <div class="relative">
                                         <select name="vehicle_plate_number" x-model="vehiclePlate"
-                                            :required="(category === 'Fuel / Automotive' || category === 'Fuel') && activeForm === 'Receipt'"
+                                            :required="isFuelCategory() && activeForm === 'Receipt'"
                                             :disabled="activeForm !== 'Receipt'"
                                             class="w-full px-4 py-2.5 md:py-3 bg-rose-50/50 border border-rose-200 focus:border-rose-400 rounded-xl outline-none text-xs md:text-sm font-bold shadow-2xs appearance-none transition-all">
                                             <option value="" disabled selected>-- Choose Company Fleet Plate --</option>
@@ -297,7 +299,6 @@
                                     </button>
                                 </div>
 
-                                <!-- Hidden JSON payload passed to Controller -->
                                 <input type="hidden" name="items" :value="JSON.stringify(items)">
 
                                 <div
@@ -373,8 +374,9 @@
                                             <option value="" disabled selected>-- Select Authorized Vehicle --</option>
                                             @forelse($personalVehicles ?? [] as $v)
                                                 <option value="{{ $v->vehicle_id }}" data-type="{{ $v->vehicle_type }}"
-                                                    data-plate="{{ $v->plate_number }}">
-                                                    {{ $v->brand_model }} ({{ $v->plate_number }}) — Roadtax Expiry:
+                                                    data-plate="{{ $v->plate_number }}"
+                                                    data-rate="{{ strtolower($v->vehicle_type) === 'motorcycle' ? 0.30 : 0.60 }}">
+                                                    {{ $v->brand_model }} ({{ $v->plate_number }}) — Roadtax:
                                                     {{ \Carbon\Carbon::parse($v->roadtax_expiry)->format('d/m/Y') }}
                                                     [Verified]
                                                 </option>
@@ -422,13 +424,18 @@
                                         class="w-full px-4 py-2.5 md:py-3 bg-white border border-slate-200 rounded-xl outline-none text-xs md:text-sm shadow-2xs">
                                 </div>
 
+                                <!-- Pure Numeric Distance Field (No "KM" string suffix in input value) -->
                                 <div class="space-y-1.5">
                                     <label class="block text-xs font-bold text-slate-700 tracking-wide">Total Distance
-                                        Traveled (KM)</label>
-                                    <input type="text" id="distance" name="mileage_km" x-model="mileageKm"
-                                        @input="calculateManualAllowance()" placeholder="e.g. 12.50 KM"
-                                        :required="activeForm === 'Mileage'" readonly
-                                        class="w-full px-4 py-2.5 md:py-3 border border-slate-200 bg-slate-50 text-slate-800 rounded-xl outline-none font-mono font-bold text-xs md:text-sm shadow-2xs">
+                                        Traveled</label>
+                                    <div class="relative">
+                                        <input type="number" step="0.01" id="distance" name="mileage_km"
+                                            x-model="mileageKm" @input="calculateManualAllowance()" placeholder="0.00"
+                                            :required="activeForm === 'Mileage'" readonly
+                                            class="w-full px-4 pr-12 py-2.5 md:py-3 border border-slate-200 bg-slate-50 text-slate-800 rounded-xl outline-none font-mono font-bold text-xs md:text-sm shadow-2xs">
+                                        <span
+                                            class="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400 text-xs">KM</span>
+                                    </div>
                                 </div>
 
                                 <div class="space-y-1.5">
@@ -464,7 +471,7 @@
                                     class="w-full sm:w-auto text-left sm:text-right text-[10px] md:text-[11px] font-bold text-slate-500 bg-white border border-slate-200/60 shadow-xs px-3 py-1.5 rounded-xl">
                                     Classification: <span class="text-blue-600 font-black" x-text="vehicleType"></span>
                                     | Rate: <span class="text-emerald-500 font-black"
-                                        x-text="vehicleType === 'Car' ? 'RM 0.60 / KM' : 'RM 0.30 / KM'"></span>
+                                        x-text="'RM ' + currentRate.toFixed(2) + ' / KM'"></span>
                                 </div>
                             </div>
                         </div>
@@ -552,7 +559,7 @@
     <script
         src="https://maps.googleapis.com/maps/api/js?key={{ env('GOOGLE_MAPS_API_KEY') }}&libraries=places"></script>
     <script>
-        // Comment: Main Alpine.js form controller with real-time duplicate receipt & tamper feedback
+        // Comment: Alpine.js form controller for SmartClaim receipt & mileage validation
         function ocrForm() {
             return {
                 isMobileSidebarOpen: false,
@@ -560,6 +567,7 @@
                 selectedVehicleId: '',
                 vehicleType: 'Car',
                 vehiclePlate: '',
+                currentRate: 0.60,
                 mileageKm: '',
                 mileageTitle: '',
                 allowanceTotal: '0.00',
@@ -586,6 +594,11 @@
                     }
                 },
 
+                // Helper to check fuel categories dynamically
+                isFuelCategory() {
+                    return ['Fuel & Fleet Logistics', 'Fuel / Automotive', 'Fuel'].includes(this.category);
+                },
+
                 switchForm(formType) {
                     this.activeForm = formType;
                     const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?type=' + formType;
@@ -600,6 +613,7 @@
                     const selectedOption = event.target.options[event.target.selectedIndex];
                     this.vehicleType = selectedOption.getAttribute('data-type') || 'Car';
                     this.vehiclePlate = selectedOption.getAttribute('data-plate') || '';
+                    this.currentRate = parseFloat(selectedOption.getAttribute('data-rate')) || (this.vehicleType.toLowerCase() === 'motorcycle' ? 0.30 : 0.60);
                     this.calculateAllowance();
                     this.calculateManualAllowance();
                 },
@@ -633,9 +647,9 @@
                             const resultMatrixElement = matrixDataResponse.rows[0].elements[0];
                             if (resultMatrixElement.status === 'OK') {
                                 const computedKm = (resultMatrixElement.distance.value / 1000);
-                                this.mileageKm = computedKm.toFixed(2) + " KM";
-                                const runningRate = (this.vehicleType === 'Car') ? 0.60 : 0.30;
-                                this.allowanceTotal = (computedKm * runningRate).toFixed(2);
+                                // Pure number string without ' KM' suffix to pass numeric validation
+                                this.mileageKm = computedKm.toFixed(2);
+                                this.allowanceTotal = (computedKm * this.currentRate).toFixed(2);
                                 this.amount = this.allowanceTotal;
                             } else {
                                 Swal.fire({ icon: 'warning', title: 'Route Error', text: 'Addresses could not be resolved for driving transit paths.' });
@@ -645,17 +659,15 @@
                 },
 
                 calculateManualAllowance() {
-                    let rawKm = parseFloat(this.mileageKm.replace(/[^\d.]/g, ''));
+                    let rawKm = parseFloat(this.mileageKm);
                     if (!isNaN(rawKm) && rawKm > 0) {
-                        const runningRate = (this.vehicleType === 'Car') ? 0.60 : 0.30;
-                        this.allowanceTotal = (rawKm * runningRate).toFixed(2);
+                        this.allowanceTotal = (rawKm * this.currentRate).toFixed(2);
                     } else {
                         this.allowanceTotal = '0.00';
                     }
                     this.amount = this.allowanceTotal;
                 },
 
-                // Comment: Handle file upload and parse duplicate feedback properly
                 handleFileChange(event) {
                     const file = event.target.files[0];
                     if (!file) return;
@@ -679,12 +691,9 @@
                         .then(data => {
                             this.isExtracting = false;
 
-                            // 🛡️ 1. Tangkap resit pendua berdasarkan Physical Image Hash
                             if (data.is_duplicate_image) {
                                 this.isDuplicate = true;
                                 this.duplicateMessage = data.duplicate_reason;
-
-                                // Kosongkan medan input
                                 this.merchant = '';
                                 this.invoiceNo = '';
                                 this.location = '';
@@ -700,7 +709,6 @@
                                 return;
                             }
 
-                            // 🛡️ 2. Tangkap jika imej telah disunting perisian (Photoshop/Canva)
                             if (data.is_tampered) {
                                 this.isDuplicate = true;
                                 this.duplicateMessage = data.tamper_reason;
@@ -714,7 +722,6 @@
                                 return;
                             }
 
-                            // 3. Jika berjaya & sah
                             if (data.success) {
                                 this.merchant = data.merchant_name;
                                 this.invoiceNo = data.receipt_invoice_no;
@@ -836,7 +843,7 @@
                             Swal.fire({ icon: 'warning', text: 'Please select an expense category.' });
                             return false;
                         }
-                        if ((this.category === 'Fuel / Automotive' || this.category === 'Fuel') && !this.vehiclePlate) {
+                        if (this.isFuelCategory() && !this.vehiclePlate) {
                             e.preventDefault();
                             Swal.fire({ icon: 'warning', text: 'Please select an active company fleet vehicle for fuel expenditure.' });
                             return false;
@@ -852,7 +859,6 @@
                     return true;
                 }
             };
-
         }
     </script>
 </body>

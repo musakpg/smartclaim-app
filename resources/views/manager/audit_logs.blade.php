@@ -49,47 +49,51 @@
                                 </tr>
                                 </tbody>
                             <tbody class="divide-y divide-slate-50 text-slate-700 font-medium font-mono">
+                                @forelse($auditLogs as $log)
                                 <tr class="hover:bg-slate-50/60 transition-all text-[11px]">
                                     <td class="py-3.5 px-4 text-slate-500 font-sans font-semibold whitespace-nowrap">
-                                        2026-06-12 14:05</td>
-                                    <td class="py-3.5 px-4 font-sans font-bold text-slate-900 whitespace-nowrap">Hazman
-                                        (Finance)</td>
-                                    <td class="py-3.5 px-4 text-emerald-600 font-bold whitespace-nowrap"><i
-                                            class="fa-solid fa-circle-check text-[9px] mr-1"></i> CLAIM_PRE_APPROVE</td>
+                                        {{ $log->created_at->format('Y-m-d H:i') }}
+                                    </td>
+                                    <td class="py-3.5 px-4 font-sans font-bold text-slate-900 whitespace-nowrap">
+                                        {{ $log->user ? $log->user->name : 'System' }}
+                                    </td>
+                                    <td class="py-3.5 px-4 font-bold whitespace-nowrap
+                                        @if(str_contains($log->action, 'APPROVE')) text-emerald-600
+                                        @elseif(str_contains($log->action, 'SUBMIT')) text-blue-600
+                                        @elseif(str_contains($log->action, 'UPDATE') || str_contains($log->action, 'EDIT')) text-amber-600
+                                        @elseif(str_contains($log->action, 'REJECT')) text-red-600
+                                        @else text-slate-600 @endif">
+                                        @if(str_contains($log->action, 'APPROVE'))
+                                            <i class="fa-solid fa-circle-check text-[9px] mr-1"></i>
+                                        @elseif(str_contains($log->action, 'SUBMIT'))
+                                            <i class="fa-solid fa-cloud-arrow-up text-[9px] mr-1"></i>
+                                        @elseif(str_contains($log->action, 'UPDATE') || str_contains($log->action, 'EDIT'))
+                                            <i class="fa-solid fa-sliders text-[9px] mr-1"></i>
+                                        @elseif(str_contains($log->action, 'REJECT'))
+                                            <i class="fa-solid fa-circle-xmark text-[9px] mr-1"></i>
+                                        @else
+                                            <i class="fa-solid fa-bolt text-[9px] mr-1"></i>
+                                        @endif
+                                        {{ $log->action }}
+                                    </td>
                                     <td class="py-3.5 px-4 text-slate-500 truncate max-w-[200px]"
-                                        title='{"claim_id": 10, "amount": 180.00}'>{"claim_id": 10, "amount": 180.00}
+                                        title='{{ json_encode(["claim_id" => $log->claim_id, "new" => $log->new_values, "old" => $log->old_values]) }}'>
+                                        {{ json_encode(["claim_id" => $log->claim_id, "new" => $log->new_values, "old" => $log->old_values]) }}
                                     </td>
                                     <td class="py-3.5 px-4 text-center text-slate-400 font-sans whitespace-nowrap">
-                                        127.0.0.1</td>
+                                        {{ $log->ip_address }}
+                                    </td>
                                 </tr>
-                                <tr class="hover:bg-slate-50/60 transition-all text-[11px]">
-                                    <td class="py-3.5 px-4 text-slate-500 font-sans font-semibold whitespace-nowrap">
-                                        2026-06-12 11:32</td>
-                                    <td class="py-3.5 px-4 font-sans font-bold text-slate-900 whitespace-nowrap">
-                                        Muhammad Musa</td>
-                                    <td class="py-3.5 px-4 text-blue-600 font-bold whitespace-nowrap"><i
-                                            class="fa-solid fa-cloud-arrow-up text-[9px] mr-1"></i> CLAIM_SUBMIT</td>
-                                    <td class="py-3.5 px-4 text-slate-500 truncate max-w-[200px]"
-                                        title='{"claim_type": "Mileage", "km": 247.0}'>{"claim_type": "Mileage", "km":
-                                        247.0}</td>
-                                    <td class="py-3.5 px-4 text-center text-slate-400 font-sans whitespace-nowrap">
-                                        192.168.0.226</td>
+                                @empty
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-slate-400 font-sans">No security events logged yet.</td>
                                 </tr>
-                                <tr class="hover:bg-slate-50/60 transition-all text-[11px]">
-                                    <td class="py-3.5 px-4 text-slate-500 font-sans font-semibold whitespace-nowrap">
-                                        2026-06-11 09:15</td>
-                                    <td class="py-3.5 px-4 font-sans font-bold text-slate-900 whitespace-nowrap">Aero
-                                        Art Manager</td>
-                                    <td class="py-3.5 px-4 text-amber-600 font-bold whitespace-nowrap"><i
-                                            class="fa-solid fa-sliders text-[9px] mr-1"></i> CONFIG_UPDATE</td>
-                                    <td class="py-3.5 px-4 text-slate-500 truncate max-w-[200px]"
-                                        title='{"target": "mileage_car_rate", "val": 0.60}'>{"target":
-                                        "mileage_car_rate", "val": 0.60}</td>
-                                    <td class="py-3.5 px-4 text-center text-slate-400 font-sans whitespace-nowrap">
-                                        127.0.0.1</td>
-                                </tr>
+                                @endforelse
                             </tbody>
                         </table>
+                    </div>
+                    <div class="px-6 py-4 border-t border-slate-100/50 bg-slate-50/50">
+                        {{ $auditLogs->links() }}
                     </div>
                 </div>
             </div>

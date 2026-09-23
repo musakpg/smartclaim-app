@@ -88,6 +88,9 @@ Route::middleware(['auth'])->prefix('manager')->name('manager.')->group(function
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->prefix('finance')->name('finance.')->group(function () {
+    Route::post('/finance/disbursement/bulk-settle', [App\Http\Controllers\ReimbursementController::class, 'bulkSettle'])
+        ->name('finance.disbursement.bulk_settle')
+        ->middleware('auth');
     Route::get('/staff-directory', [ClaimController::class, 'financeStaffDirectoryIndex'])->name('staff_directory');
     // Dashboard & Auditing
     Route::get('/dashboard', [ClaimController::class, 'financeIndex'])->name('dashboard');
@@ -178,4 +181,10 @@ Route::get('/test-push', function () {
     } catch (\Throwable $e) {
         return 'Ralat Penghantaran WebPush: ' . $e->getMessage();
     }
+
 });
+
+// Download Official PDF Claim Voucher
+Route::get('/claims/{id}/download-pdf', [App\Http\Controllers\ClaimController::class, 'downloadPdfVoucher'])
+    ->name('claims.download_pdf')
+    ->middleware('auth');

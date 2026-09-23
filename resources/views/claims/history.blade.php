@@ -8,6 +8,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
 </head>
 
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased" x-data="historyManager()" x-init="allClaims = {{ json_encode($claims->map(fn($c) => array_merge($c->toArray(), [
@@ -17,6 +22,7 @@
 
     <div class="flex min-h-screen flex-col lg:flex-row">
 
+        <!-- Mobile Sidebar Drawer -->
         <div x-show="isMobileSidebarOpen" x-cloak class="lg:hidden fixed inset-0 z-50 flex" role="dialog"
             aria-modal="true">
             <div x-show="isMobileSidebarOpen" x-transition:enter="transition-opacity ease-linear duration-300"
@@ -86,169 +92,164 @@
                 </nav>
             </div>
         </div>
-        <!-- Reusable Sidebar Partial (Desktop) -->
 
-        @php
-            $claims = \App\Models\Claim::where('user_id', Auth::id() ?? 1)
-                ->with('items')
-                ->orderBy('created_at', 'desc')
-                ->get();
-        @endphp
+        <!-- Reusable Staff Navigation Sidebar (Desktop) -->
+        @include('layouts.partials.staff-sidebar')
 
-        <div class="flex min-h-screen flex-col lg:flex-row">
-            <!-- Reusable Staff Navigation Sidebar -->
-            @include('layouts.partials.staff-sidebar')
+        <main class="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 lg:pb-8 overflow-hidden">
+            <div class="space-y-6">
+                <div class="space-y-0.5">
+                    <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                        <span>Claim History</span>
+                        <span class="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                            {{ count($claims) }} Logs
+                        </span>
+                    </h1>
+                    <p class="text-xs md:text-sm text-slate-500">Complete records of claims generated dynamically via
+                        local extraction engines.</p>
+                </div>
 
-            <main class="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 lg:pb-8 overflow-hidden">
-                <div class="space-y-6">
-                    <div class="space-y-0.5">
-                        <h1
-                            class="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                            <span>Claim History</span>
-                            <span
-                                class="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                                {{ \App\Models\Claim::where('user_id', Auth::id() ?? 1)->count() }} Logs
-                            </span>
-                        </h1>
-                        <p class="text-xs md:text-sm text-slate-500">Complete records of claims generated dynamically
-                            via
-                            local extraction engines.</p>
-                    </div>
-
-                    <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-xs space-y-4">
-                        <div class="divide-y divide-slate-100">
-                            <template x-for="claim in pagedItems" :key="claim.claim_id">
-                                <div
-                                    class="flex flex-col sm:flex-row sm:items-center justify-between py-4 first:pt-0 last:pb-0 gap-4">
-                                    <div class="flex items-start gap-3">
-                                        <div
-                                            class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 font-bold text-xs text-slate-700 font-mono">
-                                            <span x-text="'CLM-' + claim.claim_id"></span>
-                                        </div>
-                                        <div class="space-y-1">
-                                            <div class="flex items-center gap-2">
-                                                <h4 class="font-bold text-slate-900 text-sm"
-                                                    x-text="claim.claim_type === 'Mileage' ? (claim.title ?? 'Travel Allowance Claim') : claim.merchant_name">
-                                                </h4>
-                                                <span
-                                                    class="px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wide border"
-                                                    :class="claim.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
+                <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-xs space-y-4">
+                    <div class="divide-y divide-slate-100">
+                        <template x-for="claim in pagedItems" :key="claim.claim_id">
+                            <div
+                                class="flex flex-col sm:flex-row sm:items-center justify-between py-4 first:pt-0 last:pb-0 gap-4">
+                                <div class="flex items-start gap-3">
+                                    <div
+                                        class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 font-bold text-xs text-slate-700 font-mono">
+                                        <span x-text="'CLM-' + claim.claim_id"></span>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <div class="flex items-center gap-2">
+                                            <h4 class="font-bold text-slate-900 text-sm"
+                                                x-text="claim.claim_type === 'Mileage' ? (claim.title ?? 'Travel Allowance Claim') : claim.merchant_name">
+                                            </h4>
+                                            <span
+                                                class="px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wide border"
+                                                :class="claim.status === 'Approved' || claim.status === 'Reimbursed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
                                                         claim.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-100' : 
                                                         'bg-slate-50 text-slate-700 border-slate-100'"
-                                                    x-text="claim.status"></span>
-                                            </div>
-
-                                            <div class="text-xs text-slate-500 font-medium space-y-1">
-                                                <template x-if="claim.claim_type === 'Mileage'">
-                                                    <div class="space-y-0.5">
-                                                        <span class="block">Logistics: <span
-                                                                class="font-semibold text-slate-700"
-                                                                x-text="(claim.vehicle_type ?? 'Vehicle') + ' (' + parseFloat(claim.mileage_km).toFixed(2) + ' KM)'"></span></span>
-                                                        <span
-                                                            class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md text-[11px] text-slate-600 mt-0.5">
-                                                            <i class="fa-solid fa-map-location-dot text-slate-400"></i>
-                                                            <span x-text="claim.start_location ?? 'Start Node'"></span>
-                                                            <i
-                                                                class="fa-solid fa-arrow-right-long text-[9px] text-slate-400"></i>
-                                                            <span
-                                                                x-text="claim.destination_location ?? 'End Node'"></span>
-                                                        </span>
-                                                    </div>
-                                                </template>
-                                                <template x-if="claim.claim_type !== 'Mileage'">
-                                                    <span>Invoice No: <span class="font-mono text-slate-700"
-                                                            x-text="claim.receipt_invoice_no"></span></span>
-                                                </template>
-                                            </div>
-
-                                            <p class="text-[10px] text-slate-400 font-medium"><i
-                                                    class="fa-solid fa-calendar-day mr-1"></i>Processed on: <span
-                                                    x-text="claim.created_at_formatted"></span></p>
+                                                x-text="claim.status"></span>
                                         </div>
-                                    </div>
 
-                                    <div class="flex items-center justify-between sm:justify-end gap-6">
-                                        <div class="text-right">
-                                            <span
-                                                class="text-xs font-bold text-slate-400 uppercase tracking-wider block text-[10px]">Total
-                                                Amount</span>
-                                            <span class="font-bold text-slate-900 text-sm"
-                                                x-text="'RM ' + parseFloat(claim.amount).toFixed(2)"></span>
+                                        <div class="text-xs text-slate-500 font-medium space-y-1">
+                                            <template x-if="claim.claim_type === 'Mileage'">
+                                                <div class="space-y-0.5">
+                                                    <span class="block">Logistics: <span
+                                                            class="font-semibold text-slate-700"
+                                                            x-text="(claim.vehicle_type ?? 'Vehicle') + ' (' + parseFloat(claim.mileage_km).toFixed(2) + ' KM)'"></span></span>
+                                                    <span
+                                                        class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md text-[11px] text-slate-600 mt-0.5">
+                                                        <i class="fa-solid fa-map-location-dot text-slate-400"></i>
+                                                        <span x-text="claim.start_location ?? 'Start Node'"></span>
+                                                        <i
+                                                            class="fa-solid fa-arrow-right-long text-[9px] text-slate-400"></i>
+                                                        <span x-text="claim.destination_location ?? 'End Node'"></span>
+                                                    </span>
+                                                </div>
+                                            </template>
+                                            <template x-if="claim.claim_type !== 'Mileage'">
+                                                <span>Invoice No: <span class="font-mono text-slate-700"
+                                                        x-text="claim.receipt_invoice_no"></span></span>
+                                            </template>
                                         </div>
-                                        <button type="button" @click="openDetailModal(claim)"
-                                            class="inline-flex items-center gap-1.5 bg-[#1e293b] hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-xl text-xs tracking-wide transition-all shadow-3xs cursor-pointer">
-                                            <i class="fa-solid fa-circle-info text-xs"></i> Detail
-                                        </button>
+
+                                        <p class="text-[10px] text-slate-400 font-medium">
+                                            <i class="fa-solid fa-calendar-day mr-1"></i>Processed on:
+                                            <span x-text="claim.created_at_formatted"></span>
+                                        </p>
                                     </div>
                                 </div>
-                            </template>
 
-                            <div x-show="allClaims.length === 0" class="py-12 text-center text-slate-400 font-semibold"
-                                x-cloak>
-                                <i class="fa-solid fa-folder-open block text-2xl mb-2 text-slate-300"></i> No historical
-                                claims loaded.
+                                <div class="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+                                    <div class="text-right">
+                                        <span
+                                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block text-[10px]">Total
+                                            Amount</span>
+                                        <span class="font-bold text-slate-900 text-sm"
+                                            x-text="'RM ' + parseFloat(claim.amount).toFixed(2)"></span>
+                                    </div>
+
+                                    <!-- Butang Muat Turun PDF Baris Rekod -->
+                                    <a :href="'/claims/' + claim.claim_id + '/download-pdf'" target="_blank"
+                                        class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-3 rounded-xl text-xs tracking-wide transition shadow-3xs">
+                                        <i class="fa-solid fa-file-pdf text-rose-600"></i> PDF
+                                    </a>
+
+                                    <button type="button" @click="openDetailModal(claim)"
+                                        class="inline-flex items-center gap-1.5 bg-[#1e293b] hover:bg-slate-800 text-white font-bold py-2 px-3.5 rounded-xl text-xs tracking-wide transition shadow-3xs cursor-pointer">
+                                        <i class="fa-solid fa-circle-info text-xs"></i> Detail
+                                    </button>
+                                </div>
                             </div>
+                        </template>
+
+                        <div x-show="allClaims.length === 0" class="py-12 text-center text-slate-400 font-semibold"
+                            x-cloak>
+                            <i class="fa-solid fa-folder-open block text-2xl mb-2 text-slate-300"></i> No historical
+                            claims loaded.
+                        </div>
+                    </div>
+
+                    <!-- Pagination Navigation -->
+                    <div x-show="allClaims.length > 0"
+                        class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold"
+                        x-cloak>
+                        <div class="text-slate-400 font-medium">
+                            Showing <span class="text-slate-700" x-text="((currentPage - 1) * perPage) + 1"></span>
+                            to <span class="text-slate-700"
+                                x-text="Math.min(currentPage * perPage, allClaims.length)"></span> of
+                            <span class="text-slate-700" x-text="allClaims.length"></span> records
                         </div>
 
-                        <div x-show="allClaims.length > 0"
-                            class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold"
-                            x-cloak>
-                            <div class="text-slate-400 font-medium">
-                                Showing <span class="text-slate-700" x-text="((currentPage - 1) * perPage) + 1"></span>
-                                to
-                                <span class="text-slate-700"
-                                    x-text="Math.min(currentPage * perPage, allClaims.length)"></span> of
-                                <span class="text-slate-700" x-text="allClaims.length"></span> records
-                            </div>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" @click="if(currentPage > 1) currentPage--"
+                                :disabled="currentPage === 1"
+                                class="px-3 py-2 border rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-slate-200 hover:border-slate-400">
+                                <i class="fa-solid pointer-events-none fa-chevron-left text-[10px]"></i> Previous
+                            </button>
 
-                            <div class="flex items-center gap-1.5">
-                                <button type="button" @click="if(currentPage > 1) currentPage--"
-                                    :disabled="currentPage === 1"
-                                    class="px-3 py-2 border rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-slate-200 hover:border-slate-400">
-                                    <i class="fa-solid pointer-events-none fa-chevron-left text-[10px]"></i> Previous
-                                </button>
+                            <template x-for="page in totalPages" :key="page">
+                                <button type="button" @click="currentPage = page"
+                                    :class="currentPage === page ? 'bg-[#1e293b] text-white border-[#1e293b]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'"
+                                    class="w-8 h-8 border rounded-xl transition-all text-xs font-bold cursor-pointer"
+                                    x-text="page"
+                                    x-show="totalPages <= 7 || page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1"></button>
+                            </template>
 
-                                <template x-for="page in totalPages" :key="page">
-                                    <button type="button" @click="currentPage = page"
-                                        :class="currentPage === page ? 'bg-[#1e293b] text-white border-[#1e293b]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'"
-                                        class="w-8 h-8 border rounded-xl transition-all text-xs font-bold cursor-pointer"
-                                        x-text="page"
-                                        x-show="totalPages <= 7 || page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1"></button>
-                                </template>
-
-                                <button type="button" @click="if(currentPage < totalPages) currentPage++"
-                                    :disabled="currentPage === totalPages"
-                                    class="px-3 py-2 border rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-slate-200 hover:border-slate-400">
-                                    Next <i class="fa-solid pointer-events-none fa-chevron-right text-[10px]"></i>
-                                </button>
-                            </div>
+                            <button type="button" @click="if(currentPage < totalPages) currentPage++"
+                                :disabled="currentPage === totalPages"
+                                class="px-3 py-2 border rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-slate-200 hover:border-slate-400">
+                                Next <i class="fa-solid pointer-events-none fa-chevron-right text-[10px]"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
-
-        <nav
-            class="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#e2e8f0] h-16 flex items-center justify-around z-40 px-2 shadow-md">
-            <a href="{{ route('dashboard') }}"
-                class="flex flex-col items-center justify-center flex-1 h-full py-2 text-slate-400">
-                <i class="fa-solid fa-chart-pie text-xl block mb-0.5"></i><span
-                    class="text-[10px] font-bold">Dashboard</span>
-            </a>
-            <a href="{{ route('claims.create') }}?type=Receipt"
-                class="flex flex-col items-center justify-center flex-1 h-full py-2 text-slate-400">
-                <i class="fa-solid fa-file-circle-plus text-xl block mb-0.5"></i><span class="text-[10px] font-bold">New
-                    Claim</span>
-            </a>
-            <a href="{{ route('claims.history') }}"
-                class="flex flex-col items-center justify-center flex-1 h-full py-2 text-[#3b82f6]">
-                <i class="fa-solid fa-clock-rotate-left text-xl block mb-0.5"></i><span
-                    class="text-[10px] font-bold">History</span>
-            </a>
-        </nav>
-
+            </div>
+        </main>
     </div>
 
+    <!-- Mobile Bottom Navigation -->
+    <nav
+        class="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#e2e8f0] h-16 flex items-center justify-around z-40 px-2 shadow-md">
+        <a href="{{ route('dashboard') }}"
+            class="flex flex-col items-center justify-center flex-1 h-full py-2 text-slate-400">
+            <i class="fa-solid fa-chart-pie text-xl block mb-0.5"></i><span
+                class="text-[10px] font-bold">Dashboard</span>
+        </a>
+        <a href="{{ route('claims.create') }}?type=Receipt"
+            class="flex flex-col items-center justify-center flex-1 h-full py-2 text-slate-400">
+            <i class="fa-solid fa-file-circle-plus text-xl block mb-0.5"></i><span class="text-[10px] font-bold">New
+                Claim</span>
+        </a>
+        <a href="{{ route('claims.history') }}"
+            class="flex flex-col items-center justify-center flex-1 h-full py-2 text-[#3b82f6]">
+            <i class="fa-solid fa-clock-rotate-left text-xl block mb-0.5"></i><span
+                class="text-[10px] font-bold">History</span>
+        </a>
+    </nav>
+
+    <!-- Modal Detail Claim -->
     <div x-show="isModalOpen" x-cloak
         class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-all duration-300"
         @keydown.escape.window="isModalOpen = false">
@@ -265,7 +266,7 @@
                         </h3>
                     </div>
                     <span class="px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wide border"
-                        :class="activeClaim.status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                        :class="activeClaim.status === 'Approved' || activeClaim.status === 'Reimbursed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
                                 activeClaim.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200'"
                         x-text="activeClaim.status"></span>
                 </div>
@@ -328,14 +329,16 @@
                 </div>
 
                 <div class="space-y-2 border-t border-slate-100 pt-3">
-                    <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400"><i
-                            class="fa-solid fa-list-check"></i> Itemized Cost Breakdowns</h4>
+                    <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <i class="fa-solid fa-list-check"></i> Itemized Cost Breakdowns
+                    </h4>
                     <div class="space-y-1.5 max-h-[160px] overflow-y-auto">
                         <template x-if="activeClaim.claim_type === 'Mileage'">
                             <div class="overflow-hidden border border-slate-200 rounded-xl bg-white space-y-3 p-3">
                                 <div class="flex flex-col gap-1 border-b border-slate-100 pb-2 text-[11px]">
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wide"><i
-                                            class="fa-solid fa-route"></i> Travel Route Nodes</span>
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                                        <i class="fa-solid fa-route"></i> Travel Route Nodes
+                                    </span>
                                     <div class="flex items-center gap-2 font-semibold text-slate-800">
                                         <span x-text="activeClaim.start_location ?? 'N/A'"></span>
                                         <i class="fa-solid fa-arrow-right text-slate-400 text-[10px]"></i>
@@ -350,17 +353,18 @@
                                             <th class="p-2.5">Audit Parameter Metric</th>
                                             <th class="p-2.5 text-center">Logged Metric</th>
                                         </tr>
-                                        </tbody>
+                                    </thead>
                                     <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
                                         <tr>
                                             <td class="p-2.5 text-slate-500">Calculated Journey Distance</td>
                                             <td class="p-2.5 text-center font-mono font-bold text-slate-900"
-                                                x-text="parseFloat(activeClaim.mileage_km).toFixed(2) + ' KM'"></td>
+                                                x-text="parseFloat(activeClaim.mileage_km || 0).toFixed(2) + ' KM'">
+                                            </td>
                                         </tr>
                                         <tr>
                                             <td class="p-2.5 text-slate-500">Allowance Rate (Per KM)</td>
                                             <td class="p-2.5 text-center font-mono font-bold text-slate-900"
-                                                x-text="'RM ' + (activeClaim.vehicle_type === 'Motorcycle' ? '0.40' : '0.60')">
+                                                x-text="'RM ' + (activeClaim.vehicle_type === 'Motorcycle' ? '0.30' : '0.60')">
                                             </td>
                                         </tr>
                                     </tbody>
@@ -388,24 +392,33 @@
                     </div>
                 </div>
 
+                <!-- Footer Modal Berserta Butang Muat Turun PDF -->
                 <div
-                    class="flex items-center justify-between border-t border-slate-100 pt-3 bg-white sticky bottom-0 mt-auto">
+                    class="flex items-center justify-between border-t border-slate-100 pt-3 bg-white sticky bottom-0 mt-auto gap-2">
                     <div>
                         <span class="text-[10px] font-bold uppercase tracking-wide text-slate-400 block">Total Claim
                             Cost</span>
                         <span class="text-xl font-black text-slate-900 font-mono"
-                            x-text="'RM ' + parseFloat(activeClaim.amount).toFixed(2)"></span>
+                            x-text="'RM ' + parseFloat(activeClaim.amount || 0).toFixed(2)"></span>
                     </div>
-                    <button type="button" @click="isModalOpen = false"
-                        class="px-5 py-2 bg-slate-900 text-white font-bold rounded-xl text-xs tracking-wide hover:bg-slate-800 transition-all cursor-pointer">Close
-                        Window</button>
+                    <div class="flex items-center gap-2">
+                        <a :href="'/claims/' + activeClaim.claim_id + '/download-pdf'" target="_blank"
+                            class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold rounded-xl text-xs tracking-wide transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-pdf"></i> Download PDF
+                        </a>
+                        <button type="button" @click="isModalOpen = false"
+                            class="px-5 py-2 bg-slate-900 text-white font-bold rounded-xl text-xs tracking-wide hover:bg-slate-800 transition-all cursor-pointer">
+                            Close Window
+                        </button>
+                    </div>
                 </div>
             </div>
 
+            <!-- Panel Paparan Imej Resit -->
             <div class="w-full md:w-[420px] bg-slate-50 rounded-2xl border border-slate-100 flex flex-col p-2 max-h-[40vh] md:max-h-full"
                 x-show="activeClaim.receipt_image_path">
                 <span class="text-[9px] font-bold uppercase text-slate-400 tracking-wider px-2 mb-1.5">
-                    <i class="fa-solid fa-image mr-1"></i> Imbasan Resit Fisikal
+                    <i class="fa-solid fa-image mr-1"></i> Imbasan Resit Fizikal
                 </span>
                 <div
                     class="flex-1 bg-slate-900/5 rounded-xl overflow-hidden relative group flex items-center justify-center min-h-0">
@@ -423,16 +436,19 @@
         </div>
     </div>
 
+    <!-- Zoom Preview Modal -->
     <div x-show="isHistoryModalOpen" x-cloak
         class="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs transition-all duration-300">
         <div class="relative bg-white rounded-3xl p-3 max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             @click.away="isHistoryModalOpen = false">
             <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-wide"><i
-                        class="fa-solid fa-receipt mr-1 text-blue-600"></i> Full View Receipt Asset</span>
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                    <i class="fa-solid fa-receipt mr-1 text-blue-600"></i> Full View Receipt Asset
+                </span>
                 <button type="button" @click="isHistoryModalOpen = false"
-                    class="text-slate-400 hover:text-rose-600 transition-all text-lg cursor-pointer p-1"><i
-                        class="fa-solid fa-circle-xmark"></i></button>
+                    class="text-slate-400 hover:text-rose-600 transition-all text-lg cursor-pointer p-1">
+                    <i class="fa-solid fa-circle-xmark"></i>
+                </button>
             </div>
             <div class="p-2 bg-slate-50 rounded-2xl overflow-y-auto flex-1 flex justify-center items-center min-h-0">
                 <img :src="modalPreviewSrc" alt="Receipt Full Modal View"
