@@ -10,10 +10,15 @@ class ExpensePolicy extends Model
     use HasFactory;
 
     protected $fillable = [
-        'category_name',
+        'category_id',
         'monthly_budget_cap',
         'max_single_claim_limit',
         'is_active',
         'description',
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
 }

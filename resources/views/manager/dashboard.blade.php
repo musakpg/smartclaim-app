@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Manager Analytics Command</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -12,17 +14,22 @@
 
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased" :class="isMobileSidebarOpen ? 'overflow-hidden' : ''">
 
-    <div class="flex min-h-screen">
+    <div class="flex flex-col lg:flex-row min-h-screen">
 
         @include('layouts.partials.manager-sidebar')
 
         <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-hidden">
             <div class="space-y-6">
 
-                <div class="border-b border-slate-200 pb-5">
-                    <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Manager BI Dashboard</h1>
+                <div class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div>
+                        <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Manager BI Dashboard</h1>
                     <p class="text-xs md:text-sm text-slate-500">Real-time organizational expenditure metrics,
                         operational data charts, and institutional sign-off summaries.</p>
+                    </div>
+                    <div class="hidden lg:flex items-center gap-3">
+                        <x-system-clock />
+                    </div>
                 </div>
 
                 <div

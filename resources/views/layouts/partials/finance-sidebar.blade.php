@@ -1,3 +1,22 @@
+<!-- Mobile Hamburger Button & Header -->
+<div class="lg:hidden bg-[#0d1527] text-white flex items-center justify-between p-4 sticky top-0 z-30 w-full shrink-0 shadow-sm border-b border-slate-800">
+    <div class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded-lg bg-[#00d1b2]/10 border border-[#00d1b2]/20 flex items-center justify-center text-[#00d1b2] shadow-inner">
+            <i class="fa-solid fa-shield text-sm"></i>
+        </div>
+        <h1 class="font-bold text-sm tracking-tight">SmartClaim</h1>
+    </div>
+    <div class="flex items-center gap-2">
+        <div class="lg:hidden">
+            <x-system-clock />
+        </div>
+        <button type="button" @click="isMobileSidebarOpen = true" class="text-slate-300 hover:text-white p-2 cursor-pointer">
+            <i class="fa-solid fa-bars text-xl"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Mobile Backdrop -->
 <div x-show="isMobileSidebarOpen" x-cloak x-transition:enter="transition-opacity ease-linear duration-300"
     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
     x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100"
@@ -91,6 +110,13 @@
             <i class="fa-solid fa-money-bill-transfer text-sm w-4 text-center"></i>
             <span>Payment Disbursement</span>
         </a>
+
+        <a href="{{ route('finance.cash-advances.index') }}"
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 {{ request()->routeIs('finance.cash-advances.index') ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60' }}">
+            <i class="fa-solid fa-wallet text-sm w-4 text-center"></i>
+            <span>Cash Advance Reconciliation</span>
+        </a>
+
         <!-- 4. BENEFICIARY STAFF DIRECTORY -->
         <a href="{{ route('finance.staff_directory') }}"
             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 {{ request()->routeIs('finance.staff_directory*') ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60' }}">

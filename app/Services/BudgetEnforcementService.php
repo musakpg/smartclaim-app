@@ -14,7 +14,20 @@ class BudgetEnforcementService
      */
     public static function checkPolicy(int $userId, string $category, float $amount): array
     {
-        $policy = ExpensePolicy::where('category_name', $category)
+        $categoryRecord = \App\Models\Category::where('name', $category)
+            ->orWhere('code', $category)
+            ->first();
+
+        if (!$categoryRecord) {
+            return [
+                'is_violation' => false,
+                'reason' => null,
+                'current_month_spent' => 0.00,
+                'monthly_cap' => 0.00
+            ];
+        }
+
+        $policy = ExpensePolicy::where('category_id', $categoryRecord->id)
             ->where('is_active', true)
             ->first();
 

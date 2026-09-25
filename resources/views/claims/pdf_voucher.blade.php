@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Official Claim Voucher #CLM-{{ str_pad($claim->claim_id, 4, '0', STR_PAD_LEFT) }}</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;

@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - My Registered Vehicles</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -24,21 +26,13 @@
         previewImage: '' 
     }">
 
-    <div class="flex min-h-screen">
+    <div class="flex flex-col lg:flex-row min-h-screen">
         <!-- Reusable Sidebar Partial (Mobile & Desktop) -->
         @include('layouts.partials.staff-sidebar')
 
         <!-- Main Content Area -->
         <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <!-- Mobile Header Bar -->
-            <header class="lg:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-                <button type="button" @click="isMobileSidebarOpen = true"
-                    class="p-2 text-slate-600 hover:text-slate-900 rounded-lg">
-                    <i class="fa-solid fa-bars text-xl"></i>
-                </button>
-                <span class="font-bold text-slate-900">My Vehicles</span>
-                <div class="w-6"></div>
-            </header>
+
 
             <!-- Page Body Content -->
             <div class="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full pb-24 overflow-y-auto space-y-6">

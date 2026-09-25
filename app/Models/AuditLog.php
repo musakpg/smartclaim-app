@@ -10,6 +10,9 @@ class AuditLog extends Model
         'user_id',
         'claim_id',
         'action',
+        'event_category',
+        'model_type',
+        'model_id',
         'old_values',
         'new_values',
         'ip_address',
@@ -25,16 +28,19 @@ class AuditLog extends Model
      * Helper to log an audit action.
      * Code comments are strictly in English.
      */
-    public static function log($action, $claimId = null, $oldValues = null, $newValues = null, $userId = null)
+    public static function log($action, $claimId = null, $oldValues = null, $newValues = null, $userId = null, $eventCategory = null, $modelType = null, $modelId = null)
     {
         return self::create([
             'user_id' => $userId ?? auth()->id() ?? 1,
             'claim_id' => $claimId,
             'action' => $action,
+            'event_category' => $eventCategory,
+            'model_type' => $modelType,
+            'model_id' => $modelId,
             'old_values' => $oldValues,
             'new_values' => $newValues,
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent()
+            'ip_address' => request()->ip() ?? '127.0.0.1',
+            'user_agent' => request()->userAgent() ?? 'CLI'
         ]);
     }
 

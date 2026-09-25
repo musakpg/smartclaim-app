@@ -45,6 +45,25 @@ class ActiveLearningService
             ]);
 
             Log::info("Active Learning Loop: Captured correction [{$predicted} -> {$corrected}] from merchant [{$merchant}].");
+
+            // Automatically update the targeted Category model
+            if (!empty($corrected)) {
+                $targetCategory = \App\Models\Category::where('name', $corrected)->orWhere('code', $corrected)->first();
+                $merchantToken = $merchant ? strtolower(trim($merchant)) : null;
+
+                if ($targetCategory && $merchantToken && strlen($merchantToken) > 2) {
+                    // Explode, trim, and normalize existing keywords
+                    $currentKeywords = array_map('trim', explode(',', strtolower($targetCategory->keywords ?? '')));
+
+                    if (!in_array($merchantToken, $currentKeywords)) {
+                        $newKeywords = rtrim($targetCategory->keywords, ', ') . ', ' . $merchantToken;
+                        $targetCategory->keywords = trim(trim($newKeywords), ',');
+                        $targetCategory->save();
+                        
+                        Log::info("Active Learning: Appended '{$merchantToken}' to category {$targetCategory->code} keywords.");
+                    }
+                }
+            }
         } catch (\Throwable $e) {
             Log::error("Active Learning Error: " . $e->getMessage());
         }

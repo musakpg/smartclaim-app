@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Fleet & Vehicle Verification Desk</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -56,7 +58,7 @@
         get lPaged() { return this.allLogs.slice((this.lPage-1)*this.lPer, this.lPage*this.lPer) }
     }">
 
-    <div class="flex min-h-screen">
+    <div class="flex flex-col lg:flex-row min-h-screen">
         <!-- Reusable Manager Navigation Sidebar -->
         @include('layouts.partials.manager-sidebar')
 
@@ -65,11 +67,16 @@
 
             <!-- Page Header -->
             <div class="border-b border-slate-200 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
+                                    <div>
+                        <div>
                     <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Fleet & Transport
                         Governance</h1>
                     <p class="text-xs md:text-sm text-slate-500">Oversee personal vehicle compliance for mileage claims
                         and manage official Aero Art corporate fleet assets.</p>
+                    </div>
+                    <div class="hidden lg:flex items-center gap-3">
+                        <x-system-clock />
+                    </div>
                 </div>
 
                 <!-- Primary Workspace Selector Tabs -->
@@ -672,11 +679,11 @@
                     <div
                         class="bg-slate-100 border border-slate-200 rounded-2xl flex items-center justify-center min-h-[250px] p-2 overflow-hidden">
                         <template x-if="activeDoc === 'grant' && selectedStaffVehicle.grant_document_path">
-                            <img :src="'/storage/' + selectedStaffVehicle.grant_document_path"
+                            <img :src="'/files/' + selectedStaffVehicle.grant_document_path"
                                 class="max-h-[350px] max-w-full object-contain rounded-xl shadow-xs">
                         </template>
                         <template x-if="activeDoc === 'roadtax' && selectedStaffVehicle.roadtax_document_path">
-                            <img :src="'/storage/' + selectedStaffVehicle.roadtax_document_path"
+                            <img :src="'/files/' + selectedStaffVehicle.roadtax_document_path"
                                 class="max-h-[350px] max-w-full object-contain rounded-xl shadow-xs">
                         </template>
                         <template

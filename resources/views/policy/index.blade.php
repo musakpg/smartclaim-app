@@ -6,6 +6,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Company Policy & Guidelines</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -27,28 +29,7 @@
         <!-- Main Workspace Area -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-            <!-- Mobile Top Header Bar -->
-            <header
-                class="lg:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40 shadow-xs">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-xs">
-                        <i class="fa-solid fa-wallet text-sm"></i>
-                    </div>
-                    <div>
-                        <span
-                            class="text-sm font-black text-slate-900 tracking-tight leading-none block">SmartClaim</span>
-                        <span class="text-[9px] font-bold text-slate-400 tracking-wider uppercase block">Staff
-                            Portal</span>
-                    </div>
-                </div>
 
-                <div class="flex items-center gap-2">
-                    <button type="button" @click="isMobileSidebarOpen = true"
-                        class="w-9 h-9 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 cursor-pointer transition">
-                        <i class="fa-solid fa-bars text-sm"></i>
-                    </button>
-                </div>
-            </header>
 
             <main class="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full pb-24 lg:pb-8 overflow-y-auto space-y-6">
 
@@ -140,7 +121,7 @@
                         @forelse($expensePolicies as $policy)
                             <div class="py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                                 <div>
-                                    <span class="font-bold text-slate-900 block text-sm">{{ $policy->category_name }}</span>
+                                    <span class="font-bold text-slate-900 block text-sm">{{ $policy->category->name ?? 'Unknown Category' }}</span>
                                     <p class="text-[11px] text-slate-400 mt-0.5">
                                         {{ $policy->description ?? 'Standard corporate reimbursement guidelines apply.' }}
                                     </p>

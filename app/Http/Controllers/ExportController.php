@@ -14,7 +14,7 @@ class ExportController extends Controller
     public function exportClaimsCsv(Request $request)
     {
         $user = Auth::user();
-        $isPrivileged = in_array($user->role ?? '', ['Finance', 'Manager', 'Admin', 'finance', 'manager', 'admin']);
+        $isPrivileged = in_array($user->role ?? '', ['Finance', 'Manager', 'finance', 'manager']);
 
         if (!$isPrivileged) {
             abort(403, 'Unauthorized access to corporate financial export ledger.');
@@ -52,6 +52,8 @@ class ExportController extends Controller
             'Receipt / Invoice No',
             'Transaction Date',
             'Claim Amount (RM)',
+            'SST Breakdown (RM)',
+            'LHDN Tax Category',
             'Payment Method',
             'Vehicle Plate',
             'Mileage Distance (KM)',
@@ -70,6 +72,24 @@ class ExportController extends Controller
             fputcsv($file, $columns);
 
             foreach ($claims as $claim) {
+                // Determine LHDN Category based on predicted category or claim type
+                $lhdnCategory = 'Lain-lain';
+                if ($claim->claim_type === 'Mileage' || in_array($claim->predicted_category, ['Fuel', 'Parking', 'Toll', 'Transport'])) {
+                    $lhdnCategory = 'Perjalanan & Pengangkutan';
+                } elseif (in_array($claim->predicted_category, ['Meals', 'Entertainment', 'Food'])) {
+                    $lhdnCategory = 'Keraian & Makanan';
+                } elseif (in_array($claim->predicted_category, ['Accommodation', 'Hotel'])) {
+                    $lhdnCategory = 'Penginapan';
+                } elseif (in_array($claim->predicted_category, ['Office Supplies', 'Equipment'])) {
+                    $lhdnCategory = 'Alat Tulis & Pejabat';
+                }
+
+                // Simple SST extraction logic (assumes 8% SST is embedded in the gross amount for relevant categories)
+                $sstAmount = 0.00;
+                if ($claim->claim_type !== 'Mileage') {
+                    $sstAmount = $claim->amount - ($claim->amount / 1.08);
+                }
+
                 fputcsv($file, [
                     '#CLM-' . str_pad($claim->claim_id, 4, '0', STR_PAD_LEFT),
                     $claim->user->name ?? 'Unknown Staff',
@@ -80,6 +100,8 @@ class ExportController extends Controller
                     $claim->receipt_invoice_no ?? 'N/A',
                     $claim->transaction_date ? Carbon::parse($claim->transaction_date)->format('Y-m-d') : 'N/A',
                     number_format($claim->amount, 2, '.', ''),
+                    number_format($sstAmount, 2, '.', ''),
+                    $lhdnCategory,
                     $claim->payment_method ?? 'Cash',
                     $claim->vehicle_plate_number ?? ($claim->vehicle->plate_number ?? 'N/A'),
                     $claim->mileage_km ? number_format($claim->mileage_km, 2, '.', '') : '0.00',
@@ -104,5 +126,39 @@ class ExportController extends Controller
         }
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    // Comment: Generate Forensic Printable Expense Voucher (PDF)
+    public function downloadVoucherPdf($id)
+    {
+        $user = Auth::user();
+        $normalizedRole = strtolower(trim($user->role ?? ''));
+        $isPrivileged = in_array($normalizedRole, ['finance', 'fin', 'manager']);
+
+        $claim = Claim::with(['user', 'vehicle', 'auditLogs.user'])->findOrFail($id);
+
+        if (!$isPrivileged && $claim->user_id !== $user->user_id) {
+            abort(403, 'Unauthorized access to this voucher.');
+        }
+
+        if (!in_array($claim->status, ['Approved', 'Reimbursed'])) {
+            abort(403, 'Voucher can only be generated for Approved or Reimbursed claims.');
+        }
+
+        // Record Audit Trail
+        if (class_exists(AuditLog::class)) {
+            AuditLog::log(
+                'VOUCHER_PDF_DOWNLOADED',
+                $claim->claim_id,
+                null,
+                ['downloaded_by' => $user->name],
+                $user->user_id
+            );
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('exports.claim_voucher_pdf', compact('claim'));
+        $fileName = 'Voucher_CLM-' . str_pad($claim->claim_id, 4, '0', STR_PAD_LEFT) . '_' . date('Ymd') . '.pdf';
+        
+        return $pdf->download($fileName);
     }
 }

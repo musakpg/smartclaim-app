@@ -271,17 +271,17 @@ class VehicleController extends Controller
     public function managerIndex()
     {
         $companyVehicles = Vehicle::where('ownership_type', 'company')->orderBy('vehicle_id', 'desc')->get();
-        $pendingVehicles = Vehicle::with('owner')->where('ownership_type', 'personal')->where('approval_status', 'Pending')->orderBy('created_at', 'asc')->get();
-        $approvedPersonalVehicles = Vehicle::with('owner')->where('ownership_type', 'personal')->where('approval_status', 'Approved')->orderBy('updated_at', 'desc')->get();
-        $rejectedVehicles = Vehicle::with('owner')->where('ownership_type', 'personal')->where('approval_status', 'Rejected')->orderBy('updated_at', 'desc')->get();
+        $pendingStaffVehicles = Vehicle::with('owner')->where('ownership_type', 'personal')->where('approval_status', 'Pending')->orderBy('created_at', 'asc')->get();
+        $approvedStaffVehicles = Vehicle::with('owner')->where('ownership_type', 'personal')->where('approval_status', 'Approved')->orderBy('updated_at', 'desc')->get();
+        $rejectedStaffVehicles = Vehicle::with('owner')->where('ownership_type', 'personal')->where('approval_status', 'Rejected')->orderBy('updated_at', 'desc')->get();
 
         $logs = DB::table('vehicle_logs')->orderBy('log_id', 'desc')->take(10)->get();
 
         return view('manager.vehicles', compact(
             'companyVehicles',
-            'pendingVehicles',
-            'approvedPersonalVehicles',
-            'rejectedVehicles',
+            'pendingStaffVehicles',
+            'approvedStaffVehicles',
+            'rejectedStaffVehicles',
             'logs'
         ));
     }
@@ -318,6 +318,67 @@ class VehicleController extends Controller
         ]);
 
         return redirect()->back()->with('success', "Vehicle {$vehicle->plate_number} successfully marked as {$request->decision}.");
+    }
+
+    /**
+     * Manager approves a staff personal vehicle via the dedicated /approve route.
+     */
+    public function approve(Request $request, $id)
+    {
+        $vehicle = Vehicle::where('vehicle_id', $id)->firstOrFail();
+        $managerId   = Auth::id() ?? 1;
+        $managerName = Auth::user()->name ?? 'Executive Manager';
+
+        $vehicle->approval_status       = 'Approved';
+        $vehicle->approved_by           = $managerId;
+        $vehicle->approved_at           = now();
+        $vehicle->rejection_reason      = null;
+        $vehicle->roadtax_renewal_status = 'None';
+        $vehicle->save();
+
+        DB::table('vehicle_logs')->insert([
+            'operator_name' => $managerName,
+            'action_event'  => 'VEHICLE_VERIFICATION_APPROVED',
+            'plate_index'   => $vehicle->plate_number,
+            'description'   => "Manager {$managerName} approved personal vehicle {$vehicle->plate_number}.",
+            'ip_address'    => $request->ip() ?? '127.0.0.1',
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+
+        return redirect()->back()->with('success', "Vehicle {$vehicle->plate_number} has been approved successfully.");
+    }
+
+    /**
+     * Manager rejects a staff personal vehicle via the dedicated /reject route.
+     */
+    public function reject(Request $request, $id)
+    {
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500',
+        ]);
+
+        $vehicle = Vehicle::where('vehicle_id', $id)->firstOrFail();
+        $managerName = Auth::user()->name ?? 'Executive Manager';
+
+        $vehicle->approval_status       = 'Rejected';
+        $vehicle->approved_by           = null;
+        $vehicle->approved_at           = null;
+        $vehicle->rejection_reason      = $request->rejection_reason;
+        $vehicle->roadtax_renewal_status = 'None';
+        $vehicle->save();
+
+        DB::table('vehicle_logs')->insert([
+            'operator_name' => $managerName,
+            'action_event'  => 'VEHICLE_VERIFICATION_REJECTED',
+            'plate_index'   => $vehicle->plate_number,
+            'description'   => "Manager {$managerName} rejected personal vehicle {$vehicle->plate_number}. Reason: {$request->rejection_reason}",
+            'ip_address'    => $request->ip() ?? '127.0.0.1',
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+
+        return redirect()->back()->with('success', "Vehicle {$vehicle->plate_number} has been rejected.");
     }
 
     /**

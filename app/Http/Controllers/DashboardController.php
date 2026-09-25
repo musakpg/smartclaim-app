@@ -94,10 +94,31 @@ class DashboardController extends Controller
         }
 
         // =================================================================
-        // 4. RECENT CLAIMS FOR THIS LOGGED-IN STAFF
+        // 4. MONTHLY ENTITLEMENT TRACKER (CURRENT MONTH SPEND BY CATEGORY)
         // =================================================================
-        $recentClaims = DB::table('claims')
+        $currentMonth = Carbon::now()->month;
+        $monthlyCategorySpend = DB::table('claims')
+            ->select('predicted_category as category', DB::raw('SUM(amount) as total'))
+            ->whereYear('transaction_date', $currentYear)
+            ->whereMonth('transaction_date', $currentMonth)
             ->where('user_id', $userId)
+            ->whereNotIn('status', ['Rejected'])
+            ->groupBy('predicted_category')
+            ->get()
+            ->keyBy('category')
+            ->map(fn($item) => (float) $item->total)
+            ->toArray();
+
+        $expensePolicies = DB::table('expense_policies')
+            ->join('categories', 'expense_policies.category_id', '=', 'categories.id')
+            ->select('expense_policies.*', 'categories.name as category_name')
+            ->where('expense_policies.is_active', true)
+            ->get();
+
+        // =================================================================
+        // 5. RECENT CLAIMS FOR THIS LOGGED-IN STAFF
+        // =================================================================
+        $recentClaims = \App\Models\Claim::where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();
@@ -112,7 +133,9 @@ class DashboardController extends Controller
             'lineChartData' => $lineChartData,
             'barLabels' => $barLabels,
             'barValues' => $barValues,
-            'recentClaims' => $recentClaims
+            'recentClaims' => $recentClaims,
+            'monthlyCategorySpend' => $monthlyCategorySpend,
+            'expensePolicies' => $expensePolicies
         ]);
     }
 }

@@ -44,6 +44,15 @@ class Vehicle extends Model
     }
 
     /**
+     * Relationship: Standard 'user' alias for owner().
+     * Required by any code calling ->with('user'), ->load('user'), or $vehicle->user.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
+    }
+
+    /**
      * Relationship: The manager who approved/verified this vehicle.
      */
     public function approver()
@@ -64,7 +73,7 @@ class Vehicle extends Model
      */
     public function getIsExpiredAttribute(): bool
     {
-        return $this->roadtax_expiry ? Carbon::parse($this->roadtax_expiry)->isPast() : true;
+        return $this->roadtax_expiry ? Carbon::parse($this->roadtax_expiry)->endOfDay()->isPast() : true;
     }
 
     /**

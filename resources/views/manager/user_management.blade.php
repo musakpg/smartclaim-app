@@ -6,6 +6,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Staff & User Management</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -26,38 +28,24 @@
 
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-            <!-- Mobile Top Header -->
-            <header
-                class="lg:hidden flex items-center justify-between bg-[#0d1527] border-b border-slate-800 px-4 py-3 sticky top-0 z-30 shadow-md">
-                <div class="flex items-center gap-2.5">
-                    <div
-                        class="w-8 h-8 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400">
-                        <i class="fa-solid fa-crown text-sm"></i>
-                    </div>
-                    <div>
-                        <span class="text-sm font-black text-white tracking-tight leading-none block">SmartClaim</span>
-                        <span class="text-[9px] font-bold text-emerald-400 tracking-wider uppercase block">Manager
-                            Portal</span>
-                    </div>
-                </div>
 
-                <button type="button" @click="isMobileSidebarOpen = true"
-                    class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer">
-                    <i class="fa-solid fa-bars text-sm"></i>
-                </button>
-            </header>
 
             <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-y-auto space-y-6">
 
                 <!-- Header & Search Bar -->
                 <div
                     class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
+                                        <div>
+                        <div>
                         <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Staff & User Directory
                         </h1>
                         <p class="text-xs md:text-sm text-slate-500">Corporate employee registry, system authorization
                             levels, and registered reimbursement banking profiles.</p>
                     </div>
+                    <div class="hidden lg:flex items-center gap-3">
+                        <x-system-clock />
+                    </div>
+                </div>
 
                     <div class="w-full sm:w-72">
                         <div class="relative">
@@ -81,6 +69,7 @@
                                     <th class="p-4">Direct Banking Particulars</th>
                                     <th class="p-4">Staff Matrix ID</th>
                                     <th class="p-4 text-right">Banking Status</th>
+                                    <th class="p-4 text-center">Account Status</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 font-medium">
@@ -151,10 +140,106 @@
                                                 </span>
                                             @endif
                                         </td>
+                                        <!-- 6. Account Status Toggle -->
+                                        <td class="p-4 text-center">
+                                            <div x-data="{ 
+                                                isModalOpen: false, 
+                                                isProcessing: false,
+                                                isActive: {{ $regUser->is_active ? 'true' : 'false' }},
+                                                actionUrl: '{{ route('manager.user_management.toggle', $regUser->user_id) }}',
+                                                toggleStatus() {
+                                                    if (this.isActive) {
+                                                        this.isModalOpen = true; 
+                                                    } else {
+                                                        this.submitForm(); 
+                                                    }
+                                                },
+                                                submitForm() {
+                                                    this.isProcessing = true;
+                                                    this.$refs.form.submit();
+                                                }
+                                            }">
+                                                <!-- Toggle Switch and Label -->
+                                                <button type="button" @click="toggleStatus()" :disabled="isProcessing"
+                                                    class="flex items-center gap-2 mx-auto cursor-pointer disabled:cursor-not-allowed">
+                                                    
+                                                    <!-- Toggle Switch UI -->
+                                                    <div class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300"
+                                                        :class="isActive ? 'bg-emerald-500' : 'bg-slate-300'">
+                                                        
+                                                        <!-- Loading Spinner (Centered when processing) -->
+                                                        <div x-show="isProcessing" class="absolute inset-0 flex items-center justify-center">
+                                                            <i class="fa-solid fa-circle-notch fa-spin text-white text-[10px]"></i>
+                                                        </div>
+
+                                                        <!-- Toggle Knob -->
+                                                        <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-300 shadow-sm"
+                                                            :class="[isActive ? 'translate-x-4.5' : 'translate-x-1', isProcessing ? 'opacity-0' : 'opacity-100']">
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    <!-- Explicit Label -->
+                                                    <span class="text-[10px] font-bold uppercase tracking-wider transition-colors duration-300 w-14 text-left"
+                                                        :class="isActive ? 'text-emerald-600' : 'text-slate-500'"
+                                                        x-text="isActive ? 'Active' : 'Inactive'">
+                                                    </span>
+                                                </button>
+
+                                                <form x-ref="form" :action="actionUrl" method="POST" class="hidden">
+                                                    @csrf
+                                                </form>
+
+                                                <!-- Alpine.js Confirmation Modal -->
+                                                <template x-teleport="body">
+                                                    <div x-show="isModalOpen" style="display: none"
+                                                        class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                                                        <div x-show="isModalOpen"
+                                                            x-transition:enter="transition ease-out duration-300"
+                                                            x-transition:enter-start="opacity-0"
+                                                            x-transition:enter-end="opacity-100"
+                                                            x-transition:leave="transition ease-in duration-200"
+                                                            x-transition:leave-start="opacity-100"
+                                                            x-transition:leave-end="opacity-0"
+                                                            class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
+                                                            @click="isModalOpen = false"></div>
+
+                                                        <div x-show="isModalOpen"
+                                                            x-transition:enter="transition ease-out duration-300"
+                                                            x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                                                            x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                                                            x-transition:leave="transition ease-in duration-200"
+                                                            x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                                                            x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                                                            class="relative bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm mx-auto text-left z-10">
+
+                                                            <div class="flex items-center gap-3 mb-4">
+                                                                <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                                                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                                                </div>
+                                                                <h3 class="text-lg font-black text-slate-900 leading-tight">Confirm Deactivation</h3>
+                                                            </div>
+                                                            
+                                                            <p class="text-sm text-slate-600 mb-6 leading-relaxed">Are you sure you want to deactivate the account for <strong class="text-slate-900">{{ $regUser->name }}</strong>? The user will be immediately logged out and blocked from logging in.</p>
+
+                                                            <div class="flex justify-end gap-3">
+                                                                <button type="button" @click="isModalOpen = false"
+                                                                    class="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer">
+                                                                    Cancel
+                                                                </button>
+                                                                <button type="button" @click="isModalOpen = false; submitForm()"
+                                                                    class="px-4 py-2 text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm transition cursor-pointer">
+                                                                    Confirm Deactivation
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="p-8 text-center text-slate-400 font-medium">
+                                        <td colspan="6" class="p-8 text-center text-slate-400 font-medium">
                                             No employee records found in system.
                                         </td>
                                     </tr>

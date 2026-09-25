@@ -17,7 +17,7 @@ class CashAdvanceController extends Controller
         $userId = Auth::id() ?? 1;
         $advances = CashAdvance::where('user_id', $userId)->latest()->paginate(10);
         $totalActiveAdvance = CashAdvance::where('user_id', $userId)
-            ->where('status', 'Approved')
+            ->whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED'])
             ->sum('remaining_balance');
 
         return view('advances.index', compact('advances', 'totalActiveAdvance'));
@@ -46,14 +46,14 @@ class CashAdvanceController extends Controller
             'settled_amount' => 0.00,
             'remaining_balance' => $amount,
             'required_date' => $request->required_date,
-            'status' => 'Pending',
+            'status' => 'PENDING_APPROVAL',
         ]);
 
         NotificationService::notifyManagers(
             'New Cash Advance Requisition',
             "Staff submitted Advance Requisition #ADV-{$advance->advance_id} for RM " . number_format($amount, 2),
             'info',
-            route('manager.advances.index')
+            route('manager.advances.index') // Assuming this route still works
         );
 
         return redirect()->back()->with('success', 'Cash advance request submitted successfully for Manager approval.');
@@ -65,8 +65,8 @@ class CashAdvanceController extends Controller
     public function managerIndex()
     {
         $advances = CashAdvance::with('user')->latest()->paginate(10);
-        $pendingCount = CashAdvance::where('status', 'Pending')->count();
-        $totalDisbursed = CashAdvance::where('status', 'Approved')->sum('requested_amount');
+        $pendingCount = CashAdvance::where('status', 'PENDING_APPROVAL')->count();
+        $totalDisbursed = CashAdvance::whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED', 'CLEARED'])->sum('requested_amount');
 
         return view('manager.advances', compact('advances', 'pendingCount', 'totalDisbursed'));
     }
@@ -77,7 +77,7 @@ class CashAdvanceController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:Approved,Rejected',
+            'status' => 'required|in:DISBURSED_ACTIVE,REJECTED',
             'manager_remarks' => 'nullable|string',
         ]);
 
@@ -86,15 +86,28 @@ class CashAdvanceController extends Controller
         $advance->manager_remarks = $request->manager_remarks;
         $advance->save();
 
-        $notifType = $request->status === 'Approved' ? 'success' : 'danger';
+        $notifType = $request->status === 'DISBURSED_ACTIVE' ? 'success' : 'danger';
         NotificationService::send(
             $advance->user_id,
             "Advance Requisition {$request->status}",
             "Your cash advance requisition #ADV-{$advance->advance_id} for RM " . number_format($advance->requested_amount, 2) . " has been {$request->status}.",
             $notifType,
-            route('advances.index')
+            route('advances.index') // Note: Using generic route name based on existing setup
         );
 
         return redirect()->back()->with('success', "Requisition status updated to {$request->status}.");
+    }
+
+    /**
+     * Finance Desk: View Cash Advance Reconciliation Hub
+     */
+    public function financeIndex()
+    {
+        $advances = CashAdvance::with('user')->whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED', 'CLEARED'])->latest()->paginate(10);
+        $totalFloatIssued = CashAdvance::whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED', 'CLEARED'])->sum('requested_amount');
+        $totalReconciled = CashAdvance::whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED', 'CLEARED'])->sum('settled_amount');
+        $outstandingBalance = CashAdvance::whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED'])->sum('remaining_balance');
+
+        return view('finance.cash_advances.index', compact('advances', 'totalFloatIssued', 'totalReconciled', 'outstandingBalance'));
     }
 }

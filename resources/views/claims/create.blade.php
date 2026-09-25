@@ -1,14 +1,18 @@
 <!DOCTYPE html>
-<html lang="en" x-data="ocrForm()">
+<html lang="en" x-data="ocrForm()" @google-maps-loaded.window="initGoogleMapsDependentLogic()">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Submit Claim</title>
+    <meta name="google-maps-api-key" content="{{ config('services.google.maps_api_key', env('GOOGLE_MAPS_API_KEY')) }}">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://unpkg.com/imask"></script>
     <style>
         [x-cloak] {
             display: none !important;
@@ -120,14 +124,9 @@
 
                                     <!-- Direct Mobile Camera Snap Option -->
                                     <div class="block sm:hidden relative">
-                                        <input type="file" id="mobile_camera_capture" accept="image/*"
-                                            capture="environment"
-                                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
-                                            @change="handleFileChange($event)">
-                                        <button type="button"
+                                        <button type="button" @click="openCamera()"
                                             class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer">
-                                            <i class="fa-solid fa-camera text-sm text-emerald-400"></i> Snap Receipt via
-                                            Camera Direct
+                                            <i class="fa-solid fa-camera text-sm text-emerald-400"></i> Snap Receipt via Camera Direct
                                         </button>
                                     </div>
                                 </div>
@@ -202,10 +201,11 @@
                                     <div class="relative">
                                         <span
                                             class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs md:text-sm font-medium">RM</span>
-                                        <input type="number" step="0.01" name="amount" x-model="amount"
+                                        <input type="text" id="amount_input"
                                             @input.debounce.250ms="checkDuplicateAndPopup()" placeholder="0.00"
                                             :required="activeForm === 'Receipt'"
                                             class="w-full pl-11 pr-4 py-2.5 md:py-3 bg-white border border-slate-200 rounded-xl outline-none text-xs md:text-sm shadow-2xs font-bold font-mono">
+                                        <input type="hidden" name="amount" x-model="amount">
                                     </div>
                                 </div>
 
@@ -217,16 +217,9 @@
                                             @change="checkDuplicateAndPopup()" :required="activeForm === 'Receipt'"
                                             class="w-full px-4 py-2.5 md:py-3 bg-white border border-slate-200 rounded-xl outline-none text-xs md:text-sm shadow-2xs appearance-none transition-all">
                                             <option value="" disabled selected>Select a category</option>
-                                            <option value="Site Tools & Hardware">Site Tools & Hardware (Mr. DIY, Tools,
-                                                Repairs)</option>
-                                            <option value="Office Pantry & Amenities">Office Pantry & Amenities
-                                                (Groceries, Supplies)</option>
-                                            <option value="Staff Operational Meals">Staff Operational Meals</option>
-                                            <option value="Fuel & Fleet Logistics">Fuel & Fleet Logistics (Corporate
-                                                Fleet / Petrol)</option>
-                                            <option value="Office Supplies">Office Supplies & Stationery</option>
-                                            <option value="Travel">Travel & Lodging</option>
-                                            <option value="Transportation">Transportation & Toll</option>
+                                            @foreach($categories as $cat)
+                                                <option value="{{ $cat->name }}">{{ $cat->name }}</option>
+                                            @endforeach
                                         </select>
                                         <span
                                             class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
@@ -424,6 +417,7 @@
                                         class="w-full px-4 py-2.5 md:py-3 bg-white border border-slate-200 rounded-xl outline-none text-xs md:text-sm shadow-2xs">
                                 </div>
 
+
                                 <!-- Pure Numeric Distance Field (No "KM" string suffix in input value) -->
                                 <div class="space-y-1.5">
                                     <label class="block text-xs font-bold text-slate-700 tracking-wide">Total Distance
@@ -476,22 +470,38 @@
                             </div>
                         </div>
 
+                        <!-- Real-Time Policy Advisory Alert -->
+                        <div x-show="isPolicyBreached && activeForm === 'Receipt'" x-transition x-cloak
+                            class="p-4 bg-amber-50 border border-amber-300 rounded-2xl text-amber-800 text-xs font-semibold space-y-1.5 shadow-xs mb-4">
+                            <p class="font-bold text-sm text-amber-900 flex items-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation text-amber-600 text-base"></i>
+                                <span>Policy Advisory: Threshold Exceeded</span>
+                            </p>
+                            <div class="pl-6 space-y-1 text-amber-800 font-medium leading-relaxed">
+                                <p>
+                                    This amount exceeds the standard policy threshold (RM <span x-text="breachedPolicyLimit"></span>). A valid business justification is required for manager approval.
+                                </p>
+                            </div>
+                        </div>
+
                         <!-- Business Purpose Context Field -->
                         <div class="space-y-1.5 text-xs">
                             <label class="block text-xs font-bold text-slate-700 tracking-wide">Business Purpose Context
-                                *</label>
+                                <span x-show="(isPolicyBreached && activeForm === 'Receipt') || activeForm === 'Mileage'" class="text-rose-500">*</span>
+                            </label>
                             <textarea name="business_purpose" x-model="businessPurpose" rows="3"
                                 placeholder="Describe the corporate objective for this expenditure or journey..."
-                                required
+                                :required="(isPolicyBreached && activeForm === 'Receipt') || activeForm === 'Mileage'"
                                 class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none text-xs md:text-sm shadow-2xs resize-none"></textarea>
                         </div>
 
                         <!-- Submit Buttons -->
                         <div class="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t border-slate-100">
-                            <button type="submit" x-show="!isExtracting" :disabled="isDuplicate"
-                                :class="isDuplicate ? 'bg-slate-200 text-slate-400 border border-slate-300/60 cursor-not-allowed opacity-70' : 'bg-[#00d1b2] hover:bg-[#00bfa5] text-white cursor-pointer'"
-                                class="w-full sm:w-auto font-bold py-3 px-6 rounded-xl text-xs tracking-wider uppercase transition-all shadow-xs text-center">
-                                <span x-text="isDuplicate ? 'Submission Blocked' : 'Submit Claim'"></span>
+                            <button type="submit" x-show="!isExtracting" :disabled="isDuplicate || isSubmitting"
+                                :class="(isDuplicate || isSubmitting) ? 'bg-slate-200 text-slate-400 border border-slate-300/60 cursor-not-allowed opacity-70' : 'bg-[#00d1b2] hover:bg-[#00bfa5] text-white cursor-pointer'"
+                                class="w-full sm:w-auto font-bold py-3 px-6 rounded-xl text-xs tracking-wider uppercase transition-all shadow-xs text-center flex items-center justify-center gap-2">
+                                <template x-if="isSubmitting"><i class="fa-solid fa-spinner fa-spin"></i></template>
+                                <span x-text="isSubmitting ? 'Submitting...' : (isDuplicate ? 'Submission Blocked' : 'Submit Claim')"></span>
                             </button>
 
                             <button type="button" x-show="isExtracting" x-cloak disabled
@@ -534,6 +544,36 @@
         </div>
     </div>
 
+    <!-- WebRTC Camera OCR Modal -->
+    <div x-show="isCameraOpen" x-cloak
+        class="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm transition-all duration-300">
+        <div class="relative bg-black rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col"
+            @click.away="closeCamera()">
+            <div class="absolute top-0 inset-x-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/60 to-transparent">
+                <span class="text-white text-xs font-bold uppercase tracking-wide flex items-center gap-2">
+                    <i class="fa-solid fa-camera"></i> Quick Scan
+                </span>
+                <button type="button" @click="closeCamera()"
+                    class="text-white/80 hover:text-white transition-all text-xl cursor-pointer p-1 bg-black/40 rounded-full w-8 h-8 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="relative w-full aspect-[3/4] bg-slate-800 flex items-center justify-center overflow-hidden">
+                <video id="webrtc-video" autoplay playsinline class="w-full h-full object-cover"></video>
+                <div class="absolute inset-8 border-2 border-emerald-400/80 rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] pointer-events-none flex flex-col items-center justify-center">
+                    <span class="bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider mb-2">Align Receipt Here</span>
+                </div>
+            </div>
+            <div class="p-6 bg-slate-900 flex justify-center items-center gap-6">
+                <button type="button" @click="captureAndProcess()"
+                    class="w-16 h-16 rounded-full bg-white border-4 border-slate-300 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg cursor-pointer">
+                    <div class="w-12 h-12 rounded-full border border-slate-300"></div>
+                </button>
+            </div>
+        </div>
+        <canvas id="webrtc-canvas" class="hidden"></canvas>
+    </div>
+
     <!-- OCR Processing Modal Overlay -->
     <div x-show="isExtracting" x-cloak
         class="fixed inset-0 z-[200] flex flex-col items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md transition-all duration-300">
@@ -556,13 +596,40 @@
     </div>
 
     <!-- Google Places API and Alpine.js Form Engine -->
-    <script
-        src="https://maps.googleapis.com/maps/api/js?key={{ env('GOOGLE_MAPS_API_KEY') }}&libraries=places"></script>
+    <script>
+        function loadGoogleMaps(callback) {
+            const apiKey = document.querySelector('meta[name="google-maps-api-key"]')?.getAttribute('content');
+            if (!apiKey) {
+                console.error('Google Maps API key is missing.');
+                return;
+            }
+            if (window.google && window.google.maps && window.google.maps.Map) {
+                callback();
+                return;
+            }
+            if (document.getElementById('google-maps-script')) {
+                // Already appended, wait for it
+                window.addEventListener('google-maps-loaded', callback, { once: true });
+                return;
+            }
+            window.initGoogleMapsCallback = function() {
+                window.dispatchEvent(new Event('google-maps-loaded'));
+                callback();
+            };
+            const script = document.createElement('script');
+            script.id = 'google-maps-script';
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&callback=initGoogleMapsCallback`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+    </script>
     <script>
         // Comment: Alpine.js form controller for SmartClaim receipt & mileage validation
         function ocrForm() {
             return {
                 isMobileSidebarOpen: false,
+                isSubmitting: false,
                 activeForm: (new URLSearchParams(window.location.search)).get('type') === 'Mileage' ? 'Mileage' : 'Receipt',
                 selectedVehicleId: '',
                 vehicleType: 'Car',
@@ -575,7 +642,9 @@
                 isDuplicate: false,
                 duplicateMessage: '',
                 isModalOpen: false,
-                fileName: '',
+                  isCameraOpen: false,
+                  videoStream: null,
+                  fileName: '',
                 imagePreview: '',
                 merchant: '',
                 invoiceNo: '',
@@ -587,11 +656,72 @@
                 category: '',
                 businessPurpose: '',
                 items: [],
+                currencyMask: null,
+                userLocationBounds: null,
+                expensePolicies: @json($expensePolicies ?? []),
+
+                get isPolicyBreached() {
+                    if (this.activeForm !== 'Receipt' || !this.category || !this.amount) return false;
+                    const policy = this.expensePolicies.find(p => p.category_name === this.category);
+                    if (policy && policy.max_single_claim_limit) {
+                        return parseFloat(this.amount) > parseFloat(policy.max_single_claim_limit);
+                    }
+                    return false;
+                },
+
+                get breachedPolicyLimit() {
+                    const policy = this.expensePolicies.find(p => p.category_name === this.category);
+                    return policy ? parseFloat(policy.max_single_claim_limit).toFixed(2) : '0.00';
+                },
 
                 init() {
-                    if (this.activeForm === 'Mileage') {
-                        this.$nextTick(() => { this.initializeGooglePlacesEngine(); });
+                    const amountInput = document.getElementById('amount_input');
+                    if (amountInput) {
+                        this.currencyMask = IMask(amountInput, {
+                            mask: Number,
+                            scale: 2,
+                            signed: false,
+                            thousandsSeparator: ',',
+                            padFractionalZeros: true,
+                            normalizeZeros: true,
+                            radix: '.',
+                            mapToRadix: ['.']
+                        });
+                        this.currencyMask.on('accept', () => {
+                            this.amount = this.currencyMask.unmaskedValue;
+                        });
+                        
+                        this.$watch('amount', value => {
+                            if (this.currencyMask && value !== this.currencyMask.unmaskedValue) {
+                                this.currencyMask.unmaskedValue = String(value);
+                            }
+                        });
                     }
+
+                    // Always call init logic; the loader handles async map loading
+                    this.initGoogleMapsDependentLogic();
+                },
+
+                initGoogleMapsDependentLogic() {
+                    loadGoogleMaps(() => {
+                        if (this.activeForm === 'Mileage') {
+                            this.$nextTick(() => { this.initializeGooglePlacesEngine(); });
+                        }
+                        
+                        if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition((position) => {
+                                if (typeof google === 'undefined') return;
+                                const pos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                                const circle = new google.maps.Circle({
+                                    center: pos,
+                                    radius: position.coords.accuracy
+                                });
+                                this.userLocationBounds = circle.getBounds();
+                            }, () => {
+                                // Default location fallback if needed
+                            });
+                        }
+                    });
                 },
 
                 // Helper to check fuel categories dynamically
@@ -624,6 +754,11 @@
                     if (!startAddressField || !targetAddressField || typeof google === 'undefined') return;
 
                     const geolocationOptions = { componentRestrictions: { country: 'my' } };
+                    
+                    if (this.userLocationBounds) {
+                        geolocationOptions.bounds = this.userLocationBounds;
+                    }
+                    
                     const originAutocomplete = new google.maps.places.Autocomplete(startAddressField, geolocationOptions);
                     const destinationAutocomplete = new google.maps.places.Autocomplete(targetAddressField, geolocationOptions);
 
@@ -754,6 +889,48 @@
                         });
                 },
 
+                openCamera() {
+                    this.isCameraOpen = true;
+                    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                        .then(stream => {
+                            this.videoStream = stream;
+                            const videoEl = document.getElementById('webrtc-video');
+                            if (videoEl) {
+                                videoEl.srcObject = stream;
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Camera access denied or unavailable.', err);
+                            this.isCameraOpen = false;
+                            Swal.fire('Camera Error', 'Unable to access your device camera. Please check permissions.', 'error');
+                        });
+                },
+
+                closeCamera() {
+                    if (this.videoStream) {
+                        this.videoStream.getTracks().forEach(track => track.stop());
+                        this.videoStream = null;
+                    }
+                    this.isCameraOpen = false;
+                },
+
+                captureAndProcess() {
+                    const videoEl = document.getElementById('webrtc-video');
+                    const canvas = document.getElementById('webrtc-canvas');
+                    if (!videoEl || !canvas) return;
+
+                    canvas.width = videoEl.videoWidth;
+                    canvas.height = videoEl.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+                    canvas.toBlob((blob) => {
+                        this.closeCamera();
+                        const file = new File([blob], 'camera_capture.jpg', { type: 'image/jpeg' });
+                        this.handleFileChange({ target: { files: [file] } });
+                    }, 'image/jpeg', 0.85);
+                },
+
                 addItemRow() {
                     this.items.push({ item_name: '', quantity: 1, unit_price: '0.00', subtotal: '0.00' });
                 },
@@ -856,6 +1033,7 @@
                         }
                         this.amount = this.allowanceTotal;
                     }
+                    this.isSubmitting = true;
                     return true;
                 }
             };

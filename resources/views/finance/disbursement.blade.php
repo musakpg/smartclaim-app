@@ -32,6 +32,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Payment Disbursement Desk</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -51,33 +53,22 @@
         <!-- Main Content Wrapper -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-            <!-- Mobile Sticky Top Header -->
-            <header class="lg:hidden flex items-center justify-between bg-[#0d1527] border-b border-slate-800 px-4 py-3 sticky top-0 z-30 shadow-md">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-lg bg-[#00d1b2]/10 border border-[#00d1b2]/20 flex items-center justify-center text-[#00d1b2]">
-                        <i class="fa-solid fa-shield text-sm"></i>
-                    </div>
-                    <div>
-                        <span class="text-sm font-black text-white tracking-tight leading-none block">SmartClaim</span>
-                        <span class="text-[9px] font-bold text-[#00d1b2] tracking-wider uppercase block">Finance Portal</span>
-                    </div>
-                </div>
 
-                <button type="button" @click="isMobileSidebarOpen = true"
-                    class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer">
-                    <i class="fa-solid fa-bars text-sm"></i>
-                </button>
-            </header>
 
             <!-- Main Page Content -->
             <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-y-auto space-y-6">
 
                 <!-- Title & Actions -->
                 <div class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
+                                        <div>
+                        <div>
                         <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Payment Disbursement Desk</h1>
                         <p class="text-xs md:text-sm text-slate-500">Execute electronic fund reimbursements individually or in batch with automated AI bank slip audit.</p>
                     </div>
+                    <div class="hidden lg:flex items-center gap-3">
+                        <x-system-clock />
+                    </div>
+                </div>
 
                     <!-- Dynamic Batch Payout Trigger Button -->
                     <div x-show="selectedBatchIds.length > 0" x-cloak class="flex items-center gap-2">
@@ -169,11 +160,11 @@
                                             </td>
                                             <td class="p-3.5">
                                                 <span class="font-black text-slate-900 block font-mono">#CLM-{{ $claim->claim_id }}</span>
-                                                <span class="text-[11px] text-slate-500">{{ $claim->claim_type === 'Mileage' ? ($claim->title ?? 'Mileage Allowance') : $claim->merchant_name }}</span>
+                                                <span class="text-[11px] text-slate-500 block truncate max-w-[150px] sm:max-w-xs">{{ $claim->claim_type === 'Mileage' ? ($claim->title ?? 'Mileage Allowance') : $claim->merchant_name }}</span>
                                             </td>
                                             <td class="p-3.5">
-                                                <span class="font-bold text-slate-800 block">{{ $claim->user->name ?? 'Staff' }}</span>
-                                                <span class="text-[10px] text-slate-400 font-mono">
+                                                <span class="font-bold text-slate-800 block truncate max-w-[150px] sm:max-w-xs">{{ $claim->user->name ?? 'Staff' }}</span>
+                                                <span class="text-[10px] text-slate-400 font-mono truncate block max-w-[150px] sm:max-w-xs">
                                                     {{ $claim->user->bank_name ?? 'No Bank' }} — {{ $claim->user->bank_account_no ?? 'Missing' }}
                                                 </span>
                                             </td>
@@ -223,11 +214,11 @@
                                             @click="selectedClaim = {{ json_encode($paid->load(['items', 'user'])) }}; isDetailModalOpen = true;">
                                             <td class="p-3.5">
                                                 <span class="font-black text-slate-900 block font-mono">#CLM-{{ $paid->claim_id }}</span>
-                                                <span class="text-[11px] text-slate-500">{{ $paid->claim_type === 'Mileage' ? ($paid->title ?? 'Mileage Allowance') : $paid->merchant_name }}</span>
+                                                <span class="text-[11px] text-slate-500 block truncate max-w-[150px] sm:max-w-xs">{{ $paid->claim_type === 'Mileage' ? ($paid->title ?? 'Mileage Allowance') : $paid->merchant_name }}</span>
                                             </td>
                                             <td class="p-3.5">
-                                                <span class="font-bold text-slate-800 block">{{ $paid->user->name ?? 'Staff' }}</span>
-                                                <span class="text-[10px] text-slate-400 font-mono">{{ $paid->user->email ?? 'N/A' }}</span>
+                                                <span class="font-bold text-slate-800 block truncate max-w-[150px] sm:max-w-xs">{{ $paid->user->name ?? 'Staff' }}</span>
+                                                <span class="text-[10px] text-slate-400 font-mono block truncate max-w-[150px] sm:max-w-xs">{{ $paid->user->email ?? 'N/A' }}</span>
                                             </td>
                                             <td class="p-3.5">
                                                 <span class="text-sm font-black text-emerald-700 font-mono">RM {{ number_format($paid->amount, 2) }}</span>
@@ -349,8 +340,8 @@
                                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-2 max-h-56 overflow-hidden flex items-center justify-center relative group">
                                     <template x-if="selectedClaim.receipt_image_path">
                                         <div class="w-full h-full flex items-center justify-center cursor-zoom-in"
-                                            @click="zoomImageUrl = '/storage/' + selectedClaim.receipt_image_path; zoomImageTitle = 'Original Merchant Receipt'; isZoomModalOpen = true;">
-                                            <img :src="'/storage/' + selectedClaim.receipt_image_path" alt="Merchant Receipt"
+                                            @click="zoomImageUrl = '/files/' + selectedClaim.receipt_image_path; zoomImageTitle = 'Original Merchant Receipt'; isZoomModalOpen = true;">
+                                            <img :src="'/files/' + selectedClaim.receipt_image_path" alt="Merchant Receipt"
                                                 class="max-h-52 object-contain rounded-xl transition group-hover:scale-[1.02]">
                                             <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-2xl transition text-white font-bold gap-1 text-xs backdrop-blur-3xs">
                                                 <i class="fa-solid fa-magnifying-glass-plus"></i> Click to Zoom
@@ -380,7 +371,7 @@
                                                 <span class="font-bold text-slate-800 block">Bank Transfer Slip (PDF)</span>
                                                 <span class="text-[10px] text-slate-400 font-mono truncate max-w-xs block mx-auto" x-text="selectedClaim.payment_proof_path.split('/').pop()"></span>
                                             </div>
-                                            <a :href="'/storage/' + selectedClaim.payment_proof_path" target="_blank"
+                                            <a :href="'/files/' + selectedClaim.payment_proof_path" target="_blank"
                                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-xs">
                                                 <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> View / Download PDF
                                             </a>
@@ -389,8 +380,8 @@
 
                                     <template x-if="selectedClaim.payment_proof_path && !selectedClaim.payment_proof_path.toLowerCase().endsWith('.pdf')">
                                         <div class="w-full h-full flex items-center justify-center cursor-zoom-in"
-                                            @click="zoomImageUrl = '/storage/' + selectedClaim.payment_proof_path; zoomImageTitle = 'Bank Transfer Slip'; isZoomModalOpen = true;">
-                                            <img :src="'/storage/' + selectedClaim.payment_proof_path" alt="Bank Transfer Slip"
+                                            @click="zoomImageUrl = '/files/' + selectedClaim.payment_proof_path; zoomImageTitle = 'Bank Transfer Slip'; isZoomModalOpen = true;">
+                                            <img :src="'/files/' + selectedClaim.payment_proof_path" alt="Bank Transfer Slip"
                                                 class="max-h-52 object-contain rounded-xl transition group-hover:scale-[1.02]">
                                             <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-2xl transition text-white font-bold gap-1 text-xs backdrop-blur-3xs">
                                                 <i class="fa-solid fa-magnifying-glass-plus"></i> Click to Zoom
@@ -458,8 +449,7 @@
             </div>
 
             <template x-if="selectedClaim">
-                <form :action="'/finance/disbursement/' + selectedClaim.claim_id + '/settle'" method="POST"
-                    enctype="multipart/form-data" class="space-y-4 text-xs">
+                <form :action="'/finance/disbursement/' + selectedClaim.claim_id + '/settle'" method="POST" enctype="multipart/form-data" class="space-y-4 text-xs" x-data="{ loading: false }" @submit="loading = true">
                     @csrf
                     <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
                         <span class="text-[10px] text-slate-400 font-bold uppercase block">Payout Beneficiary & Amount</span>
@@ -515,9 +505,7 @@
                     <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                         <button type="button" @click="isModalOpen = false"
                             class="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl text-xs hover:bg-slate-200 transition cursor-pointer">Cancel</button>
-                        <button type="submit"
-                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer transition">
-                            <i class="fa-solid fa-check mr-1"></i> Settle & Disburse
+                        <button type="submit" :disabled="loading" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer transition disabled:opacity-50"><span x-show="!loading"><i class="fa-solid fa-check mr-1"></i> Settle & Disburse</span><span x-show="loading"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Processing...</span>
                         </button>
                     </div>
                 </form>
@@ -542,7 +530,7 @@
                 </button>
             </div>
 
-            <form action="{{ route('finance.disbursement.batch_settle') }}" method="POST" enctype="multipart/form-data" class="space-y-4 text-xs">
+            <form action="{{ route('finance.disbursement.batch_settle') }}" method="POST" enctype="multipart/form-data" class="space-y-4 text-xs" x-data="{ loading: false }" @submit="loading = true">
                 @csrf
                 <div class="p-3.5 bg-blue-50/60 rounded-2xl border border-blue-100 space-y-1.5">
                     <div class="flex items-center justify-between">
@@ -604,9 +592,7 @@
                 <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                     <button type="button" @click="isBatchModalOpen = false"
                         class="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl text-xs hover:bg-slate-200 transition cursor-pointer">Cancel</button>
-                    <button type="submit"
-                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer transition">
-                        <i class="fa-solid fa-check mr-1"></i> Disburse All (<span x-text="selectedBatchIds.length"></span>) Vouchers
+                    <button type="submit" :disabled="loading" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer transition disabled:opacity-50"><span x-show="!loading"><i class="fa-solid fa-check mr-1"></i> Disburse All (<span x-text="selectedBatchIds.length"></span>) Vouchers</span><span x-show="loading"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Processing...</span>
                     </button>
                 </div>
             </form>
@@ -616,3 +602,5 @@
 </body>
 
 </html>
+
+

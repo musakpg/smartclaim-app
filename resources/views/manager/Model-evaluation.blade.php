@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - AI & NLP Model Evaluation</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -18,7 +20,7 @@
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
     x-data="{ isMobileSidebarOpen: false, isUploadModalOpen: false, isSubmitting: false }">
 
-    <div class="flex min-h-screen">
+    <div class="flex flex-col lg:flex-row min-h-screen">
         <!-- Reusable Manager Sidebar -->
         @include('layouts.partials.manager-sidebar')
 
@@ -27,11 +29,16 @@
 
             <!-- Header & Actions -->
             <div class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
+                                    <div>
+                        <div>
                     <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">AI & NLP Model Evaluation
                     </h1>
                     <p class="text-xs md:text-sm text-slate-500">TF-IDF Vector Space Category Classifier & OCR Field
                         Extraction Benchmark (FYP Thesis Metrics).</p>
+                    </div>
+                    <div class="hidden lg:flex items-center gap-3">
+                        <x-system-clock />
+                    </div>
                 </div>
                 <div class="flex items-center gap-2">
                     <button type="button" @click="isUploadModalOpen = true"
@@ -69,7 +76,7 @@
             @endif
 
             <!-- Overall Performance Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs space-y-1">
                     <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">TF-IDF Accuracy</span>
                     <h3
@@ -79,57 +86,97 @@
                     <p class="text-[11px] text-slate-400">Classification Accuracy</p>
                 </div>
                 <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs space-y-1">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">OCR Value
-                        Precision</span>
-                    <h3 class="text-2xl font-black font-mono text-blue-600">
-                        {{ number_format($ocrAmountAccuracy, 1) }}%
-                    </h3>
-                    <p class="text-[11px] text-slate-400">Grand Total Extraction Rate</p>
-                </div>
-                <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs space-y-1">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Avg Inference
-                        Latency</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Avg Inference Latency</span>
                     <h3 class="text-2xl font-black font-mono text-slate-900">
                         {{ number_format($avgExecutionTime, 2) }} <span
                             class="text-xs font-sans font-bold text-slate-500">ms</span>
                     </h3>
                     <p class="text-[11px] text-slate-400">Per sample execution</p>
                 </div>
+            </div>
+
+            <!-- OCR Extraction Precision Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                 <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs space-y-1">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Evaluated Corpus</span>
-                    <h3 class="text-2xl font-black font-mono text-slate-900">
-                        {{ $evaluatedCount }} / {{ $totalSamples }}
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Amount Precision</span>
+                    <h3 class="text-2xl font-black font-mono text-blue-600">
+                        {{ number_format($ocrAmountAccuracy, 1) }}%
                     </h3>
-                    <p class="text-[11px] text-slate-400">Standard Test Dataset</p>
+                    <p class="text-[11px] text-slate-400">Grand Total Extraction Rate</p>
+                </div>
+                <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs space-y-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Merchant Precision</span>
+                    <h3 class="text-2xl font-black font-mono text-indigo-600">
+                        {{ number_format($ocrMerchantAccuracy, 1) }}%
+                    </h3>
+                    <p class="text-[11px] text-slate-400">Merchant Name Rate</p>
+                </div>
+                <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs space-y-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Date Precision</span>
+                    <h3 class="text-2xl font-black font-mono text-purple-600">
+                        {{ number_format($ocrDateAccuracy, 1) }}%
+                    </h3>
+                    <p class="text-[11px] text-slate-400">Receipt Date Rate</p>
+                </div>
+                <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs space-y-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Invoice No. Precision</span>
+                    <h3 class="text-2xl font-black font-mono text-pink-600">
+                        {{ number_format($ocrTaxInvoiceAccuracy, 1) }}%
+                    </h3>
+                    <p class="text-[11px] text-slate-400">Invoice Number Rate</p>
+                </div>
+            </div>
+            <!-- Active Learning Impact -->
+            <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs p-5 mt-4 space-y-4 col-span-1 sm:col-span-2 md:col-span-4">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-emerald-500"></i> Active Learning Impact (Model Improvement)
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-1">
+                            <span class="text-slate-500">Baseline Accuracy (Day 1)</span>
+                            <span class="text-slate-800">{{ number_format($baselineAccuracy, 1) }}%</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2">
+                            <div class="bg-slate-300 h-2 rounded-full" style="width: {{ $baselineAccuracy }}%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-1">
+                            <span class="text-emerald-600">Current Accuracy (After Manager Corrections)</span>
+                            <span class="text-emerald-700">{{ number_format($categoryAccuracy, 1) }}%</span>
+                        </div>
+                        <div class="w-full bg-emerald-100 rounded-full h-2">
+                            <div class="bg-emerald-500 h-2 rounded-full transition-all duration-1000" style="width: {{ $categoryAccuracy }}%"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Confusion Matrix & Classification Metrics Table -->
-            <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs p-5 space-y-4">
-                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-table-cells text-blue-600"></i> Category Confusion Matrix & Information
-                    Retrieval Metrics
-                </h3>
+            <!-- Classification Metrics per Category -->
+            <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden mt-6">
+                <div class="p-4 border-b border-slate-100 font-bold text-xs text-slate-800 flex justify-between items-center">
+                    <span>TF-IDF Vector Space Precision & Recall Matrix</span>
+                </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs min-w-[650px]">
-                        <thead
-                            class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                    <table class="w-full text-left text-xs min-w-[700px]">
+                        <thead class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                             <tr>
-                                <th class="p-3">Expense Category</th>
-                                <th class="p-3 text-center">TP</th>
-                                <th class="p-3 text-center">FP</th>
-                                <th class="p-3 text-center">FN</th>
+                                <th class="p-3">Category Class</th>
+                                <th class="p-3 text-center">True Pos (TP)</th>
+                                <th class="p-3 text-center">False Pos (FP)</th>
+                                <th class="p-3 text-center">False Neg (FN)</th>
                                 <th class="p-3 text-center">Precision</th>
                                 <th class="p-3 text-center">Recall</th>
                                 <th class="p-3 text-center">F1-Score</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 font-medium">
-                            @foreach($confusionMatrix as $categoryName => $metric)
+                            @foreach($confusionMatrix ?? [] as $categoryName => $metric)
                                 @php
-                                    $tp = $metric['TP'];
-                                    $fp = $metric['FP'];
-                                    $fn = $metric['FN'];
+                                    $tp = $metric['TP'] ?? 0;
+                                    $fp = $metric['FP'] ?? 0;
+                                    $fn = $metric['FN'] ?? 0;
                                     $precision = ($tp + $fp) > 0 ? ($tp / ($tp + $fp)) : 0;
                                     $recall = ($tp + $fn) > 0 ? ($tp / ($tp + $fn)) : 0;
                                     $f1 = ($precision + $recall) > 0 ? (2 * ($precision * $recall) / ($precision + $recall)) : 0;
@@ -280,3 +327,4 @@
 </body>
 
 </html>
+

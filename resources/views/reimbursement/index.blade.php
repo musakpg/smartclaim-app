@@ -12,6 +12,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Reimbursement Settlement Status</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -37,7 +39,8 @@
                     <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Reimbursement Payouts</h1>
                     <p class="text-xs md:text-sm text-slate-500">Track approved expense vouchers, estimated payout schedules, and bank transfer reference IDs.</p>
                 </div>
-                <div class="hidden lg:block">
+                <div class="hidden lg:flex items-center gap-3">
+                    <x-system-clock />
                     @include('layouts.partials.notification-bell')
                 </div>
             </div>
@@ -239,8 +242,8 @@
                                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-2 max-h-56 overflow-hidden flex items-center justify-center relative group">
                                     <template x-if="selectedClaim.receipt_image_path">
                                         <div class="w-full h-full flex items-center justify-center cursor-zoom-in"
-                                            @click="zoomImageUrl = '/storage/' + selectedClaim.receipt_image_path; zoomImageTitle = 'Original Merchant Receipt'; isZoomModalOpen = true;">
-                                            <img :src="'/storage/' + selectedClaim.receipt_image_path" alt="Merchant Receipt"
+                                            @click="zoomImageUrl = '/files/' + selectedClaim.receipt_image_path; zoomImageTitle = 'Original Merchant Receipt'; isZoomModalOpen = true;">
+                                            <img :src="'/files/' + selectedClaim.receipt_image_path" alt="Merchant Receipt"
                                                 class="max-h-52 object-contain rounded-xl transition group-hover:scale-[1.02]">
                                             <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-2xl transition text-white font-bold gap-1 text-xs backdrop-blur-3xs">
                                                 <i class="fa-solid fa-magnifying-glass-plus"></i> Click to Zoom
@@ -267,7 +270,7 @@
                                                 <span class="font-bold text-slate-800 block">Bank Transfer Slip (PDF)</span>
                                                 <span class="text-[10px] text-slate-400 font-mono truncate max-w-xs block mx-auto" x-text="selectedClaim.payment_proof_path.split('/').pop()"></span>
                                             </div>
-                                            <a :href="'/storage/' + selectedClaim.payment_proof_path" target="_blank"
+                                            <a :href="'/files/' + selectedClaim.payment_proof_path" target="_blank"
                                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-xs">
                                                 <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> View / Download PDF
                                             </a>
@@ -277,8 +280,8 @@
                                     <!-- Case B: Proof is an Image (JPG/PNG) -->
                                     <template x-if="selectedClaim.payment_proof_path && !selectedClaim.payment_proof_path.toLowerCase().endsWith('.pdf')">
                                         <div class="w-full h-full flex items-center justify-center cursor-zoom-in"
-                                            @click="zoomImageUrl = '/storage/' + selectedClaim.payment_proof_path; zoomImageTitle = 'Bank Transfer Slip'; isZoomModalOpen = true;">
-                                            <img :src="'/storage/' + selectedClaim.payment_proof_path" alt="Bank Transfer Slip"
+                                            @click="zoomImageUrl = '/files/' + selectedClaim.payment_proof_path; zoomImageTitle = 'Bank Transfer Slip'; isZoomModalOpen = true;">
+                                            <img :src="'/files/' + selectedClaim.payment_proof_path" alt="Bank Transfer Slip"
                                                 class="max-h-52 object-contain rounded-xl transition group-hover:scale-[1.02]">
                                             <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-2xl transition text-white font-bold gap-1 text-xs backdrop-blur-3xs">
                                                 <i class="fa-solid fa-magnifying-glass-plus"></i> Click to Zoom

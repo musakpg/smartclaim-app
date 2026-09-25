@@ -13,6 +13,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Executive BI Reports & Analytics</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -27,18 +29,23 @@
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
     :class="(isStaffModalOpen || isZoomModalOpen || isMobileSidebarOpen) ? 'overflow-hidden' : ''">
 
-    <div class="flex min-h-screen">
+    <div class="flex flex-col lg:flex-row min-h-screen">
         @include('layouts.partials.manager-sidebar')
 
         <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 overflow-y-auto space-y-6">
 
             <!-- Header & Action Filter -->
             <div class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
+                                    <div>
+                        <div>
                     <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Executive BI & Analytics
                     </h1>
                     <p class="text-xs md:text-sm text-slate-500">Corporate expenditure metrics, departmental trends, and
                         budgetary reporting.</p>
+                    </div>
+                    <div class="hidden lg:flex items-center gap-3">
+                        <x-system-clock />
+                    </div>
                 </div>
 
                 <div class="flex items-center gap-3">
@@ -409,8 +416,8 @@
                                     class="rounded-2xl border border-slate-200 bg-slate-50 p-2 max-h-48 overflow-hidden flex items-center justify-center relative group">
                                     <template x-if="inspectingClaim.receipt_image_path">
                                         <div class="w-full h-full flex items-center justify-center cursor-zoom-in"
-                                            @click="zoomImageUrl = '/storage/' + inspectingClaim.receipt_image_path; zoomImageTitle = 'Original Merchant Receipt'; isZoomModalOpen = true;">
-                                            <img :src="'/storage/' + inspectingClaim.receipt_image_path"
+                                            @click="zoomImageUrl = '/files/' + inspectingClaim.receipt_image_path; zoomImageTitle = 'Original Merchant Receipt'; isZoomModalOpen = true;">
+                                            <img :src="'/files/' + inspectingClaim.receipt_image_path"
                                                 alt="Merchant Receipt"
                                                 class="max-h-44 object-contain rounded-xl transition group-hover:scale-[1.02]">
                                             <div
@@ -440,7 +447,7 @@
                                             </div>
                                             <span class="font-bold text-slate-800 block text-xs">Bank Transfer Slip
                                                 (PDF)</span>
-                                            <a :href="'/storage/' + inspectingClaim.payment_proof_path" target="_blank"
+                                            <a :href="'/files/' + inspectingClaim.payment_proof_path" target="_blank"
                                                 class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[11px] transition shadow-xs">
                                                 <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> View /
                                                 Download PDF
@@ -452,8 +459,8 @@
                                     <template
                                         x-if="inspectingClaim.payment_proof_path && !inspectingClaim.payment_proof_path.toLowerCase().endsWith('.pdf')">
                                         <div class="w-full h-full flex items-center justify-center cursor-zoom-in"
-                                            @click="zoomImageUrl = '/storage/' + inspectingClaim.payment_proof_path; zoomImageTitle = 'Bank Transfer Slip'; isZoomModalOpen = true;">
-                                            <img :src="'/storage/' + inspectingClaim.payment_proof_path"
+                                            @click="zoomImageUrl = '/files/' + inspectingClaim.payment_proof_path; zoomImageTitle = 'Bank Transfer Slip'; isZoomModalOpen = true;">
+                                            <img :src="'/files/' + inspectingClaim.payment_proof_path"
                                                 alt="Bank Transfer Slip"
                                                 class="max-h-44 object-contain rounded-xl transition group-hover:scale-[1.02]">
                                             <div

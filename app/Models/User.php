@@ -18,7 +18,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role'
+        'role',
+        'is_active'
     ];
 
     protected $hidden = [
@@ -53,5 +54,18 @@ class User extends Authenticatable
     public function vehicleAssignments()
     {
         return $this->hasMany(VehicleAssignment::class, 'user_id', 'user_id');
+    }
+
+    public function cashAdvances()
+    {
+        return $this->hasMany(CashAdvance::class, 'user_id', 'user_id');
+    }
+
+    public function activeCashAdvance()
+    {
+        return $this->hasOne(CashAdvance::class, 'user_id', 'user_id')
+                    ->whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED'])
+                    ->where('remaining_balance', '>', 0)
+                    ->latestOfMany('advance_id');
     }
 }

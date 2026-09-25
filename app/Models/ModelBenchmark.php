@@ -18,8 +18,17 @@ class ModelBenchmark extends Model
         'predicted_category',
         'actual_amount',
         'extracted_amount',
+        'actual_merchant',
+        'extracted_merchant',
+        'actual_date',
+        'extracted_date',
+        'actual_tax_invoice',
+        'extracted_tax_invoice',
         'is_category_correct',
         'is_amount_correct',
+        'is_merchant_correct',
+        'is_date_correct',
+        'is_tax_invoice_correct',
         'processing_time_ms',
     ];
 }

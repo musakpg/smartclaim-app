@@ -9,6 +9,8 @@ use App\Models\Vehicle;
 use App\Models\MileageRate;
 use App\Models\AuditLog;
 use App\Models\ExpensePolicy;
+use App\Models\Category;
+use App\Models\ClaimAuditReason;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -120,13 +122,42 @@ class ClaimController extends Controller
             ->orderBy('plate_number', 'asc')
             ->get();
 
-        return view('claims.create', compact('personalVehicles', 'companyFleet'));
+        $categories = Category::where('is_active', true)->get();
+
+        $expensePolicies = \App\Models\ExpensePolicy::with('category')->where('is_active', true)->get()->map(function ($policy) {
+            $policy->category_name = $policy->category->name ?? '';
+            return $policy;
+        });
+        return view('claims.create', compact('personalVehicles', 'companyFleet', 'categories', 'expensePolicies'));
     }
 
-    public function history()
+    public function history(\Illuminate\Http\Request $request)
     {
-        $claims = Claim::latest()->get();
-        return view('claims.history', compact('claims'));
+        $claimsQuery = Claim::with(['items', 'auditLogs.user'])->where('user_id', auth()->id())->latest();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            $claims = $claimsQuery->get()->map(function($c) {
+                return array_merge($c->toArray(), [
+                    'items' => $c->items->toArray(),
+                    'created_at_formatted' => $c->created_at->format('Y-m-d H:i'),
+                    'audit_logs' => $c->auditLogs->map(fn($log) => array_merge($log->toArray(), [
+                        'user_name' => $log->user->name ?? 'System',
+                        'user_role' => $log->user->role ?? 'System',
+                    ]))->values()->toArray(),
+                    'forensic_hash' => hash('sha256', $c->claim_id . $c->created_at . $c->amount),
+                    'estimated_completion_at' => $c->estimated_completion_at ? $c->estimated_completion_at->format('M d, Y') : null,
+                    'sla_status' => $c->sla_status,
+                    'time_remaining_human' => $c->time_remaining_human,
+                ]);
+            });
+            return response()->json($claims);
+        }
+
+                $slaTrackingService = app(\App\Services\SlaTrackingService::class);
+        $avgManagerTat = $slaTrackingService->getAverageManagerTurnaroundTime();
+        $avgFinanceTat = $slaTrackingService->getAverageFinanceSettlementTime();
+        
+        return view('claims.history', compact('avgManagerTat', 'avgFinanceTat'));
     }
 
     public function checkDuplicate(Request $request)
@@ -147,8 +178,8 @@ class ClaimController extends Controller
 
         try {
             $uploadedFile = $request->file('receipt');
-            $imagePath = $uploadedFile->store('receipts/temp', 'public');
-            $fullImagePath = storage_path('app/public/' . $imagePath);
+            $imagePath = $uploadedFile->store('receipts/temp', 'private');
+            $fullImagePath = storage_path('app/private/' . $imagePath);
             $imageData = file_get_contents($fullImagePath);
             $extractedText = '';
 
@@ -296,205 +327,51 @@ class ClaimController extends Controller
                 }
             }
 
-            // Expanded TF-IDF Dictionary for Hardware, Pantry, Meals, Fuel & Office Supplies
-            $idfDictionary = [
-                'meals' => [
-                    'restaurant' => 2.0,
-                    'mcdonalds' => 2.5,
-                    'kfc' => 2.5,
-                    'cafe' => 1.8,
-                    'food' => 1.2,
-                    'beverage' => 1.5,
-                    'chicken' => 1.9,
-                    'coffee' => 2.0,
-                    'dinner' => 1.6,
-                    'lunch' => 1.6,
-                    'bistro' => 2.2,
-                    'bakery' => 2.1,
-                    'pizza' => 2.3,
-                    'tealive' => 2.5,
-                    'starbucks' => 2.5,
-                    'ayam' => 1.8,
-                    'kopi' => 1.9,
-                    'makan' => 1.5,
-                    'minum' => 1.5,
-                    'burger' => 2.2,
-                    'nasi' => 1.7,
-                    'mee' => 1.7,
-                    'teh' => 1.5,
-                    'dunkin' => 2.5,
-                    'subway' => 2.5,
-                    'secret' => 2.2,
-                    'recipe' => 2.2,
-                    'roti' => 1.5,
-                    'goreng' => 1.5
-                ],
-                'hardware' => [
-                    'diy' => 2.5,
-                    'hardware' => 2.5,
-                    'tools' => 2.2,
-                    'screw' => 2.3,
-                    'skru' => 2.3,
-                    'hammer' => 2.4,
-                    'drill' => 2.5,
-                    'tape' => 2.0,
-                    'pipe' => 2.2,
-                    'paip' => 2.2,
-                    'cable' => 2.0,
-                    'socket' => 2.2,
-                    'bulb' => 2.1,
-                    'lampu' => 1.8,
-                    'mentol' => 2.1,
-                    'paint' => 2.4,
-                    'cat' => 2.2,
-                    'roller' => 2.0,
-                    'brush' => 2.0,
-                    'berus' => 2.0,
-                    'lock' => 2.1,
-                    'kunci' => 1.8,
-                    'glue' => 2.0,
-                    'gam' => 2.0,
-                    'wire' => 2.1,
-                    'plumbing' => 2.5,
-                    'sanitary' => 2.2,
-                    'pvc' => 2.3,
-                    'steel' => 2.1,
-                    'iron' => 2.0,
-                    'battery' => 1.9,
-                    'bateri' => 1.9,
-                    'extension' => 2.2,
-                    'plug' => 2.0
-                ],
-                'pantry' => [
-                    'grocer' => 2.3,
-                    'grocery' => 2.3,
-                    'mart' => 1.8,
-                    'market' => 1.8,
-                    'supermarket' => 2.2,
-                    'speedmart' => 2.5,
-                    'lotus' => 2.5,
-                    'lotuss' => 2.5,
-                    'giant' => 2.5,
-                    'mydin' => 2.5,
-                    'sugar' => 2.2,
-                    'gula' => 2.2,
-                    'salt' => 2.0,
-                    'garam' => 2.0,
-                    'rice' => 2.2,
-                    'beras' => 2.2,
-                    'milk' => 2.2,
-                    'susu' => 2.2,
-                    'creamer' => 2.2,
-                    'krimer' => 2.2,
-                    'tea' => 1.8,
-                    'nescafe' => 2.5,
-                    'milo' => 2.5,
-                    'biscuit' => 2.0,
-                    'biskut' => 2.0,
-                    'soap' => 2.0,
-                    'sabun' => 2.0,
-                    'detergent' => 2.3,
-                    'tissue' => 2.1,
-                    'tisu' => 2.1,
-                    'sponge' => 2.0,
-                    'span' => 1.8,
-                    'cleaning' => 1.9,
-                    'bleach' => 2.2,
-                    'sunlight' => 2.4,
-                    'clorox' => 2.4,
-                    'vegetable' => 2.0,
-                    'sayur' => 2.0,
-                    'egg' => 2.0,
-                    'telur' => 2.0,
-                    'fish' => 2.0,
-                    'ikan' => 2.0
-                ],
-                'transport' => [
-                    'petronas' => 2.5,
-                    'shell' => 2.5,
-                    'petron' => 2.5,
-                    'caltex' => 2.5,
-                    'fuel' => 2.0,
-                    'diesel' => 2.3,
-                    'ron95' => 2.5,
-                    'ron97' => 2.5,
-                    'toll' => 2.1,
-                    'plus' => 2.0,
-                    'parking' => 1.8,
-                    'petroleum' => 2.3,
-                    'touch' => 2.1,
-                    'mesra' => 2.2,
-                    'primax' => 2.5
-                ],
-                'supplies' => [
-                    'bookstore' => 2.5,
-                    'stationery' => 2.5,
-                    'paper' => 2.0,
-                    'printing' => 2.0,
-                    'ink' => 2.4,
-                    'cartridge' => 2.5,
-                    'stapler' => 2.5,
-                    'marker' => 2.2,
-                    'files' => 2.0,
-                    'binding' => 2.3,
-                    'toner' => 2.5,
-                    'pen' => 1.8,
-                    'envelope' => 2.2
-                ]
-            ];
+            // Fetch Categories from DB
+            $activeCategories = Category::where('is_active', true)->get();
+            $idfDictionary = [];
+            $categoryScores = [];
+
+            foreach ($activeCategories as $category) {
+                $categoryScores[$category->name] = 0.0;
+                $keywords = array_filter(array_map('trim', explode(',', $category->keywords ?? '')));
+                $idfDictionary[$category->name] = [];
+                foreach ($keywords as $kw) {
+                    $idfDictionary[$category->name][strtolower($kw)] = 2.0; // Default weight
+                }
+            }
 
             $cleanLowerText = strtolower($extractedText);
             $tokenWords = preg_split('/[^a-z0-9]/', $cleanLowerText, -1, PREG_SPLIT_NO_EMPTY);
             $tfCounts = array_count_values($tokenWords);
 
-            $categoryScores = [
-                'Site Tools & Hardware' => 0.0,
-                'Office Pantry & Amenities' => 0.0,
-                'Staff Operational Meals' => 0.0,
-                'Fuel & Fleet Logistics' => 0.0,
-                'Office Supplies' => 0.0
-            ];
-
             foreach ($tfCounts as $word => $tfValue) {
-                if (isset($idfDictionary['hardware'][$word])) {
-                    $categoryScores['Site Tools & Hardware'] += $tfValue * $idfDictionary['hardware'][$word];
-                }
-                if (isset($idfDictionary['pantry'][$word])) {
-                    $categoryScores['Office Pantry & Amenities'] += $tfValue * $idfDictionary['pantry'][$word];
-                }
-                if (isset($idfDictionary['meals'][$word])) {
-                    $categoryScores['Staff Operational Meals'] += $tfValue * $idfDictionary['meals'][$word];
-                }
-                if (isset($idfDictionary['transport'][$word])) {
-                    $categoryScores['Fuel & Fleet Logistics'] += $tfValue * $idfDictionary['transport'][$word];
-                }
-                if (isset($idfDictionary['supplies'][$word])) {
-                    $categoryScores['Office Supplies'] += $tfValue * $idfDictionary['supplies'][$word];
+                foreach ($idfDictionary as $catName => $keywords) {
+                    if (isset($keywords[$word])) {
+                        $categoryScores[$catName] += $tfValue * $keywords[$word];
+                    }
                 }
             }
 
             // Strong Merchant Heuristics
             $upperMerchant = strtoupper($merchantName);
-            if (preg_match('/(?:DIY|MR\s*DIY|ACE\s*HARDWARE|HARDWARE|TOOL|PAINT|CHOP\s*TONG)/i', $upperMerchant)) {
-                $categoryScores['Site Tools & Hardware'] += 60.0;
-            }
-            if (preg_match('/(?:SPEEDMART|LOTUS|GIANT|MYDIN|GROCER|JAYA|PASARAYA|SUPERMARKET|HERO|ECONSAVE)/i', $upperMerchant)) {
-                $categoryScores['Office Pantry & Amenities'] += 60.0;
-            }
-            if (preg_match('/(?:MCDONALD|KFC|RESTAURANT|CAFE|TEALIVE|STARBUCKS|PIZZA|SUBWAY|COFFEE|BURGER|NASI|KOPITIAM)/i', $upperMerchant)) {
-                $categoryScores['Staff Operational Meals'] += 60.0;
-            }
-            if (preg_match('/(?:PETRONAS|SHELL|PETRON|CALTEX|BHP|STATION|PETROLEUM)/i', $upperMerchant)) {
-                $categoryScores['Fuel & Fleet Logistics'] += 60.0;
-            }
-            if (preg_match('/(?:BOOKSTORE|STATIONERY|POPULAR|OFFICE)/i', $upperMerchant)) {
-                $categoryScores['Office Supplies'] += 60.0;
+            $heuristicMappings = [
+                'Site Tools & Hardware' => '/(?:DIY|MR\s*DIY|ACE\s*HARDWARE|HARDWARE|TOOL|PAINT|CHOP\s*TONG)/i',
+                'Meals & Entertainment' => '/(?:MCDONALD|KFC|RESTAURANT|CAFE|TEALIVE|STARBUCKS|PIZZA|SUBWAY|COFFEE|BURGER|NASI|KOPITIAM)/i',
+                'Fuel / Automotive' => '/(?:PETRONAS|SHELL|PETRON|CALTEX|BHP|STATION|PETROLEUM)/i',
+                'Office Supplies' => '/(?:BOOKSTORE|STATIONERY|POPULAR|OFFICE)/i',
+            ];
+
+            foreach ($heuristicMappings as $catName => $pattern) {
+                if (isset($categoryScores[$catName]) && preg_match($pattern, $upperMerchant)) {
+                    $categoryScores[$catName] += 60.0;
+                }
             }
 
             arsort($categoryScores);
             $predictedCategory = key($categoryScores);
-            if (current($categoryScores) == 0.0) {
-                $predictedCategory = 'Office Supplies';
+            if (empty($categoryScores) || current($categoryScores) == 0.0) {
+                $predictedCategory = $activeCategories->first()->name ?? 'Office Supplies';
             }
 
             // Extract Location
@@ -595,6 +472,12 @@ class ClaimController extends Controller
                 $extractedAmount = number_format($computedNet, 2, '.', '');
             }
 
+            // Extract Tax/SST Amount
+            $taxAmount = '0.00';
+            if (preg_match('/(?:TAX|GST|SST|CUKAI|VAT)[\s\:]*(?:RM|MYR)?[\s]*([\d\.,]+)/i', $processedText, $taxMatches)) {
+                $taxAmount = number_format((float) str_replace(',', '', $taxMatches[1]), 2, '.', '');
+            }
+
             // Arbitrate Payment Method
             $paymentMethod = 'Cash';
             if (preg_match('/(?:CARD|CREDIT|DEBIT|VISA|MASTER|MYDEBIT|CHIP|WAVE)/i', $processedText)) {
@@ -664,6 +547,7 @@ class ClaimController extends Controller
                 'receipt_invoice_no' => $receiptNo,
                 'transaction_date' => $transactionDate,
                 'amount' => $extractedAmount,
+                'tax_amount' => $taxAmount,
                 'payment_method' => $paymentMethod,
                 'predicted_category' => $predictedCategory,
                 'items' => $extractedItems,
@@ -679,7 +563,7 @@ class ClaimController extends Controller
     // Comment: Display Finance Auditor dashboard
     public function financeIndex()
     {
-        $claims = Claim::with(['items', 'user'])->orderBy('created_at', 'desc')->get();
+        $claims = Claim::with(['items', 'user', 'auditLogs.user'])->orderBy('created_at', 'desc')->get();
 
         $pendingCount = Claim::where('status', 'Pending')->count();
         $preApprovedCount = Claim::where('status', 'Pre-Approved')->count();
@@ -718,9 +602,27 @@ class ClaimController extends Controller
         ));
     }
 
-    public function auditingIndex()
+    public function auditingIndex(\Illuminate\Http\Request $request)
     {
-        $claims = Claim::with(['items', 'user'])->orderBy('created_at', 'desc')->get();
+        $claimsQuery = Claim::with(['items', 'user', 'auditLogs.user'])->orderBy('created_at', 'desc');
+
+        if ($request->wantsJson() || $request->ajax()) {
+            $claims = $claimsQuery->get()->map(function($c) {
+                return array_merge($c->toArray(), [
+                    'user_name' => $c->user->name ?? 'Unknown Staff',
+                    'user_role' => $c->user->role ?? 'Staff',
+                    'formatted_time' => $c->created_at->format('Y-m-d H:i'),
+                    'items' => $c->items->toArray(),
+                    'amount' => (float)$c->amount > 0 ? (float)$c->amount : (float)$c->calculated_amount,
+                    'audit_logs' => $c->auditLogs->map(fn($log) => array_merge($log->toArray(), [
+                        'user_name' => $log->user->name ?? 'System',
+                        'user_role' => $log->user->role ?? 'System',
+                    ]))->values()->toArray(),
+                    'forensic_hash' => hash('sha256', $c->claim_id . $c->created_at . ((float)$c->amount > 0 ? (float)$c->amount : (float)$c->calculated_amount)),
+                ]);
+            });
+            return response()->json($claims);
+        }
 
         $pendingCount = Claim::where('status', 'Pending')->count();
         $approvedCount = Claim::where('status', 'Approved')->count();
@@ -728,13 +630,17 @@ class ClaimController extends Controller
         $preApprovedCount = Claim::where('status', 'Pre-Approved')->count();
         $reimbursedCount = Claim::where('status', 'Reimbursed')->count();
 
+        $revisionReasons = ClaimAuditReason::revisions()->get();
+        $rejectionReasons = ClaimAuditReason::rejections()->get();
+
         return view('finance.auditing', compact(
-            'claims',
             'pendingCount',
             'approvedCount',
             'rejectedCount',
             'preApprovedCount',
-            'reimbursedCount'
+            'reimbursedCount',
+            'revisionReasons',
+            'rejectionReasons'
         ));
     }
 
@@ -769,59 +675,155 @@ class ClaimController extends Controller
         ));
     }
 
-    public function managerVerificationIndex()
+    public function managerVerificationIndex(\Illuminate\Http\Request $request)
     {
-        $claims = Claim::with(['items', 'user'])->whereIn('status', ['Pre-Approved', 'Approved', 'Rejected'])->orderBy('updated_at', 'desc')->get();
+        $currentTab = $request->query('tab', 'pending');
 
-        $preApprovedCount = Claim::where('status', 'Pre-Approved')->count();
+        $claimsQuery = Claim::with(['items', 'user', 'auditLogs.user'])->orderBy('updated_at', 'desc');
+
+        if ($currentTab === 'pending') {
+            $claimsQuery->whereIn('status', ['Pending', 'Pre-Approved', 'Pending Manager']);
+        } elseif ($currentTab === 'approved') {
+            $claimsQuery->where('status', 'Approved');
+        } elseif ($currentTab === 'rejected') {
+            $claimsQuery->where('status', 'Rejected');
+        } else {
+            $claimsQuery->whereIn('status', ['Pending', 'Pre-Approved', 'Pending Manager']);
+        }
+
+        $claims = $claimsQuery->paginate(15);
+        $claims->getCollection()->transform(function($c) {
+            $c->user_name = $c->user->name ?? 'Staff User';
+            return $c;
+        });
+
+        $preApprovedCount = Claim::whereIn('status', ['Pending', 'Pre-Approved', 'Pending Manager'])->count();
         $approvedCount = Claim::where('status', 'Approved')->count();
         $rejectedCount = Claim::where('status', 'Rejected')->count();
         $totalReviewCount = Claim::count();
 
-        return view('manager.verification', compact('claims', 'preApprovedCount', 'approvedCount', 'rejectedCount', 'totalReviewCount'));
+        $revisionReasons = ClaimAuditReason::revisions()->get();
+        $rejectionReasons = ClaimAuditReason::rejections()->get();
+
+        return view('manager.verification', compact('claims', 'currentTab', 'preApprovedCount', 'approvedCount', 'rejectedCount', 'totalReviewCount', 'revisionReasons', 'rejectionReasons'));
     }
 
     // Comment: Multi-Level Approval State Interception Engine
     public function updateStatus(Request $request, $id)
     {
-        $request->validate(['status' => 'required|in:Approved,Rejected,Pre-Approved']);
-        $claim = Claim::findOrFail($id);
-
-        $userRole = Auth::check() ? Auth::user()->role : 'Finance';
         $targetStatus = $request->status;
 
-        if ($targetStatus === 'Approved') {
-            if ($userRole === 'Finance') {
-                $targetStatus = 'Pre-Approved';
-                $message = 'Claim successfully verified and escalated to Manager desk.';
+        $rules = [
+            'status' => 'required|in:Approved,Rejected,Pre-Approved,REVISION_REQUIRED',
+        ];
+
+        // Conditional Validation Engine: Revision vs Rejection
+        if ($targetStatus === 'REVISION_REQUIRED') {
+            $rules['revision_reason'] = 'required|string|max:255';
+
+            // Check if selected revision reason requires mandatory remarks
+            $chosenReason = ClaimAuditReason::where('type', 'REVISION')
+                ->where(function($q) use ($request) {
+                    $q->where('title', $request->revision_reason)
+                      ->orWhere('code', $request->revision_reason);
+                })->first();
+
+            $isRemarksMandatory = ($chosenReason && $chosenReason->requires_remarks) 
+                || stripos($request->revision_reason ?? '', 'Other') !== false;
+
+            if ($isRemarksMandatory) {
+                $rules['remarks'] = 'required|string|min:5|max:1000';
             } else {
-                $targetStatus = 'Approved';
-                $message = 'Claim officially authorized and finalized for payment settlement.';
+                $rules['remarks'] = 'nullable|string|max:1000';
+            }
+        } elseif ($targetStatus === 'Rejected') {
+            $rules['rejection_reason'] = 'required|string|max:255';
+
+            // Check if selected rejection reason requires mandatory remarks
+            $chosenReason = ClaimAuditReason::where('type', 'REJECTION')
+                ->where(function($q) use ($request) {
+                    $q->where('title', $request->rejection_reason)
+                      ->orWhere('code', $request->rejection_reason);
+                })->first();
+
+            $isRemarksMandatory = ($chosenReason && $chosenReason->requires_remarks)
+                || stripos($request->rejection_reason ?? '', 'Other') !== false;
+
+            if ($isRemarksMandatory) {
+                $rules['remarks'] = 'required|string|min:5|max:1000';
+            } else {
+                $rules['remarks'] = 'nullable|string|max:1000';
             }
         } else {
-            $message = "Claim status successfully marked as {$targetStatus}.";
+            $rules['remarks'] = 'nullable|string|max:1000';
         }
 
-        $claim->status = $targetStatus;
-        $claim->save();
+        $request->validate($rules);
+        
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id, $targetStatus) {
+            $claim = Claim::lockForUpdate()->findOrFail($id);
 
-        AuditLog::log(
-            "CLAIM_{$targetStatus}",
-            $claim->claim_id,
-            ['status' => $claim->getOriginal('status')],
-            ['status' => $targetStatus, 'signed_by' => Auth::user()->name ?? 'System']
-        );
+            $userRole = Auth::check() ? Auth::user()->role : 'Finance';
+            
+            $normalizedRole = strtolower(trim($userRole));
+            if (!in_array($normalizedRole, ['manager', 'finance', 'fin'])) {
+                abort(403, 'Unauthorized action: Only Managers and Finance Officers can update claim status.');
+            }
 
-        $notifType = $targetStatus === 'Approved' ? 'success' : ($targetStatus === 'Rejected' ? 'danger' : 'info');
-        NotificationService::send(
-            $claim->user_id,
-            "Claim Status: {$targetStatus}",
-            "Your claim voucher #CLM-{$claim->claim_id} ({$claim->merchant_name}) has been marked as {$targetStatus}.",
-            $notifType,
-            route('claims.history')
-        );
+            if (Auth::id() === $claim->user_id) {
+                abort(403, 'Unauthorized action: You cannot approve or reject your own claim.');
+            }
 
-        return redirect()->back()->with('success', $message);
+            $finalStatus = $targetStatus;
+
+            if ($targetStatus === 'Approved') {
+                if ($userRole === 'Finance') {
+                    $finalStatus = 'Pre-Approved';
+                    $message = 'Claim successfully verified and escalated to Manager desk.';
+                } else {
+                    $finalStatus = 'Approved';
+                    $message = 'Claim officially authorized and finalized for payment settlement.';
+                }
+            } elseif ($targetStatus === 'REVISION_REQUIRED') {
+                $claim->revision_reason = $request->input('revision_reason');
+                $claim->remarks = $request->input('remarks');
+                $message = "Claim successfully returned to staff for revision.";
+            } elseif ($targetStatus === 'Rejected') {
+                $claim->rejection_reason = $request->input('rejection_reason');
+                $claim->remarks = $request->input('remarks');
+                $message = "Claim status successfully marked as Rejected.";
+            } else {
+                $message = "Claim status successfully marked as {$finalStatus}.";
+            }
+
+            $claim->status = $finalStatus;
+            $claim->save();
+
+            AuditLog::log(
+                "CLAIM_{$finalStatus}",
+                $claim->claim_id,
+                ['status' => $claim->getOriginal('status')],
+                [
+                    'status' => $finalStatus,
+                    'signed_by' => Auth::user()->name ?? 'System',
+                    'actor_role' => Auth::user()->role ?? 'System',
+                    'revision_reason' => $claim->revision_reason,
+                    'rejection_reason' => $claim->rejection_reason,
+                    'remarks' => $claim->remarks ?? $request->input('remarks', null)
+                ]
+            );
+
+            $notifType = $finalStatus === 'Approved' ? 'success' : ($finalStatus === 'Rejected' ? 'danger' : ($finalStatus === 'REVISION_REQUIRED' ? 'warning' : 'info'));
+            NotificationService::send(
+                $claim->user_id,
+                "Claim Status: {$finalStatus}",
+                "Your claim voucher #CLM-{$claim->claim_id} ({$claim->merchant_name}) has been marked as {$finalStatus}.",
+                $notifType,
+                route('claims.history')
+            );
+
+            return redirect()->back()->with('success', $message);
+        });
     }
 
     // Comment: Handle expenditure persistence with physical duplicate prevention, fleet compliance and budget enforcement
@@ -870,7 +872,7 @@ class ClaimController extends Controller
                     ->withInput();
             }
 
-            if ($selectedVehicle->roadtax_expiry && Carbon::parse($selectedVehicle->roadtax_expiry)->isPast()) {
+            if ($selectedVehicle->roadtax_expiry && Carbon::parse($selectedVehicle->roadtax_expiry)->endOfDay()->isPast()) {
                 return redirect()->back()
                     ->withErrors(['vehicle_id' => "Submission Denied: Road tax for vehicle {$selectedVehicle->plate_number} expired on " . Carbon::parse($selectedVehicle->roadtax_expiry)->format('d/m/Y') . ". Mileage claims are strictly prohibited for non-compliant vehicles."])
                     ->withInput();
@@ -882,14 +884,14 @@ class ClaimController extends Controller
 
             // Dynamic rate per KM lookup
             $rateRecord = MileageRate::whereRaw('LOWER(vehicle_type) = ?', [strtolower($vehicleType)])->latest()->first();
-            $ratePerKm = $rateRecord ? (float) $rateRecord->rate_per_km : ($vehicleType === 'Motorcycle' ? 0.30 : 0.60);
+            $ratePerKm = $rateRecord ? (float) $rateRecord->rate : ($vehicleType === 'Motorcycle' ? 0.30 : 0.60);
 
             $km = (float) $request->input('mileage_km');
             // Authoritative server-calculated amount
             $calculatedAmount = round($km * $ratePerKm, 2);
 
             if ($request->hasFile('mileage_document')) {
-                $imagePath = $request->file('mileage_document')->store('receipts', 'public');
+                $imagePath = $request->file('mileage_document')->store('receipts', 'private');
             }
 
             $merchantName = "Aero Art Mileage ({$vehicleType})";
@@ -964,7 +966,7 @@ class ClaimController extends Controller
             }
 
             if ($request->hasFile('receipt')) {
-                $imagePath = $request->file('receipt')->store('receipts', 'public');
+                $imagePath = $request->file('receipt')->store('receipts', 'private');
             }
         }
 
@@ -983,7 +985,13 @@ class ClaimController extends Controller
             $uploadedFile,
             $calculatedAmount,
             $rawOcrAmount > 0 ? $rawOcrAmount : null,
-            $targetTransactionDate
+            $targetTransactionDate,
+            null, // currentClaimId is null on create
+            $request->input('merchant_name'),
+            $request->input('receipt_invoice_no'),
+            $request->input('start_location'),
+            $request->input('destination_location'),
+            $request->input('mileage_km') ? (float) $request->input('mileage_km') : null
         );
 
         // Active Learning Feedback
@@ -999,6 +1007,11 @@ class ClaimController extends Controller
                 $request->input('extracted_raw_text')
             );
         }
+
+        $categoryRecord = \App\Models\Category::where('name', $predictedCategory)
+            ->orWhere('code', $predictedCategory)
+            ->first();
+        $categoryId = $categoryRecord ? $categoryRecord->id : null;
 
         DB::beginTransaction();
         try {
@@ -1018,6 +1031,7 @@ class ClaimController extends Controller
                 'destination_location' => $isMileage ? $request->input('destination_location') : null,
                 'payment_method' => $paymentMethod,
                 'predicted_category' => $predictedCategory,
+                'category_id' => $categoryId,
                 'business_purpose' => $request->input('business_purpose') ?? 'Business expense',
                 'receipt_image_path' => $imagePath ?? 'receipts/default.png',
                 'receipt_image_hash' => $fraudEvaluation['image_hash'],
@@ -1058,8 +1072,24 @@ class ClaimController extends Controller
                 [
                     'type' => $claim->claim_type,
                     'amount' => $calculatedAmount,
-                    'risk_score' => $fraudEvaluation['score'],
+                    'merchant' => $merchantName,
+                    'submission_mode' => $isMileage ? 'Mileage Allowance' : 'OCR Receipt',
                     'is_violation' => $policyCheck['is_violation']
+                ]
+            );
+
+            // Log the fraud analysis result as a separate forensic audit node
+            AuditLog::log(
+                'FRAUD_ANALYZED',
+                $claim->claim_id,
+                null,
+                [
+                    'risk_score' => $fraudEvaluation['score'],
+                    'flag_count' => count($fraudEvaluation['flags']),
+                    'top_flag' => !empty($fraudEvaluation['flags']) ? $fraudEvaluation['flags'][0]['flag_type'] : null,
+                    'top_severity' => !empty($fraudEvaluation['flags']) ? $fraudEvaluation['flags'][0]['severity'] : null,
+                    'policy_violation' => $policyCheck['is_violation'],
+                    'policy_reason' => $policyCheck['reason'] ?? null
                 ]
             );
 
@@ -1102,10 +1132,12 @@ class ClaimController extends Controller
         $user = auth()->user();
 
         $validated = $request->validate([
-            'bank_name' => 'required|string|max:100',
-            'bank_account_no' => 'required|string|max:50',
-            'bank_account_holder' => 'required|string|max:150',
-            'phone_number' => 'nullable|string|max:20',
+            'name' => 'sometimes|required|string|max:255',
+            'email' => 'sometimes|required|email|max:255|unique:users,email,'.$user->id,
+            'bank_name' => 'sometimes|required|string|max:100',
+            'bank_account_no' => 'sometimes|required|string|max:50',
+            'bank_account_holder' => 'sometimes|required|string|max:150',
+            'phone_number' => 'sometimes|nullable|string|max:20',
         ]);
 
         $user->update($validated);
@@ -1163,6 +1195,34 @@ class ClaimController extends Controller
         return view('manager.user_management', compact('users'));
     }
 
+    public function toggleUserStatus(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->user_id === auth()->id()) {
+            return redirect()->back()->with('error', 'You cannot deactivate your own account.');
+        }
+
+        $oldStatus = $user->is_active;
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        // Ensure status changes are logged to audit_logs
+        \App\Models\AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => $user->is_active ? 'Activated User' : 'Deactivated User',
+            'model_type' => 'User',
+            'model_id' => $user->user_id,
+            'old_values' => json_encode(['is_active' => (bool)$oldStatus]),
+            'new_values' => json_encode(['is_active' => (bool)$user->is_active]),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'event_category' => 'USER_MANAGEMENT'
+        ]);
+
+        return redirect()->back()->with('success', 'User status updated successfully.');
+    }
+
     public function financeStaffDirectoryIndex()
     {
         $staffMembers = User::where('role', 'staff')
@@ -1175,19 +1235,60 @@ class ClaimController extends Controller
 
     public function auditLogsIndex(Request $request)
     {
-        $eventType = $request->input('event_type');
+        $categoryFilter = $request->input('category');
+        $searchQuery = $request->input('search');
 
-        $auditLogs = AuditLog::with('user')
-            ->when($eventType, fn($q) => $q->where('action', $eventType))
-            ->latest()
-            ->paginate(20);
+        $query = AuditLog::with('user');
+
+        if ($categoryFilter) {
+            if ($categoryFilter === 'claims') {
+                $query->where(function($q) {
+                    $q->where('event_category', 'CLAIMS')
+                      ->orWhere('event_category', 'CLAIM')
+                      ->orWhere('model_type', 'like', '%Claim%')
+                      ->orWhere('action', 'like', '%Status changed%')
+                      ->orWhere('action', 'like', '%FRAUD%');
+                });
+            } elseif ($categoryFilter === 'system' || $categoryFilter === 'config') {
+                $query->where(function($q) {
+                    $q->where('event_category', 'CONFIG')
+                      ->orWhereIn('model_type', ['MileageRate', 'Vehicle', 'Category', 'ExpenseCategory'])
+                      ->orWhereIn('event_category', ['MILEAGE_CONFIG', 'CATEGORY', 'VEHICLE']);
+                });
+            } elseif ($categoryFilter === 'security') {
+                $query->where(function($q) {
+                    $q->where('event_category', 'SECURITY')
+                      ->orWhere('action', 'like', '%LOGIN%')
+                      ->orWhere('action', 'like', '%AUTH%')
+                      ->orWhere('action', 'like', '%PASSWORD%');
+                });
+            }
+        }
+
+        if ($searchQuery) {
+            $query->where(function($q) use ($searchQuery) {
+                $q->where('action', 'like', "%{$searchQuery}%")
+                  ->orWhere('model_type', 'like', "%{$searchQuery}%")
+                  ->orWhereHas('user', function($userQ) use ($searchQuery) {
+                      $userQ->where('name', 'like', "%{$searchQuery}%")
+                            ->orWhere('role', 'like', "%{$searchQuery}%");
+                  });
+            });
+        }
+
+        $auditLogs = $query->latest()->paginate(20)->withQueryString();
 
         return view('manager.audit_logs', compact('auditLogs'));
     }
 
     public function financeProfileIndex()
     {
-        return view('finance.profile');
+        $totalBatchesSettled = \App\Models\Claim::where('status', 'Reimbursed')->count();
+        $recentVolume = \App\Models\Claim::where('status', 'Reimbursed')
+            ->whereMonth('updated_at', now()->month)
+            ->sum('amount');
+            
+        return view('finance.profile', compact('totalBatchesSettled', 'recentVolume'));
     }
 
     // Comment: Compute organization-wide transaction records for Finance BI statistics
@@ -1366,6 +1467,8 @@ class ClaimController extends Controller
         $pendingCount = Claim::where('status', 'Pending')->count();
         $preApprovedCount = Claim::where('status', 'Pre-Approved')->count();
         $totalReviewCount = Claim::count();
+        $approvalsThisMonth = Claim::where('status', 'Approved')->whereMonth('updated_at', now()->month)->count();
+        $policiesConfigured = \App\Models\ExpensePolicy::count();
         $totalClaims = Claim::count();
         $totalAmount = Claim::where('status', 'Approved')->sum('amount');
         $avgClaim = Claim::where('status', 'Approved')->avg('amount') ?? 0;
@@ -1388,6 +1491,8 @@ class ClaimController extends Controller
             'pendingCount',
             'preApprovedCount',
             'totalReviewCount',
+            'approvalsThisMonth',
+            'policiesConfigured',
             'totalClaims',
             'totalAmount',
             'avgClaim',
@@ -1463,12 +1568,12 @@ class ClaimController extends Controller
     {
         $tab = $request->input('tab', 'pending');
 
-        $pendingDisbursements = Claim::with(['user', 'items'])
+        $pendingDisbursements = Claim::with(['user.activeCashAdvance', 'items'])
             ->where('status', 'Approved')
             ->orderBy('updated_at', 'desc')
             ->get();
 
-        $settledDisbursements = Claim::with(['user', 'items'])
+        $settledDisbursements = Claim::with(['user.activeCashAdvance', 'items'])
             ->where('status', 'Reimbursed')
             ->orderBy('paid_at', 'desc')
             ->take(30)
@@ -1489,51 +1594,118 @@ class ClaimController extends Controller
     // Comment: Process single voucher payout settlement with proof slip
     public function processDisbursement(Request $request, $id)
     {
+        $userRole = Auth::check() ? Auth::user()->role : '';
+        $normalizedRole = strtolower(trim($userRole));
+        if (!in_array($normalizedRole, ['finance', 'fin'])) {
+            abort(403, 'Unauthorized action: Only Finance Officers can process disbursements.');
+        }
+
         $request->validate([
-            'payment_reference' => 'required|string|max:100',
-            'payment_proof' => 'required|file|mimes:jpeg,png,jpg,pdf|max:10240',
+            'settlement_method' => 'nullable|in:bank_transfer,contra',
+            'payment_reference' => 'required_without:settlement_method|required_if:settlement_method,bank_transfer|string|max:100|nullable',
+            'payment_proof' => 'required_without:settlement_method|required_if:settlement_method,bank_transfer|file|mimes:jpeg,png,jpg,pdf|max:10240|nullable',
         ]);
 
-        $claim = Claim::findOrFail($id);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id) {
+            $claim = Claim::with('user.activeCashAdvance')->lockForUpdate()->findOrFail($id);
 
-        if ($claim->status !== 'Approved') {
-            return redirect()->back()->withErrors(['error' => 'This voucher is not eligible for disbursement.']);
-        }
+            if ($claim->status !== 'Approved') {
+                return redirect()->back()->withErrors(['error' => 'This voucher is not eligible for disbursement.']);
+            }
 
-        $proofPath = $request->file('payment_proof')->store('payment_proofs', 'public');
-        $cleanRef = strtoupper(trim($request->input('payment_reference')));
+            $settlementMethod = $request->input('settlement_method', 'bank_transfer');
+            $proofPath = null;
+            $cleanRef = null;
 
-        $claim->status = 'Reimbursed';
-        $claim->payment_reference = $cleanRef;
-        $claim->paid_at = Carbon::now();
-        $claim->payment_proof_path = $proofPath;
-        $claim->save();
+            if ($settlementMethod === 'contra') {
+                $advance = $claim->user->activeCashAdvance;
+                if (!$advance) {
+                    return redirect()->back()->withErrors(['error' => 'No active cash advance found for contra settlement.']);
+                }
 
-        if (class_exists(\App\Models\AuditLog::class)) {
-            \App\Models\AuditLog::log(
-                'PAYMENT_DISBURSED',
-                $claim->claim_id,
-                ['status' => 'Approved', 'payment_reference' => null],
-                [
-                    'status' => 'Reimbursed',
-                    'amount' => $claim->amount,
-                    'payment_reference' => $claim->payment_reference,
-                    'proof_file' => $proofPath,
-                    'disbursed_by' => Auth::user()->name ?? 'Finance Officer'
-                ]
+                $deduction = min($claim->amount, $advance->remaining_balance);
+                $originalStatus = $advance->status;
+                $originalBalance = $advance->remaining_balance;
+                $advance->remaining_balance -= $deduction;
+                
+                if ($advance->remaining_balance <= 0) {
+                    $advance->status = 'CLEARED';
+                } else {
+                    $advance->status = 'PARTIALLY_RECONCILED';
+                }
+                $advance->save();
+
+                if (class_exists(\App\Models\AuditLog::class)) {
+                    \App\Models\AuditLog::log(
+                        'CONTRA_ADJUSTMENT',
+                        $claim->claim_id,
+                        ['remaining_balance' => $originalBalance, 'status' => $originalStatus],
+                        ['remaining_balance' => $advance->remaining_balance, 'status' => $advance->status, 'deducted_amount' => $deduction],
+                        auth()->id(),
+                        'Cash Advance',
+                        'CashAdvance',
+                        $advance->advance_id
+                    );
+                }
+
+                $cleanRef = 'CONTRA-' . $advance->advance_id;
+
+                if ($claim->amount > $deduction) {
+                    $request->validate([
+                        'payment_reference' => 'required|string|max:100',
+                        'payment_proof' => 'required|file|mimes:jpeg,png,jpg,pdf|max:10240',
+                    ], [
+                        'payment_reference.required' => 'Bank reference is required to pay the difference.',
+                        'payment_proof.required' => 'Payment slip is required to pay the difference.'
+                    ]);
+
+                    if ($request->hasFile('payment_proof')) {
+                        $proofPath = $request->file('payment_proof')->store('payment_proofs', 'private');
+                    }
+                    $cleanRef = 'CONTRA-' . $advance->advance_id . ' & ' . strtoupper(trim($request->input('payment_reference')));
+                }
+            } else {
+                if ($request->hasFile('payment_proof')) {
+                    $proofPath = $request->file('payment_proof')->store('payment_proofs', 'private');
+                }
+                $cleanRef = strtoupper(trim($request->input('payment_reference')));
+            }
+
+            $claim->status = 'Reimbursed';
+            $claim->payment_reference = $cleanRef;
+            $claim->paid_at = Carbon::now();
+            if ($proofPath) {
+                $claim->payment_proof_path = $proofPath;
+            }
+            $claim->save();
+
+            if (class_exists(\App\Models\AuditLog::class)) {
+                \App\Models\AuditLog::log(
+                    'PAYMENT_DISBURSED',
+                    $claim->claim_id,
+                    ['status' => 'Approved', 'payment_reference' => null],
+                    [
+                        'status' => 'Reimbursed',
+                        'amount' => $claim->amount,
+                        'payment_reference' => $claim->payment_reference,
+                        'proof_file' => $proofPath,
+                        'disbursed_by' => Auth::user()->name ?? 'Finance Officer',
+                        'settlement_method' => $settlementMethod
+                    ]
+                );
+            }
+
+            NotificationService::send(
+                $claim->user_id,
+                '?? Payment Reimbursed',
+                "Your claim voucher #CLM-{$claim->claim_id} (RM " . number_format($claim->amount, 2) . ") has been paid. Reference: {$cleanRef}",
+                'success',
+                route('dashboard')
             );
-        }
 
-        NotificationService::send(
-            $claim->user_id,
-            '💳 Payment Reimbursed',
-            "Your claim voucher #CLM-{$claim->claim_id} (RM " . number_format($claim->amount, 2) . ") has been paid. Reference: {$cleanRef}",
-            'success',
-            route('dashboard')
-        );
-
-        return redirect()->route('finance.disbursement', ['tab' => 'settled'])
-            ->with('success', "Payment voucher #CLM-{$claim->claim_id} successfully settled and marked as Reimbursed.");
+            return redirect()->route('finance.disbursement', ['tab' => 'settled'])
+                ->with('success', "Payment voucher #CLM-{$claim->claim_id} successfully settled and marked as Reimbursed.");
+        });
     }
 
     // Comment: Bank Slip & PDF OCR Extraction Engine
@@ -1547,8 +1719,8 @@ class ClaimController extends Controller
             $uploadedFile = $request->file('payment_proof');
             $mimeType = $uploadedFile->getClientMimeType();
             $extension = strtolower($uploadedFile->getClientOriginalExtension());
-            $imagePath = $uploadedFile->store('receipts/temp', 'public');
-            $fullImagePath = storage_path('app/public/' . $imagePath);
+            $imagePath = $uploadedFile->store('receipts/temp', 'private');
+            $fullImagePath = storage_path('app/private/' . $imagePath);
             $fileData = file_get_contents($fullImagePath);
             $extractedText = '';
 
@@ -1691,6 +1863,12 @@ class ClaimController extends Controller
     // Comment: Process batch disbursement of multiple claims simultaneously with a single proof slip
     public function processBatchDisbursement(Request $request)
     {
+        $userRole = Auth::check() ? Auth::user()->role : '';
+        $normalizedRole = strtolower(trim($userRole));
+        if (!in_array($normalizedRole, ['finance', 'fin'])) {
+            abort(403, 'Unauthorized action: Only Finance Officers can process disbursements.');
+        }
+
         $request->validate([
             'claim_ids' => 'required|array|min:1',
             'claim_ids.*' => 'required|integer|exists:claims,claim_id',
@@ -1699,13 +1877,13 @@ class ClaimController extends Controller
         ]);
 
         try {
-            $proofPath = $request->file('payment_proof')->store('payment_proofs', 'public');
+            $proofPath = $request->file('payment_proof')->store('payment_proofs', 'private');
             $now = Carbon::now();
             $paymentRef = strtoupper(trim($request->input('payment_reference')));
             $claimIds = $request->input('claim_ids');
 
             DB::transaction(function () use ($claimIds, $paymentRef, $proofPath, $now) {
-                $claims = Claim::whereIn('claim_id', $claimIds)->where('status', 'Approved')->get();
+                $claims = Claim::whereIn('claim_id', $claimIds)->where('status', 'Approved')->lockForUpdate()->get();
 
                 foreach ($claims as $claim) {
                     $claim->update([
@@ -1759,7 +1937,7 @@ class ClaimController extends Controller
 
         $currentUser = Auth::user();
         $isOwner = ($currentUser->user_id ?? $currentUser->id) == $claim->user_id;
-        $isPrivileged = in_array($currentUser->role ?? '', ['Finance', 'Manager', 'Admin', 'finance', 'manager', 'admin']);
+        $isPrivileged = in_array($currentUser->role ?? '', ['Finance', 'Manager', 'finance', 'manager']);
 
         if (!$isOwner && !$isPrivileged) {
             abort(403, 'Unauthorized access to this corporate voucher.');
@@ -1772,4 +1950,247 @@ class ClaimController extends Controller
 
         return $pdf->download($fileName);
     }
+
+    // Secured Private File Storage Serving
+    public function serveFile($folder, $filename)
+    {
+        // Prevent directory traversal
+        $folder = basename($folder);
+        $filename = basename($filename);
+        
+        $path = $folder . '/' . $filename;
+        
+        if (!\Illuminate\Support\Facades\Storage::disk('private')->exists($path)) {
+            // Fallback for files that were previously in public disk
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+                return response()->file(storage_path('app/public/' . $path));
+            }
+            abort(404, 'File not found.');
+        }
+
+        $fullPath = storage_path('app/private/' . $path);
+        
+        // Return file directly
+        return response()->file($fullPath);
+    }
+    public function slaAnalytics(\App\Services\SlaTrackingService $slaTrackingService)
+    {
+        $avgManagerTat = $slaTrackingService->getAverageManagerTurnaroundTime();
+        $avgFinanceTat = $slaTrackingService->getAverageFinanceSettlementTime();
+        $bottlenecks = $slaTrackingService->getBottleneckQueue();
+
+        return view('manager.sla_analytics', compact('avgManagerTat', 'avgFinanceTat', 'bottlenecks'));
+    }
+
+    // Comment: Render Staff Edit & Resubmit Form for claims in REVISION_REQUIRED
+    public function edit($id)
+    {
+        $claim = Claim::with(['items', 'vehicle'])->findOrFail($id);
+        $currentUserId = Auth::id() ?? 1;
+
+        if ($claim->user_id !== $currentUserId) {
+            abort(403, 'Unauthorized: You can only edit your own claims.');
+        }
+
+        if ($claim->status !== 'REVISION_REQUIRED') {
+            return redirect()->route('claims.history')
+                ->withErrors(['error' => 'This claim cannot be edited because it is not flagged for revision. Current status: ' . $claim->status]);
+        }
+
+        $personalVehicles = Vehicle::where('user_id', $currentUserId)
+            ->where('ownership_type', 'personal')
+            ->where('approval_status', 'Approved')
+            ->whereDate('roadtax_expiry', '>=', Carbon::today())
+            ->orderBy('plate_number', 'asc')
+            ->get();
+
+        $companyFleet = Vehicle::where('ownership_type', 'company')
+            ->where('status', 'Active')
+            ->orderBy('plate_number', 'asc')
+            ->get();
+
+        $categories = Category::where('is_active', true)->get();
+
+        $expensePolicies = ExpensePolicy::with('category')->where('is_active', true)->get()->map(function ($policy) {
+            $policy->category_name = $policy->category->name ?? '';
+            return $policy;
+        });
+
+        return view('claims.edit', compact('claim', 'personalVehicles', 'companyFleet', 'categories', 'expensePolicies'));
+    }
+
+    // Comment: Handle Staff Resubmission of Claim after addressing clarification
+    public function resubmit(Request $request, $id)
+    {
+        $claim = Claim::with('items')->findOrFail($id);
+        $currentUserId = Auth::id() ?? 1;
+
+        if ($claim->user_id !== $currentUserId) {
+            abort(403, 'Unauthorized: You can only resubmit your own claims.');
+        }
+
+        if ($claim->status !== 'REVISION_REQUIRED') {
+            return redirect()->route('claims.history')
+                ->withErrors(['error' => 'This claim is not currently marked for revision.']);
+        }
+
+        $isMileage = $claim->claim_type === 'Mileage';
+
+        if ($isMileage) {
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'vehicle_id' => 'required|exists:vehicles,vehicle_id',
+                'mileage_km' => 'required|numeric|min:0.1',
+                'start_location' => 'required|string',
+                'destination_location' => 'required|string',
+                'transaction_date' => 'nullable|date',
+                'mileage_document' => 'nullable|image|max:5120',
+                'business_purpose' => 'required|string',
+            ]);
+        } else {
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'amount' => 'required|numeric|min:0.01',
+                'receipt_invoice_no' => 'required|string|max:100',
+                'transaction_date' => 'required|date',
+                'category_id' => 'required|exists:categories,id',
+                'payment_method' => 'required|string',
+                'business_purpose' => 'required|string',
+                'receipt_image' => 'nullable|image|max:5120',
+            ]);
+        }
+
+        return DB::transaction(function () use ($request, $claim, $isMileage) {
+            $oldStatus = $claim->status;
+
+            if ($isMileage) {
+                $vehicle = Vehicle::findOrFail($request->input('vehicle_id'));
+                $claim->title = $request->input('title');
+                $claim->vehicle_id = $vehicle->vehicle_id;
+                $claim->vehicle_plate_number = $vehicle->plate_number;
+                $claim->vehicle_type = $vehicle->vehicle_type;
+                $claim->mileage_km = (float) $request->input('mileage_km');
+                $claim->start_location = $request->input('start_location');
+                $claim->destination_location = $request->input('destination_location');
+                $claim->business_purpose = $request->input('business_purpose');
+                if ($request->input('transaction_date')) {
+                    $claim->transaction_date = $request->input('transaction_date');
+                }
+
+                $mileageRate = MileageRate::where('vehicle_type', $vehicle->vehicle_type)->first();
+                $ratePerKm = $mileageRate ? (float) $mileageRate->rate_per_km : 0.80;
+                $claim->rate_per_km = $ratePerKm;
+                $claim->calculated_amount = round($claim->mileage_km * $ratePerKm, 2);
+                $claim->amount = $claim->calculated_amount;
+
+                if ($request->hasFile('mileage_document')) {
+                    $claim->mileage_document_path = $request->file('mileage_document')->store('mileage_docs', 'private');
+                }
+            } else {
+                $claim->title = $request->input('title');
+                $claim->amount = (float) $request->input('amount');
+                $claim->receipt_invoice_no = $request->input('receipt_invoice_no');
+                $claim->transaction_date = $request->input('transaction_date');
+                $claim->category_id = $request->input('category_id');
+                $claim->payment_method = $request->input('payment_method');
+                $claim->business_purpose = $request->input('business_purpose');
+
+                $category = Category::find($request->input('category_id'));
+                if ($category) {
+                    $claim->predicted_category = $category->name;
+                }
+
+                if ($request->hasFile('receipt_image')) {
+                    $claim->receipt_image_path = $request->file('receipt_image')->store('receipts', 'private');
+                    $claim->receipt_image_hash = hash('sha256', file_get_contents($request->file('receipt_image')->getRealPath()));
+                }
+            }
+
+            // Revert status to Submitted/Pending for Auditor re-verification
+            $claim->status = 'Pending';
+            $claim->save();
+
+            // Record event in AuditLog
+            AuditLog::log(
+                "CLAIM_RESUBMITTED",
+                $claim->claim_id,
+                ['status' => $oldStatus],
+                [
+                    'status' => 'Pending',
+                    'action_summary' => 'Claim resubmitted by employee after addressing audit clarification',
+                    'resubmitted_by' => Auth::user()->name ?? 'Staff User',
+                    'remarks' => $request->input('resubmission_notes', 'Addressed auditor feedback.')
+                ]
+            );
+
+            // Notify Finance/Manager that clarification has been provided
+            $financeUsers = User::whereIn('role', ['Finance', 'Manager', 'finance', 'manager'])->get();
+            foreach ($financeUsers as $fUser) {
+                NotificationService::send(
+                    $fUser->user_id ?? $fUser->id,
+                    "Claim Clarification Provided: #CLM-{$claim->claim_id}",
+                    "Employee " . (Auth::user()->name ?? 'Staff') . " has updated and resubmitted claim #CLM-{$claim->claim_id} ({$claim->title}).",
+                    'info',
+                    route('finance.auditing')
+                );
+            }
+
+            return redirect()->route('claims.history')
+                ->with('success', "Claim #CLM-{$claim->claim_id} has been resubmitted successfully for review.");
+        });
+    }
+
+    // Comment: Staff Lifecycle - Claim Withdrawal / Deletion Governance
+    public function withdraw(Request $request, $id)
+    {
+        $claim = Claim::findOrFail($id);
+        $currentUserId = Auth::id() ?? 1;
+
+        if ($claim->user_id !== $currentUserId) {
+            abort(403, 'Unauthorized: You can only cancel or withdraw your own claims.');
+        }
+
+        // Permitted: SUBMITTED (Pending) and REVISION_REQUIRED
+        // Forbidden / Locked: PRE_APPROVED, APPROVED, DISBURSED/REIMBURSED
+        $lockedStatuses = ['Pre-Approved', 'Approved', 'Disbursed', 'Reimbursed'];
+        if (in_array($claim->status, $lockedStatuses)) {
+            return redirect()->back()->withErrors([
+                'error' => "Action Locked: Claim #CLM-{$claim->claim_id} cannot be withdrawn because it is already under corporate governance ({$claim->status})."
+            ]);
+        }
+
+        $allowedStatuses = ['Pending', 'REVISION_REQUIRED', 'Submitted'];
+        if (!in_array($claim->status, $allowedStatuses)) {
+            return redirect()->back()->withErrors([
+                'error' => "Claim in status '{$claim->status}' cannot be withdrawn."
+            ]);
+        }
+
+        return DB::transaction(function () use ($claim) {
+            $claimId = $claim->claim_id;
+            $oldStatus = $claim->status;
+
+            AuditLog::log(
+                "CLAIM_WITHDRAWN",
+                $claimId,
+                ['status' => $oldStatus],
+                [
+                    'status' => 'Withdrawn',
+                    'actor' => Auth::user()->name ?? 'Staff User',
+                    'reason' => 'Withdrawn by employee prior to financial finalization'
+                ]
+            );
+
+            // Delete associated claim items
+            $claim->items()->delete();
+            $claim->delete();
+
+            return redirect()->route('claims.history')
+                ->with('success', "Claim #CLM-{$claimId} has been successfully withdrawn and deleted.");
+        });
+    }
 }
+
+
+
+

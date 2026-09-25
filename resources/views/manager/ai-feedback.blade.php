@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Continuous Active Learning Ledger</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -17,18 +19,23 @@
 
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased" x-data="{ isMobileSidebarOpen: false }">
 
-    <div class="flex min-h-screen">
+    <div class="flex flex-col lg:flex-row min-h-screen">
         @include('layouts.partials.manager-sidebar')
 
         <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 overflow-y-auto space-y-6">
 
             <!-- Header -->
             <div class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
+                                    <div>
+                        <div>
                     <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Active Learning & Model
                         Tuning Ledger</h1>
                     <p class="text-xs md:text-sm text-slate-500">Continuous human-in-the-loop dictionary adaptation and
                         weight tuning monitor.</p>
+                    </div>
+                    <div class="hidden lg:flex items-center gap-3">
+                        <x-system-clock />
+                    </div>
                 </div>
                 <div
                     class="px-4 py-2 bg-purple-50 border border-purple-200 text-purple-700 text-xs font-bold rounded-2xl flex items-center gap-2">
@@ -81,11 +88,28 @@
                                             class="px-2 py-0.5 bg-emerald-50 border border-emerald-100 rounded-md">{{ $item->corrected_category }}</span>
                                     </td>
                                     <td class="p-3.5">
-                                        <div class="flex flex-wrap gap-1 max-w-xs">
-                                            @foreach($item->extracted_keywords ?? [] as $kw)
-                                                <span
-                                                    class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[9px] font-mono text-slate-700">+{{ $kw }}</span>
+                                        <div class="flex flex-wrap gap-1 max-w-xs" x-data="{ showAll: false }">
+                                            @php
+                                                $keywords = is_string($item->extracted_keywords) ? json_decode($item->extracted_keywords, true) : ($item->extracted_keywords ?? []);
+                                                $keywords = is_array($keywords) ? $keywords : [];
+                                                $firstFew = array_slice($keywords, 0, 3);
+                                                $remainingCount = count($keywords) - 3;
+                                            @endphp
+                                            @foreach($firstFew as $kw)
+                                                <span class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[9px] font-mono text-slate-700">+{{ $kw }}</span>
                                             @endforeach
+                                            @if($remainingCount > 0)
+                                                <span x-show="!showAll" @click="showAll = true" class="px-1.5 py-0.5 bg-blue-50 border border-blue-200 text-blue-600 rounded text-[9px] font-bold cursor-pointer transition hover:bg-blue-100">
+                                                    +{{ $remainingCount }} more
+                                                </span>
+                                                <template x-if="showAll">
+                                                    <div class="contents">
+                                                        @foreach(array_slice($keywords, 3) as $kw)
+                                                            <span class="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[9px] font-mono text-slate-700">+{{ $kw }}</span>
+                                                        @endforeach
+                                                    </div>
+                                                </template>
+                                            @endif
                                         </div>
                                     </td>
                                     <td class="p-3.5 text-center">
@@ -95,19 +119,27 @@
                                         </span>
                                     </td>
                                     <td class="p-3.5 text-center">
-                                        <form action="{{ route('manager.ai_feedback.toggle', $item->id) }}" method="POST">
+                                        <form action="{{ route('manager.ai_feedback.toggle', $item->id) }}" method="POST" x-data="{ isSubmitting: false }" @submit="isSubmitting = true">
                                             @csrf
-                                            <button type="submit"
-                                                class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] rounded-lg transition cursor-pointer">
-                                                {{ $item->is_applied ? 'Disable' : 'Enable' }}
+                                            <button type="submit" :disabled="isSubmitting"
+                                                class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] rounded-lg transition cursor-pointer flex items-center justify-center gap-1 w-full max-w-[80px] mx-auto">
+                                                <template x-if="isSubmitting"><i class="fa-solid fa-spinner fa-spin"></i></template>
+                                                <span x-text="isSubmitting ? 'Working' : '{{ $item->is_applied ? 'Disable' : 'Enable' }}'"></span>
                                             </button>
                                         </form>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="p-8 text-center text-slate-400">No human correction feedback
-                                        records captured yet. AI predictions are accepted as-is.</td>
+                                    <td colspan="6" class="p-12 text-center text-slate-400 font-medium">
+                                        <div class="flex flex-col items-center justify-center space-y-3">
+                                            <div class="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-1">
+                                                <i class="fa-solid fa-microchip text-3xl text-slate-300"></i>
+                                            </div>
+                                            <span class="text-sm text-slate-500 font-bold">No AI Feedback Yet</span>
+                                            <span class="text-xs text-slate-400 max-w-xs">AI predictions are accurate. When a user corrects a prediction, it will appear here for tuning.</span>
+                                        </div>
+                                    </td>
                                 </tr>
                             @endforelse
                         </tbody>

@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" x-data="{ isMobileSidebarOpen: false, isModalOpen: false }">
+<html lang="en" x-data="advancesForm()">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Cash Advances & Float</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -37,7 +39,8 @@
                             future receipt claims.</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <div class="hidden lg:block">
+                        <div class="hidden lg:flex items-center gap-3">
+                            <x-system-clock />
                             @include('layouts.partials.notification-bell')
                         </div>
 
@@ -135,7 +138,7 @@
         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
         <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl" @click.away="isModalOpen = false">
             <h3 class="text-base font-bold text-slate-900">New Cash Advance Request</h3>
-            <form action="{{ route('advances.store') }}" method="POST" class="space-y-3 text-xs">
+            <form action="{{ route('advances.store') }}" method="POST" class="space-y-3 text-xs" @submit="isSubmitting = true">
                 @csrf
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Requisition Title / Event</label>
@@ -145,8 +148,9 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Requested Amount (RM)</label>
-                        <input type="number" step="0.01" name="requested_amount" required placeholder="500.00"
-                            class="w-full p-2.5 border rounded-xl bg-slate-50">
+                        <input type="text" id="amount_input" required placeholder="500.00"
+                            class="w-full p-2.5 border rounded-xl bg-slate-50 font-mono">
+                        <input type="hidden" name="requested_amount" x-model="amount">
                     </div>
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Required By Date</label>
@@ -163,9 +167,12 @@
                 <div class="pt-2 flex justify-end gap-2">
                     <button type="button" @click="isModalOpen = false"
                         class="px-4 py-2 border rounded-xl font-bold text-slate-600 cursor-pointer">Cancel</button>
-                    <button type="submit"
-                        class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl cursor-pointer">Submit
-                        Request</button>
+                    <button type="submit" :disabled="isSubmitting"
+                        :class="isSubmitting ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'"
+                        class="px-4 py-2 font-bold rounded-xl flex items-center justify-center gap-2">
+                        <template x-if="isSubmitting"><i class="fa-solid fa-spinner fa-spin"></i></template>
+                        <span x-text="isSubmitting ? 'Submitting...' : 'Submit Request'"></span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -173,4 +180,34 @@
 
 </body>
 
+    <script src="https://unpkg.com/imask"></script>
+    <script>
+        function advancesForm() {
+            return {
+                isMobileSidebarOpen: false,
+                isModalOpen: false,
+                isSubmitting: false,
+                amount: '',
+                currencyMask: null,
+                init() {
+                    const amountInput = document.getElementById('amount_input');
+                    if (amountInput) {
+                        this.currencyMask = IMask(amountInput, {
+                            mask: Number,
+                            scale: 2,
+                            signed: false,
+                            thousandsSeparator: ',',
+                            padFractionalZeros: true,
+                            normalizeZeros: true,
+                            radix: '.',
+                            mapToRadix: ['.']
+                        });
+                        this.currencyMask.on('accept', () => {
+                            this.amount = this.currencyMask.unmaskedValue;
+                        });
+                    }
+                }
+            };
+        }
+    </script>
 </html>

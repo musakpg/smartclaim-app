@@ -14,7 +14,7 @@ class NotificationService
      */
     public static function send(int $userId, string $title, string $message, string $type = 'info', ?string $url = null): void
     {
-        // 1. Simpan dalam pangkalan data untuk paparan loceng dalam web
+        // 1. Store in database for in-app notification bell display
         try {
             InAppNotification::create([
                 'user_id' => $userId,
@@ -28,7 +28,7 @@ class NotificationService
             Log::error("Failed to dispatch in-app notification: " . $e->getMessage());
         }
 
-        // 2. Pancarkan Web Push Notification terus ke skrin telefon / laptop staf
+        // 2. Broadcast Web Push notification to user's registered client devices
         try {
             $user = User::where('user_id', $userId)->orWhere('id', $userId)->first();
             if ($user) {

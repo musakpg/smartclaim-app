@@ -21,28 +21,28 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        // 2. Create 'vehicles' table (Diletak SEBELUM claims supaya boleh dirujuk oleh foreign key)
+        // 2. Create 'vehicles' table (Placed before claims for foreign key reference)
         Schema::create('vehicles', function (Blueprint $table) {
             $table->id('vehicle_id'); // Primary Key
-            $table->unsignedBigInteger('user_id')->nullable(); // NULL jika kenderaan milik syarikat Aero Art
+            $table->unsignedBigInteger('user_id')->nullable(); // NULL if vehicle belongs to company fleet
             $table->string('plate_number')->unique();
-            $table->string('brand_model'); // cth: Perodua Myvi, Toyota Hiace
+            $table->string('brand_model'); // e.g. Perodua Myvi, Toyota Hiace
             $table->enum('vehicle_type', ['Car', 'Motorcycle'])->default('Car');
-            $table->integer('engine_capacity')->default(1500); // Penting untuk kadar pengiraan mileage
-            $table->date('roadtax_expiry')->nullable(); // Pengesahan kelayakan roadtax
+            $table->integer('engine_capacity')->default(1500); // Mileage calculation factor
+            $table->date('roadtax_expiry')->nullable(); // Roadtax validity verification
             $table->enum('ownership_type', ['personal', 'company'])->default('personal');
             $table->enum('status', ['Active', 'Inactive'])->default('Active');
             $table->timestamps();
 
-            // Foreign Key ke Users
+            // Foreign Key to Users
             $table->foreign('user_id')->references('user_id')->on('users')->nullOnDelete();
         });
 
         // 3. Create 'claims' table
         Schema::create('claims', function (Blueprint $table) {
             $table->id('claim_id'); // Primary Key
-            $table->unsignedBigInteger('user_id'); // Foreign Key ke Users
-            $table->unsignedBigInteger('vehicle_id')->nullable(); // Foreign Key ke Vehicles (DITAMBAH DI SINI)
+            $table->unsignedBigInteger('user_id'); // Foreign Key to Users
+            $table->unsignedBigInteger('vehicle_id')->nullable(); // Foreign Key to Vehicles
             $table->string('title');
             $table->string('claim_type')->default('Receipt'); // 'Receipt' or 'Mileage'
 
@@ -55,12 +55,12 @@ return new class extends Migration {
             $table->text('business_purpose')->nullable();
 
             // Relational AI Data Model Properties
-            $table->string('receipt_image_path')->nullable(); // Nullable jika claim jenis mileage
+            $table->string('receipt_image_path')->nullable(); // Nullable for mileage claims
             $table->longText('extracted_raw_text')->nullable();
             $table->string('predicted_category')->default('Unassigned');
             $table->decimal('amount', 10, 2)->default(0.00);
             $table->string('status')->default('Pending');
-            $table->date('estimated_payout_date')->nullable(); // DITAMBAH DI SINI (Penjejakan SLA ala courier)
+            $table->date('estimated_payout_date')->nullable(); // SLA courier-style tracking
 
             // Logistics & Mileage Parameters Mapping
             $table->decimal('mileage_km', 8, 2)->nullable();

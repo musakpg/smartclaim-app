@@ -16,10 +16,11 @@ class AuthController extends Controller
         // If the user session is already authenticated, redirect them automatically based on role matrix
         if (Auth::check()) {
             $user = Auth::user();
+            $normalizedRole = strtolower(trim($user->role ?? ''));
 
-            if ($user->role === 'Manager' || $user->email === 'manager@aeroart.com') {
+            if ($normalizedRole === 'manager') {
                 return redirect()->route('manager.dashboard');
-            } elseif ($user->role === 'Finance' || $user->role === 'fin' || $user->email === 'finance@aeroart.com') {
+            } elseif ($normalizedRole === 'finance' || $normalizedRole === 'fin') {
                 return redirect()->route('finance.dashboard');
             }
             
@@ -45,15 +46,16 @@ class AuthController extends Controller
             $request->session()->regenerate();
 
             $user = Auth::user();
+            $normalizedRole = strtolower(trim($user->role ?? ''));
 
             // 👑 TIER 1 EXECUTIVE GATEWAY: Redirects authenticated users matching the Manager role pattern
-            if ($user->role === 'Manager' || $user->email === 'manager@aeroart.com') {
+            if ($normalizedRole === 'manager') {
                 return redirect()->route('manager.dashboard')
                     ->with('success', 'Executive management session initialized. Welcome back, Manager!');
             }
 
             // 🔍 TIER 2 AUDITOR GATEWAY: Matches shortened or standard role mappings for Finance accounts
-            if ($user->role === 'Finance' || $user->role === 'fin' || $user->email === 'finance@aeroart.com') {
+            if ($normalizedRole === 'finance' || $normalizedRole === 'fin') {
                 return redirect()->route('finance.dashboard')
                     ->with('success', 'Finance portal active. Welcome back, Auditor Officer!');
             }

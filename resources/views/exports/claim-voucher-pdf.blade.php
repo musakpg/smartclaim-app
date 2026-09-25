@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <title>SmartClaim Payment Voucher - CLM-{{ $claim->claim_id }}</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;

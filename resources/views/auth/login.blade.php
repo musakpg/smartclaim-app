@@ -4,10 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Expense Management System</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
 </head>
-<body class="bg-white text-slate-800 font-sans antialiased min-h-screen flex items-center justify-center p-6">
+<body class="bg-white text-slate-800 font-sans antialiased min-h-screen flex items-center justify-center p-6" x-data="{ showInactiveModal: {{ session('account_inactive') ? 'true' : 'false' }} }">
 
     <div class="w-full max-w-sm mx-auto space-y-8">
         
@@ -51,7 +59,7 @@
             </div>
 
             <div class="text-left pt-1">
-                <a href="#" class="text-xs font-bold text-slate-900 hover:underline">Forgot Password?</a>
+                <button type="button" @click="Swal.fire({ title: 'Password Recovery', text: 'Please contact the IT Helpdesk or HR Administrator to reset your organizational credentials.', icon: 'info', confirmButtonColor: '#00e1b1', confirmButtonText: 'Understood' })" class="text-xs font-bold text-slate-900 hover:underline cursor-pointer">Forgot Password?</button>
             </div>
 
             <div class="pt-2">
@@ -63,10 +71,51 @@
         </form>
 
         <div class="text-center text-xs text-slate-400 font-medium">
-            No Account? <a href="#" class="text-slate-900 font-bold hover:underline">Register</a>
+            No Account? <button type="button" @click="Swal.fire({ title: 'Account Registration', text: 'Self-registration is restricted. User accounts are provisioned exclusively by HR & Administration.', icon: 'info', confirmButtonColor: '#00e1b1', confirmButtonText: 'Understood' })" class="text-slate-900 font-bold hover:underline cursor-pointer">Register</button>
         </div>
 
     </div>
+
+    <!-- Inactive Account Modal -->
+    <template x-teleport="body">
+        <div x-show="showInactiveModal" style="display: none;"
+             class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            
+            <div x-show="showInactiveModal"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+                 @click="showInactiveModal = false"></div>
+
+            <div x-show="showInactiveModal"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 class="relative bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-md mx-auto text-center z-10">
+                 
+                 <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 mb-4">
+                     <i class="fa-solid fa-user-lock text-amber-600 text-xl"></i>
+                 </div>
+                 
+                 <h3 class="text-lg font-black text-slate-900 mb-2">Account Deactivated</h3>
+                 <p class="text-sm text-slate-600 mb-6 leading-relaxed">
+                     Your SmartClaim portal access is currently inactive. If you believe this is a mistake or require reinstatement, please contact your department manager or email <span class="font-semibold text-slate-800">{{ config('mail.support_address', 'manager@aeroart.com') }}</span>.
+                 </p>
+                 
+                 <button type="button" @click="showInactiveModal = false"
+                         class="w-full inline-flex justify-center rounded-xl border border-transparent bg-slate-900 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-slate-800 transition-colors cursor-pointer">
+                     Understood / Close
+                 </button>
+            </div>
+        </div>
+    </template>
 
 </body>
 </html>

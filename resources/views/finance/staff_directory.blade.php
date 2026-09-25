@@ -6,6 +6,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Staff Banking Directory</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -26,38 +28,24 @@
 
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-            <!-- Mobile Top Header -->
-            <header
-                class="lg:hidden flex items-center justify-between bg-[#0d1527] border-b border-slate-800 px-4 py-3 sticky top-0 z-30 shadow-md">
-                <div class="flex items-center gap-2.5">
-                    <div
-                        class="w-8 h-8 rounded-lg bg-[#00d1b2]/10 border border-[#00d1b2]/20 flex items-center justify-center text-[#00d1b2]">
-                        <i class="fa-solid fa-shield text-sm"></i>
-                    </div>
-                    <div>
-                        <span class="text-sm font-black text-white tracking-tight leading-none block">SmartClaim</span>
-                        <span class="text-[9px] font-bold text-[#00d1b2] tracking-wider uppercase block">Finance
-                            Portal</span>
-                    </div>
-                </div>
 
-                <button type="button" @click="isMobileSidebarOpen = true"
-                    class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer">
-                    <i class="fa-solid fa-bars text-sm"></i>
-                </button>
-            </header>
 
             <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-y-auto space-y-6">
 
                 <!-- Header & Search -->
                 <div
                     class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
+                                        <div>
+                        <div>
                         <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Staff Beneficiary
                             Directory</h1>
                         <p class="text-xs md:text-sm text-slate-500">Official bank settlement ledger and registered
                             account particulars for Aero Art staff.</p>
                     </div>
+                    <div class="hidden lg:flex items-center gap-3">
+                        <x-system-clock />
+                    </div>
+                </div>
 
                     <div class="w-full sm:w-72">
                         <div class="relative">

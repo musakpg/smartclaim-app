@@ -96,5 +96,9 @@ class DatabaseSeeder extends Seeder
             ['vehicle_type' => 'Motorcycle', 'min_km' => 51, 'max_km' => 150, 'rate' => 0.40, 'created_at' => now(), 'updated_at' => now()],
             ['vehicle_type' => 'Motorcycle', 'min_km' => 151, 'max_km' => 9999, 'rate' => 0.30, 'created_at' => now(), 'updated_at' => now()],
         ]);
+
+        $this->call([
+            ComprehensiveDemoSeeder::class
+        ]);
     }
 }

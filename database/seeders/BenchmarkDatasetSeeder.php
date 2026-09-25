@@ -16,7 +16,7 @@ class BenchmarkDatasetSeeder extends Seeder
                 'sample_name' => 'Petronas Dagangan Receipt #01',
                 'raw_ocr_payload' => "STESEN MINYAK PETRONAS SEKSYEN 7 SHAH ALAM PRIMAX 95 RON95 RM 50.00 CASH PAYMENT THANK YOU COME AGAIN",
                 'actual_category' => 'Fuel / Automotive',
-                'actual_amount' => 50.00
+                'actual_amount' => 50.00, 'actual_merchant' => 'PETRONAS', 'actual_date' => '2026-09-01', 'actual_tax_invoice' => 'INV-001'
             ],
             [
                 'sample_name' => 'Starbucks Coffee Receipt #02',
@@ -80,6 +80,9 @@ class BenchmarkDatasetSeeder extends Seeder
                 'raw_ocr_payload' => $item['raw_ocr_payload'],
                 'actual_category' => $item['actual_category'],
                 'actual_amount' => $item['actual_amount'],
+                'actual_merchant' => $item['actual_merchant'] ?? null,
+                'actual_date' => $item['actual_date'] ?? null,
+                'actual_tax_invoice' => $item['actual_tax_invoice'] ?? null,
             ]);
         }
     }

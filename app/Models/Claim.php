@@ -25,6 +25,7 @@ class Claim extends Model
         'receipt_image_path',
         'extracted_raw_text',
         'predicted_category',
+        'category_id',
         'business_purpose',       // User justification notes
         'vehicle_plate_number',   // Plate number snapshot
         'amount',
@@ -37,6 +38,9 @@ class Claim extends Model
         'destination_location',
         'is_policy_violation',
         'policy_violation_reason',
+        'revision_reason',
+        'rejection_reason',
+        'remarks',
         'receipt_image_hash',
         'risk_score',
         'fraud_flags',
@@ -77,6 +81,16 @@ class Claim extends Model
         return $this->belongsTo(Vehicle::class, 'vehicle_id', 'vehicle_id');
     }
 
+    public function category()
+    {
+        return $this->belongsTo(Category::class, 'category_id', 'id');
+    }
+
+    public function auditLogs()
+    {
+        return $this->hasMany(AuditLog::class, 'claim_id', 'claim_id')->orderBy('created_at', 'asc');
+    }
+
     public function getCalculatedAmountAttribute()
     {
         if ($this->claim_type !== 'Mileage') {
@@ -84,26 +98,9 @@ class Claim extends Model
         }
 
         $km = (float) $this->mileage_km;
-        $type = $this->vehicle_type;
-
-        $rates = \App\Models\MileageRate::where('vehicle_type', $type)->get();
-        if ($rates->isEmpty()) {
-            return $this->amount;
-        }
-
-        $rate50 = $rates->firstWhere('max_km', 50)->rate ?? 0.80;
-        $rate150 = $rates->firstWhere('max_km', 150)->rate ?? 0.70;
-        $rateMax = $rates->firstWhere('max_km', 9999)->rate ?? 0.60;
-
-        if ($km <= 50) {
-            $total = $km * $rate50;
-        } elseif ($km <= 150) {
-            $total = (50 * $rate50) + (($km - 50) * $rate150);
-        } else {
-            $total = (50 * $rate50) + (100 * $rate150) + (($km - 150) * $rateMax);
-        }
-
-        return $total;
+        $rate = $this->vehicle_type === 'Motorcycle' ? 0.30 : 0.60;
+        
+        return $km * $rate;
     }
     public function reimburser()
     {
@@ -113,5 +110,20 @@ class Claim extends Model
     public function cashAdvance()
     {
         return $this->belongsTo(CashAdvance::class, 'cash_advance_id', 'advance_id');
+    }
+
+    public function getEstimatedCompletionAtAttribute()
+    {
+        return app(\App\Services\SlaTrackingService::class)->getEstimatedCompletionAt($this);
+    }
+
+    public function getSlaStatusAttribute()
+    {
+        return app(\App\Services\SlaTrackingService::class)->getSlaStatus($this);
+    }
+
+    public function getTimeRemainingHumanAttribute()
+    {
+        return app(\App\Services\SlaTrackingService::class)->getTimeRemainingHuman($this);
     }
 }

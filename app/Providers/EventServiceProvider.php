@@ -25,7 +25,11 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        \App\Models\MileageRate::observe(\App\Observers\AuditObserver::class);
+        \App\Models\Claim::observe(\App\Observers\AuditObserver::class);
+        \App\Models\Vehicle::observe(\App\Observers\AuditObserver::class);
+        \App\Models\Category::observe(\App\Observers\AuditObserver::class);
+        \App\Models\User::observe(\App\Observers\AuditObserver::class);
     }
 
     /**

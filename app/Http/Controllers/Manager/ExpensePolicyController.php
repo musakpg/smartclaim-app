@@ -13,7 +13,7 @@ class ExpensePolicyController extends Controller
      */
     public function index()
     {
-        $policies = ExpensePolicy::orderBy('category_name', 'asc')->get();
+        $policies = ExpensePolicy::with('category')->get()->sortBy('category.name');
         return view('manager.expense-policies', compact('policies'));
     }
 
@@ -37,6 +37,19 @@ class ExpensePolicyController extends Controller
             'description' => $request->input('description'),
         ]);
 
-        return redirect()->back()->with('success', "Policy parameters for '{$policy->category_name}' updated successfully.");
+        return redirect()->back()->with('success', "Policy parameters for '{$policy->category->name}' updated successfully.");
+    }
+
+    /**
+     * Delete an expense policy.
+     */
+    public function destroy($id)
+    {
+        $policy = ExpensePolicy::findOrFail($id);
+        $categoryName = $policy->category->name ?? 'Unknown Category';
+        
+        $policy->delete();
+
+        return redirect()->back()->with('success', "Expense policy for '{$categoryName}' deleted successfully.");
     }
 }

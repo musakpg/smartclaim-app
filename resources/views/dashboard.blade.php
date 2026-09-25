@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartClaim - Dashboard</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0b1727">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -15,7 +17,7 @@
     </style>
 </head>
 
-<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased">
+<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased" :class="isMobileSidebarOpen ? 'overflow-hidden lg:overflow-auto' : ''">
 
     <div class="flex min-h-screen flex-col lg:flex-row">
 
@@ -35,7 +37,8 @@
                     </div>
 
                     <div class="flex items-center gap-3 w-full sm:w-auto">
-                        <div class="hidden lg:block">
+                        <div class="hidden lg:flex items-center gap-3">
+                            <x-system-clock />
                             @include('layouts.partials.notification-bell')
                         </div>
 
@@ -143,6 +146,44 @@
 
                 </div>
 
+                <!-- Monthly Entitlement Tracker -->
+                @if(isset($expensePolicies) && count($expensePolicies) > 0)
+                <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-2xs space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div class="space-y-0.5">
+                            <h3 class="text-xs md:text-sm font-bold text-slate-800 tracking-tight"><i class="fa-solid fa-chart-pie mr-1 text-slate-400"></i> Monthly Entitlement Tracker</h3>
+                            <p class="text-[11px] md:text-xs text-slate-400">Track your current month claims against company budget quotas.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        @foreach($expensePolicies as $policy)
+                            @php
+                                $catName = $policy->category_name ?? $policy->name ?? $policy->policy_name ?? $policy->category ?? 'General';
+                                $spend = $monthlyCategorySpend[$catName] ?? 0;
+                                $budget = $policy->monthly_budget_cap ?? $policy->monthly_limit ?? $policy->budget_limit ?? 0;
+                                $percentage = $budget > 0 ? min(100, ($spend / $budget) * 100) : 0;
+                                $colorClass = 'bg-emerald-500';
+                                if($percentage >= 90) $colorClass = 'bg-rose-500';
+                                elseif($percentage >= 75) $colorClass = 'bg-amber-500';
+                            @endphp
+                            <div class="space-y-1.5 p-3 rounded-2xl border {{ $percentage >= 100 ? 'border-rose-100 bg-rose-50/20' : 'border-slate-100 bg-slate-50/50' }}">
+                                <div class="flex justify-between items-center text-[11px] font-bold">
+                                    <span class="text-slate-700">{{ $catName }}</span>
+                                    <span class="text-slate-900 font-mono">RM {{ number_format($spend, 2) }} <span class="text-slate-400 font-normal">/ RM {{ number_format($budget, 2) }}</span></span>
+                                </div>
+                                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden flex">
+                                    <div class="{{ $colorClass }} h-2 rounded-full transition-all duration-500" style="width: {{ $percentage }}%"></div>
+                                </div>
+                                @if($percentage >= 100)
+                                    <p class="text-[9px] text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Budget limit reached for this month</p>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 <!-- Charts Row -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="lg:col-span-2 bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-2xs">
@@ -210,15 +251,38 @@
                                             RM {{ number_format($claim->amount, 2) }}
                                         </td>
                                         <td class="py-3.5 px-3 md:px-4 text-center whitespace-nowrap">
-                                            <span
-                                                class="px-2.5 py-1 rounded-full font-bold text-[9px] uppercase tracking-wide
-                                                    {{ $claim->status === 'Reimbursed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : '' }}
-                                                    {{ $claim->status === 'Approved' ? 'bg-teal-50 text-teal-700 border border-teal-200' : '' }}
-                                                    {{ $claim->status === 'Pre-Approved' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : '' }}
-                                                    {{ $claim->status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' : '' }}
-                                                    {{ $claim->status === 'Rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200' : '' }}">
-                                                {{ $claim->status }}
-                                            </span>
+                                            <div class="flex flex-col items-center gap-1.5 mt-1">
+                                                <span
+                                                    class="px-2.5 py-1 rounded-full font-bold text-[9px] uppercase tracking-wide
+                                                        {{ $claim->status === 'Reimbursed' || $claim->status === 'Disbursed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : '' }}
+                                                        {{ $claim->status === 'Approved' ? 'bg-teal-50 text-teal-700 border border-teal-200' : '' }}
+                                                        {{ $claim->status === 'Pre-Approved' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : '' }}
+                                                        {{ $claim->status === 'Pending Manager' || $claim->status === 'Pending Finance' || $claim->status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' : '' }}
+                                                        {{ $claim->status === 'Rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200' : '' }}">
+                                                    {{ $claim->status }}
+                                                </span>
+                                                @if($claim->sla_status)
+                                                    <span class="px-2 py-0.5 rounded-full font-bold text-[8px] tracking-wide border flex items-center gap-1 justify-center whitespace-nowrap
+                                                        {{ $claim->sla_status === 'breached' ? 'bg-amber-50 text-amber-700 border-amber-200' : ($claim->sla_status === 'resolved' ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-blue-50 text-blue-700 border-blue-200') }}">
+                                                        @if($claim->sla_status !== 'resolved' && $claim->sla_status !== 'breached')
+                                                            <span class="relative flex h-1.5 w-1.5 shrink-0">
+                                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                                                <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+                                                            </span>
+                                                        @elseif($claim->sla_status === 'breached')
+                                                            <i class="fa-solid fa-triangle-exclamation text-[8px]"></i>
+                                                        @else
+                                                            <i class="fa-solid fa-check text-[8px]"></i>
+                                                        @endif
+                                                        <span>
+                                                            {{ $claim->sla_status === 'breached' ? 'Delayed - Expedited Review Active' : 
+                                                               (in_array($claim->status, ['Pending Manager', 'Pending']) ? 'Est. Pre-Approval: ' . $claim->time_remaining_human : 
+                                                               (in_array($claim->status, ['Approved', 'Pending Finance']) ? 'Est. Payout: by ' . ($claim->estimated_completion_at ? $claim->estimated_completion_at->format('M d, Y') : '') . ' (Finance Batch)' : 
+                                                               $claim->time_remaining_human)) }}
+                                                        </span>
+                                                    </span>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty

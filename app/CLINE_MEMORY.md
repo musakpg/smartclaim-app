@@ -20,13 +20,13 @@
 
 ## Immediate Roadmap & Upcoming To-Dos
 
-1. Audit Trail Logging System:
-    - Create `audit_logs` table (user_id, claim_id, action, old_values, new_values, ip_address, user_agent, created_at).
-    - Hook automated event listeners to single/batch disbursements, approvals, and amount edits.
-    - Build Audit Trail UI timeline modal for Managers and External Auditors.
-2. Comprehensive Financial Reporting Engine:
-    - Export claims to Excel/CSV with LHDN tax categories, SST breakdowns, and voucher reference numbers.
-3. Mobile PWA Integration:
-    - Setup `manifest.json`, high-resolution icons (192x192, 512x512), and standalone display mode.
-4. In-App Quick Camera OCR:
-    - Native WebRTC camera capture modal with receipt bounding box and auto-crop before sending to Vision OCR.
+1. [x] Audit Trail Logging System:
+    - [x] Create `audit_logs` table (user_id, claim_id, action, old_values, new_values, ip_address, user_agent, created_at).
+    - [x] Hook automated event listeners to single/batch disbursements, approvals, and amount edits.
+    - [x] Build Audit Trail UI timeline modal for Managers and External Auditors.
+2. [x] Comprehensive Financial Reporting Engine:
+    - [x] Export claims to Excel/CSV with LHDN tax categories, SST breakdowns, and voucher reference numbers.
+3. [x] Mobile PWA Integration:
+    - [x] Setup `manifest.json`, high-resolution icons (192x192, 512x512), and standalone display mode.
+4. [x] In-App Quick Camera OCR:
+    - [x] Native WebRTC camera capture modal with receipt bounding box and auto-crop before sending to Vision OCR.
