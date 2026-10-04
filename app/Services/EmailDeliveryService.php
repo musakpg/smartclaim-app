@@ -95,6 +95,8 @@ class EmailDeliveryService
      */
     protected static function sendViaGoogleScript(string $webhookUrl, string $to, string $subject, string $htmlContent): array
     {
+        $webhookUrl = trim(str_replace(["\r", "\n", '%0A', '%0a', ' '], '', $webhookUrl));
+
         $client = new Client([
             'timeout'         => 15,
             'allow_redirects' => true,
