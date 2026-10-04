@@ -23,7 +23,7 @@
                         <td style="padding: 36px 32px;">
                             <h2 style="margin: 0 0 16px; color: #0f172a; font-size: 18px; font-weight: 800;">Welcome, {{ $user->name }}!</h2>
                             <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.6; color: #475569;">
-                                Your registration on the SmartClaim portal has been received. To finish activating your account and start filing claims, please set up your account password by clicking the button below.
+                                Your registration on the SmartClaim portal has been received. To finish activating your account and start filing claims, please set up your account password by clicking the button below. <strong style="color: #b91c1c;">Please note that this activation link will expire in 5 minutes.</strong>
                             </p>
 
                             <!-- Profile Details Card -->

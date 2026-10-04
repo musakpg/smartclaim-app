@@ -39,36 +39,46 @@ class RegistrationAndPasswordRecoveryTest extends TestCase
         $response->assertRedirect('/');
         $response->assertSessionHas('success');
 
-        $this->assertDatabaseHas('users', [
+        // Ensure user is NOT created in users table yet
+        $this->assertDatabaseMissing('users', [
+            'email' => 'noraini@aeroart.com',
+        ]);
+
+        // Ensure record is saved in pending_registrations table
+        $this->assertDatabaseHas('pending_registrations', [
             'name'            => 'Noraini binti Kassim',
             'email'           => 'noraini@aeroart.com',
             'bank_name'       => 'Maybank',
             'bank_account_no' => '164012345678',
-            'is_active'       => false,
-            'role'            => 'Staff',
         ]);
 
-        $user = User::where('email', 'noraini@aeroart.com')->first();
-        $this->assertNotEmpty($user->activation_token);
+        $pending = DB::table('pending_registrations')->where('email', 'noraini@aeroart.com')->first();
+        $this->assertNotEmpty($pending->activation_token);
 
-        Mail::assertSent(AccountActivationMail::class, function ($mail) use ($user) {
-            return $mail->user->email === $user->email &&
-                   str_contains($mail->setupUrl, $user->activation_token);
+        Mail::assertSent(AccountActivationMail::class, function ($mail) use ($pending) {
+            return $mail->user->email === $pending->email &&
+                   str_contains($mail->setupUrl, $pending->activation_token);
         });
     }
 
     public function test_staff_can_setup_password_and_activate_account()
     {
-        $user = User::factory()->create([
-            'is_active'        => false,
-            'activation_token' => 'test-activation-token-12345',
+        $token = 'test-activation-token-12345';
+        DB::table('pending_registrations')->insert([
+            'name'                => 'Noraini binti Kassim',
+            'email'               => 'noraini.setup@aeroart.com',
+            'bank_name'           => 'Maybank',
+            'bank_account_no'     => '164012345678',
+            'bank_account_holder' => 'Noraini binti Kassim',
+            'activation_token'    => $token,
+            'created_at'          => Carbon::now(),
         ]);
 
-        $viewResponse = $this->get('/setup-password/' . $user->activation_token);
+        $viewResponse = $this->get('/setup-password/' . $token);
         $viewResponse->assertStatus(200);
         $viewResponse->assertSee('ACTIVATE YOUR ACCOUNT');
 
-        $postResponse = $this->post('/setup-password/' . $user->activation_token, [
+        $postResponse = $this->post('/setup-password/' . $token, [
             'password'              => 'StrongPassword123!',
             'password_confirmation' => 'StrongPassword123!',
         ]);
@@ -76,10 +86,43 @@ class RegistrationAndPasswordRecoveryTest extends TestCase
         $postResponse->assertRedirect('/');
         $postResponse->assertSessionHas('success');
 
-        $user->refresh();
-        $this->assertTrue((bool)$user->is_active);
-        $this->assertNull($user->activation_token);
+        // Verify pending registration was cleared
+        $this->assertDatabaseMissing('pending_registrations', [
+            'activation_token' => $token,
+        ]);
+
+        // Verify user is now created in users table
+        $this->assertDatabaseHas('users', [
+            'email'     => 'noraini.setup@aeroart.com',
+            'role'      => 'Staff',
+            'is_active' => true,
+        ]);
+
+        $user = User::where('email', 'noraini.setup@aeroart.com')->first();
         $this->assertTrue(Hash::check('StrongPassword123!', $user->password));
+    }
+
+    public function test_activation_link_expires_after_5_minutes()
+    {
+        $token = 'expired-token-999';
+        DB::table('pending_registrations')->insert([
+            'name'                => 'Late User',
+            'email'               => 'late@aeroart.com',
+            'bank_name'           => 'CIMB Bank',
+            'bank_account_no'     => '8001234567',
+            'bank_account_holder' => 'Late User',
+            'activation_token'    => $token,
+            'created_at'          => Carbon::now()->subMinutes(6), // Over 5 minutes ago
+        ]);
+
+        $response = $this->get('/setup-password/' . $token);
+        $response->assertRedirect('/register');
+        $response->assertSessionHasErrors(['loginError']);
+
+        // Assert cleaned up
+        $this->assertDatabaseMissing('pending_registrations', [
+            'activation_token' => $token,
+        ]);
     }
 
     public function test_forgot_password_sends_reset_email_with_token()
