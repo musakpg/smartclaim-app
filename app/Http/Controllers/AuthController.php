@@ -166,17 +166,14 @@ class AuthController extends Controller
         $delivery = \App\Services\EmailDeliveryService::sendMailable($email, $mailable);
 
         if ($delivery['success']) {
-            return redirect()->route('login')->with('success', "Registration initiated! An activation email has been sent to {$email} (valid for 5 minutes). Please check your inbox to set your password.");
+            return redirect()->route('login')->with('success', "Registration initiated! An activation link has been sent to your email {$email} (valid for 5 minutes). Please check your email to set your password and complete registration.");
         }
 
-        // If restricted by free cloud tier or email provider (e.g. unverified domain):
-        // Provide the direct link safely so user can activate immediately within the 5-minute window!
-        return redirect()->route('login')
-            ->with('success', "Registration initiated! Your profile is ready for activation (valid for 5 minutes).")
-            ->with('activation_url', $setupUrl)
-            ->with('activation_notice', $delivery['is_restricted']
-                ? 'External cloud email dispatch is restricted without a verified domain. You can activate your account directly below:'
-                : 'Click the link below to set your password and complete activation:');
+        DB::table('pending_registrations')->where('activation_token', $activationToken)->delete();
+
+        return redirect()->back()->withInput()->withErrors([
+            'email' => 'Failed to deliver activation email: ' . $delivery['message'] . '. Please check your email address and try again.',
+        ]);
     }
 
     /**
@@ -286,13 +283,7 @@ class AuthController extends Controller
             Log::info("SmartClaim: Password reset link generated for {$email}: {$resetUrl}");
 
             $mailable = new ResetPasswordMail($user, $resetUrl);
-            $delivery = \App\Services\EmailDeliveryService::sendMailable($user->email, $mailable);
-
-            if (!$delivery['success'] && $delivery['is_restricted']) {
-                return redirect()->back()
-                    ->with('status', 'Password reset generated.')
-                    ->with('reset_url', $resetUrl);
-            }
+            \App\Services\EmailDeliveryService::sendMailable($user->email, $mailable);
         }
 
         return redirect()->back()->with('status', 'If your email is registered in our system, a password reset link has been dispatched to your inbox.');
