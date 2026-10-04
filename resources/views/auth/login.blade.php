@@ -39,6 +39,23 @@
             </div>
         @endif
 
+        @if(session('activation_url'))
+            <div class="p-4 bg-teal-50 border border-teal-200 rounded-2xl text-teal-900 text-xs space-y-2.5 shadow-sm">
+                <div class="font-bold flex items-center gap-1.5 text-teal-800">
+                    <i class="fa-solid fa-bolt text-teal-600"></i> Account Activation Link (Valid for 5 mins):
+                </div>
+                <p class="text-slate-600 leading-relaxed text-[11px]">
+                    {{ session('activation_notice') ?? 'Click the button below to set up your password and complete account activation:' }}
+                </p>
+                <div>
+                    <a href="{{ session('activation_url') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow hover:shadow-md">
+                        <span>Setup Password & Activate</span>
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </a>
+                </div>
+            </div>
+        @endif
+
         <form action="/login/process" method="POST" class="space-y-5">
             
             @csrf

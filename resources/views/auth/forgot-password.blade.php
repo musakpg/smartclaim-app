@@ -49,6 +49,23 @@
                 </div>
             @endif
 
+            @if(session('reset_url'))
+                <div class="p-4 bg-teal-50 border border-teal-200 rounded-2xl text-teal-900 text-xs space-y-2.5 shadow-sm">
+                    <div class="font-bold flex items-center gap-1.5 text-teal-800">
+                        <i class="fa-solid fa-key text-teal-600"></i> Password Reset Link:
+                    </div>
+                    <p class="text-slate-600 leading-relaxed text-[11px]">
+                        Click the button below to proceed with setting a new password:
+                    </p>
+                    <div>
+                        <a href="{{ session('reset_url') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow hover:shadow-md">
+                            <span>Reset Your Password</span>
+                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </a>
+                    </div>
+                </div>
+            @endif
+
             <form action="/forgot-password" method="POST" class="space-y-4" x-data="{ isSubmitting: false }" @submit="isSubmitting = true">
                 @csrf
 

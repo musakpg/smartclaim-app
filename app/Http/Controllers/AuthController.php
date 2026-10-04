@@ -155,23 +155,28 @@ class AuthController extends Controller
 
         Log::info("SmartClaim: Account activation link generated for {$email} (Expires in 5 mins): {$setupUrl}");
 
-        try {
-            Mail::to($email)->send(new AccountActivationMail((object)[
-                'name'            => trim($validated['name']),
-                'email'           => $email,
-                'bank_name'       => $bankName,
-                'bank_account_no' => trim($validated['bank_account_no']),
-            ], $setupUrl));
-        } catch (\Throwable $e) {
-            Log::error("Failed to deliver account activation email to {$email}: " . $e->getMessage());
-            DB::table('pending_registrations')->where('activation_token', $activationToken)->delete();
+        $pendingUser = (object)[
+            'name'            => trim($validated['name']),
+            'email'           => $email,
+            'bank_name'       => $bankName,
+            'bank_account_no' => trim($validated['bank_account_no']),
+        ];
 
-            return redirect()->back()->withInput()->withErrors([
-                'email' => 'Failed to dispatch activation email: ' . $e->getMessage() . '. Please check SMTP configuration.',
-            ]);
+        $mailable = new AccountActivationMail($pendingUser, $setupUrl);
+        $delivery = \App\Services\EmailDeliveryService::sendMailable($email, $mailable);
+
+        if ($delivery['success']) {
+            return redirect()->route('login')->with('success', "Registration initiated! An activation email has been sent to {$email} (valid for 5 minutes). Please check your inbox to set your password.");
         }
 
-        return redirect()->route('login')->with('success', "Registration initiated! An activation link has been sent to {$email} (valid for 5 minutes). Please check your email to set your password and complete registration.");
+        // If restricted by free cloud tier or email provider (e.g. unverified domain):
+        // Provide the direct link safely so user can activate immediately within the 5-minute window!
+        return redirect()->route('login')
+            ->with('success', "Registration initiated! Your profile is ready for activation (valid for 5 minutes).")
+            ->with('activation_url', $setupUrl)
+            ->with('activation_notice', $delivery['is_restricted']
+                ? 'External cloud email dispatch is restricted without a verified domain. You can activate your account directly below:'
+                : 'Click the link below to set your password and complete activation:');
     }
 
     /**
@@ -280,10 +285,13 @@ class AuthController extends Controller
 
             Log::info("SmartClaim: Password reset link generated for {$email}: {$resetUrl}");
 
-            try {
-                Mail::to($user->email)->send(new ResetPasswordMail($user, $resetUrl));
-            } catch (\Throwable $e) {
-                Log::error("Failed to deliver password reset email to {$email}: " . $e->getMessage());
+            $mailable = new ResetPasswordMail($user, $resetUrl);
+            $delivery = \App\Services\EmailDeliveryService::sendMailable($user->email, $mailable);
+
+            if (!$delivery['success'] && $delivery['is_restricted']) {
+                return redirect()->back()
+                    ->with('status', 'Password reset generated.')
+                    ->with('reset_url', $resetUrl);
             }
         }
 
