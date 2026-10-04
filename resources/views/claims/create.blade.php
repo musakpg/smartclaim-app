@@ -488,12 +488,15 @@
                         <!-- Business Purpose Context Field -->
                         <div class="space-y-1.5 text-xs">
                             <label class="block text-xs font-bold text-slate-700 tracking-wide">Business Purpose Context
-                                <span x-show="(isPolicyBreached && activeForm === 'Receipt') || activeForm === 'Mileage'" class="text-rose-500">*</span>
+                                <span class="text-rose-500">*</span>
                             </label>
-                            <textarea name="business_purpose" x-model="businessPurpose" rows="3"
+                            <textarea name="business_purpose" id="business_purpose" x-model="businessPurpose" rows="3"
                                 placeholder="Describe the corporate objective for this expenditure or journey..."
-                                :required="(isPolicyBreached && activeForm === 'Receipt') || activeForm === 'Mileage'"
-                                class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none text-xs md:text-sm shadow-2xs resize-none"></textarea>
+                                required
+                                class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none text-xs md:text-sm shadow-2xs resize-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"></textarea>
+                            @error('business_purpose')
+                                <p class="text-xs text-rose-600 font-semibold">{{ $message }}</p>
+                            @enderror
                         </div>
 
                         <!-- Submit Buttons -->
@@ -631,31 +634,31 @@
             return {
                 isMobileSidebarOpen: false,
                 isSubmitting: false,
-                activeForm: (new URLSearchParams(window.location.search)).get('type') === 'Mileage' ? 'Mileage' : 'Receipt',
-                selectedVehicleId: '',
-                vehicleType: 'Car',
-                vehiclePlate: '',
+                activeForm: @json(old('claim_type', (new URLSearchParams(window.location.search)).get('type') === 'Mileage' ? 'Mileage' : 'Receipt')),
+                selectedVehicleId: @json(old('vehicle_id', '')),
+                vehicleType: @json(old('vehicle_type', 'Car')),
+                vehiclePlate: @json(old('vehicle_plate_number', '')),
                 currentRate: 0.60,
-                mileageKm: '',
-                mileageTitle: '',
-                allowanceTotal: '0.00',
+                mileageKm: @json(old('mileage_km', '')),
+                mileageTitle: @json(old('title', '')),
+                allowanceTotal: @json(old('amount', '0.00')),
                 isExtracting: false,
                 isDuplicate: false,
                 duplicateMessage: '',
                 isModalOpen: false,
-                  isCameraOpen: false,
-                  videoStream: null,
-                  fileName: '',
+                isCameraOpen: false,
+                videoStream: null,
+                fileName: '',
                 imagePreview: '',
-                merchant: '',
-                invoiceNo: '',
-                location: '',
-                date: '',
-                amount: '',
-                rawOcrAmount: '0.00',
-                paymentMethod: 'Cash',
-                category: '',
-                businessPurpose: '',
+                merchant: @json(old('merchant_name', '')),
+                invoiceNo: @json(old('receipt_invoice_no', '')),
+                location: @json(old('location_address', '')),
+                date: @json(old('transaction_date', '')),
+                amount: @json(old('amount', '')),
+                rawOcrAmount: @json(old('raw_ocr_amount', '0.00')),
+                paymentMethod: @json(old('payment_method', 'Cash')),
+                category: @json(old('category', '')),
+                businessPurpose: @json(old('business_purpose', '')),
                 items: [],
                 currencyMask: null,
                 userLocationBounds: null,
@@ -1011,6 +1014,11 @@
 
                 submitForm(e) {
                     if (this.activeForm === 'Receipt') {
+                        if (!this.imagePreview) {
+                            e.preventDefault();
+                            Swal.fire({ icon: 'warning', text: 'Please attach a receipt image before submitting.' });
+                            return false;
+                        }
                         if (this.isDuplicate) {
                             e.preventDefault();
                             Swal.fire({
@@ -1038,6 +1046,20 @@
                         }
                         this.amount = this.allowanceTotal;
                     }
+
+                    // Enforce business purpose context before submitting to prevent losing attached files on page reload
+                    if (!this.businessPurpose || this.businessPurpose.trim() === '') {
+                        e.preventDefault();
+                        const purposeEl = document.getElementById('business_purpose') || document.querySelector('textarea[name="business_purpose"]');
+                        if (purposeEl) {
+                            purposeEl.focus();
+                            purposeEl.reportValidity();
+                        } else {
+                            Swal.fire({ icon: 'warning', text: 'Please describe the business purpose context before submitting.' });
+                        }
+                        return false;
+                    }
+
                     this.isSubmitting = true;
                     return true;
                 }
