@@ -9,13 +9,13 @@ return new class extends Migration {
     {
         Schema::table('claims', function (Blueprint $table) {
             if (!Schema::hasColumn('claims', 'payment_reference')) {
-                $table->string('payment_reference')->nullable()->after('status');
+                $table->string('payment_reference')->nullable();
             }
             if (!Schema::hasColumn('claims', 'paid_at')) {
-                $table->timestamp('paid_at')->nullable()->after('payment_reference');
+                $table->timestamp('paid_at')->nullable();
             }
             if (!Schema::hasColumn('claims', 'payment_proof_path')) {
-                $table->string('payment_proof_path')->nullable()->after('paid_at');
+                $table->string('payment_proof_path')->nullable();
             }
         });
     }

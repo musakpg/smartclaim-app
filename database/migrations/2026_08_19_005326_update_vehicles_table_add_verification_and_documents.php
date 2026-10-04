@@ -12,19 +12,19 @@ return new class extends Migration {
     {
         Schema::table('vehicles', function (Blueprint $table) {
             // Document Verification Paths
-            $table->string('grant_document_path')->nullable()->after('roadtax_expiry');
-            $table->string('roadtax_document_path')->nullable()->after('grant_document_path');
+            $table->string('grant_document_path')->nullable();
+            $table->string('roadtax_document_path')->nullable();
 
             // Approval Lifecycle Constraints
-            $table->enum('approval_status', ['Pending', 'Approved', 'Rejected'])->default('Pending')->after('status');
-            $table->text('rejection_reason')->nullable()->after('approval_status');
+            $table->enum('approval_status', ['Pending', 'Approved', 'Rejected'])->default('Pending');
+            $table->text('rejection_reason')->nullable();
 
             // Manager Approval Trail
-            $table->unsignedBigInteger('approved_by')->nullable()->after('rejection_reason');
-            $table->timestamp('approved_at')->nullable()->after('approved_by');
+            $table->unsignedBigInteger('approved_by')->nullable();
+            $table->timestamp('approved_at')->nullable();
 
             // Roadtax Renewal Lifecycle Tracking
-            $table->enum('roadtax_renewal_status', ['None', 'Pending_Review'])->default('None')->after('approved_at');
+            $table->enum('roadtax_renewal_status', ['None', 'Pending_Review'])->default('None');
 
             // Foreign Key Constraint to Users table (Manager ID)
             $table->foreign('approved_by')->references('user_id')->on('users')->onDelete('set null');

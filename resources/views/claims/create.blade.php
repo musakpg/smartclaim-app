@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>SmartClaim - Submit Claim</title>
     <meta name="google-maps-api-key" content="{{ config('services.google.maps_api_key', env('GOOGLE_MAPS_API_KEY')) }}">
     <link rel="manifest" href="/manifest.json">
@@ -820,6 +821,10 @@
 
                     fetch('{{ route("claims.asyncScan") }}', {
                         method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
                         body: formData
                     })
                         .then(response => response.json())

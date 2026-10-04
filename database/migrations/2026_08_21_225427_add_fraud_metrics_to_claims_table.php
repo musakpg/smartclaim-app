@@ -9,16 +9,16 @@ return new class extends Migration {
     {
         Schema::table('claims', function (Blueprint $table) {
             if (!Schema::hasColumn('claims', 'receipt_image_hash')) {
-                $table->string('receipt_image_hash')->nullable()->after('receipt_image_path');
+                $table->string('receipt_image_hash')->nullable();
             }
             if (!Schema::hasColumn('claims', 'risk_score')) {
-                $table->unsignedTinyInteger('risk_score')->default(0)->after('is_policy_violation');
+                $table->unsignedTinyInteger('risk_score')->default(0);
             }
             if (!Schema::hasColumn('claims', 'fraud_flags')) {
-                $table->json('fraud_flags')->nullable()->after('risk_score');
+                $table->json('fraud_flags')->nullable();
             }
             if (!Schema::hasColumn('claims', 'exif_date_taken')) {
-                $table->dateTime('exif_date_taken')->nullable()->after('fraud_flags');
+                $table->dateTime('exif_date_taken')->nullable();
             }
         });
     }

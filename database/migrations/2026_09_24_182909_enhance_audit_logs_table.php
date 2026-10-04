@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('audit_logs', function (Blueprint $table) {
-            $table->string('event_category')->nullable()->after('action');
-            $table->string('model_type')->nullable()->after('event_category');
-            $table->unsignedBigInteger('model_id')->nullable()->after('model_type');
+            $table->string('event_category')->nullable();
+            $table->string('model_type')->nullable();
+            $table->unsignedBigInteger('model_id')->nullable();
         });
     }
 

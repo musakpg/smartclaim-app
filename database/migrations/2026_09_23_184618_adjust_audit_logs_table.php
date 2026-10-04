@@ -14,10 +14,10 @@ return new class extends Migration {
             if (Schema::hasColumn('audit_logs', 'payload')) {
                 $table->dropColumn('payload');
             }
-            $table->unsignedBigInteger('claim_id')->nullable()->after('user_id');
-            $table->json('old_values')->nullable()->after('action');
-            $table->json('new_values')->nullable()->after('old_values');
-            $table->text('user_agent')->nullable()->after('ip_address');
+            $table->unsignedBigInteger('claim_id')->nullable();
+            $table->json('old_values')->nullable();
+            $table->json('new_values')->nullable();
+            $table->text('user_agent')->nullable();
         });
     }
 

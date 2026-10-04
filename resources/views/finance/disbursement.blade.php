@@ -31,6 +31,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>SmartClaim - Payment Disbursement Desk</title>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0b1727">
@@ -475,7 +476,14 @@
                                     let fd = new FormData();
                                     fd.append('payment_proof', f);
                                     fd.append('_token', '{{ csrf_token() }}');
-                                    fetch('{{ route('finance.disbursement.scan_slip') }}', { method: 'POST', body: fd })
+                                    fetch('{{ route('finance.disbursement.scan_slip') }}', {
+                                        method: 'POST',
+                                        headers: {
+                                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                            'Accept': 'application/json'
+                                        },
+                                        body: fd
+                                    })
                                         .then(r => r.json())
                                         .then(res => {
                                             isScanningSlip = false;
@@ -560,7 +568,14 @@
                                 let fd = new FormData();
                                 fd.append('payment_proof', f);
                                 fd.append('_token', '{{ csrf_token() }}');
-                                fetch('{{ route('finance.disbursement.scan_slip') }}', { method: 'POST', body: fd })
+                                fetch('{{ route('finance.disbursement.scan_slip') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: fd
+                                })
                                     .then(r => r.json())
                                     .then(res => {
                                         isScanningSlip = false;

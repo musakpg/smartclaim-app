@@ -21,10 +21,10 @@ return new class extends Migration {
         if (Schema::hasTable('claims')) {
             Schema::table('claims', function (Blueprint $table) {
                 if (!Schema::hasColumn('claims', 'is_policy_violation')) {
-                    $table->boolean('is_policy_violation')->default(false)->after('status');
+                    $table->boolean('is_policy_violation')->default(false);
                 }
                 if (!Schema::hasColumn('claims', 'policy_violation_reason')) {
-                    $table->string('policy_violation_reason')->nullable()->after('is_policy_violation');
+                    $table->string('policy_violation_reason')->nullable();
                 }
             });
         }

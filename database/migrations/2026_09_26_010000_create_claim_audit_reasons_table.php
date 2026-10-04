@@ -26,13 +26,13 @@ return new class extends Migration {
         // 2. Add audit exception reason and remarks fields to claims table
         Schema::table('claims', function (Blueprint $table) {
             if (!Schema::hasColumn('claims', 'revision_reason')) {
-                $table->string('revision_reason')->nullable()->after('status');
+                $table->string('revision_reason')->nullable();
             }
             if (!Schema::hasColumn('claims', 'rejection_reason')) {
-                $table->string('rejection_reason')->nullable()->after('revision_reason');
+                $table->string('rejection_reason')->nullable();
             }
             if (!Schema::hasColumn('claims', 'remarks')) {
-                $table->text('remarks')->nullable()->after('rejection_reason');
+                $table->text('remarks')->nullable();
             }
         });
     }
