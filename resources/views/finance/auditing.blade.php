@@ -11,6 +11,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 </head>
 
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
@@ -670,71 +673,6 @@
                         class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20">
                         <template x-if="loading"><i class="fa-solid fa-spinner fa-spin"></i></template>
                         <span x-text="loading ? 'Sending Request...' : 'Send Revision Request'"></span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Reject Claim Modal -->
-    <div x-show="isRejectModalOpen" x-cloak
-        class="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm transition-all duration-300">
-        <div class="relative bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl overflow-hidden flex flex-col"
-            @click.away="isRejectModalOpen = false" 
-            x-transition:enter="transition ease-out duration-300 transform"
-            x-transition:enter-start="opacity-0 scale-95 translate-y-4" 
-            x-transition:enter-end="opacity-100 scale-100 translate-y-0">
-
-            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-                <span class="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
-                    <i class="fa-solid fa-ban text-rose-500"></i> Reject Claim Voucher
-                </span>
-                <button type="button" @click="isRejectModalOpen = false"
-                    class="text-slate-400 hover:text-rose-600 transition-all text-lg cursor-pointer p-1">
-                    <i class="fa-solid fa-circle-xmark"></i>
-                </button>
-            </div>
-
-            <form :action="'/finance/claims/' + activeClaim.claim_id + '/status'" method="POST" class="space-y-4"
-                x-data="{ loading: false, selectedReason: '', requiresRemarks: false, remarks: '' }"
-                @submit="loading = true">
-                @csrf
-                <input type="hidden" name="status" value="Rejected">
-                
-                <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">
-                        Audit Rejection Reason <span class="text-rose-500">*</span>
-                    </label>
-                    <select name="rejection_reason" x-model="selectedReason" required
-                        @change="const opt = $event.target.selectedOptions[0]; requiresRemarks = opt.dataset.requiresRemarks === '1' || opt.value.includes('Other');"
-                        class="w-full text-xs bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-rose-500/50 outline-none transition-all font-medium">
-                        <option value="">-- Select Audit Exception Code --</option>
-                        @foreach($rejectionReasons ?? [] as $reason)
-                            <option value="{{ $reason->title }}" data-requires-remarks="{{ $reason->requires_remarks ? '1' : '0' }}">
-                                {{ $reason->title }} {{ $reason->requires_remarks ? '(Remarks Required)' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">
-                        Auditor Notes / Reason Explanation <span x-show="requiresRemarks" class="text-rose-500">*</span>
-                    </label>
-                    <textarea name="remarks" x-model="remarks" :required="requiresRemarks" rows="3"
-                        :placeholder="requiresRemarks ? 'Explicit detailed justification is required for this exception code...' : 'Optional clarifying notes for audit log...'"
-                        class="w-full text-xs bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-rose-500/50 outline-none transition-all font-medium"></textarea>
-                    <p class="text-[10px] text-slate-400">
-                        <span x-show="requiresRemarks" class="text-rose-600 font-semibold">Remarks are required for this audit code.</span>
-                        <span x-show="!requiresRemarks">This explanation will be permanently recorded in the Audit Log.</span>
-                    </p>
-                </div>
-
-                <div class="pt-2">
-                    <button type="submit" :disabled="loading || !selectedReason || (requiresRemarks && !remarks.trim())"
-                        class="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-rose-500/20">
-                        <template x-if="loading"><i class="fa-solid fa-spinner fa-spin"></i></template>
-                        <span x-text="loading ? 'Rejecting Claim...' : 'Confirm Claim Rejection'"></span>
                     </button>
                 </div>
             </form>
