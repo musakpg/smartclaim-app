@@ -87,7 +87,7 @@
 
                 <!-- Primary Form Card -->
                 <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-xs">
-                    <form id="claimForm" action="{{ route('claims.store') }}" method="POST"
+                    <form id="claimForm" action="/claims/store" method="POST"
                         enctype="multipart/form-data" class="space-y-6" @submit="submitForm($event)">
                         @csrf
 
