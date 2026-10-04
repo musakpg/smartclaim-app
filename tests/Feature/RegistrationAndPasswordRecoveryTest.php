@@ -175,10 +175,19 @@ class RegistrationAndPasswordRecoveryTest extends TestCase
         $postResponse->assertRedirect('/');
         $postResponse->assertSessionHas('success');
 
+        $follow = $this->followRedirects($postResponse);
+        $follow->assertSee('Your password has been reset successfully!');
+
         $user->refresh();
         $this->assertTrue(Hash::check('NewSecurePassword888!', $user->password));
         $this->assertDatabaseMissing('password_reset_tokens', [
             'email' => $user->email,
         ]);
+
+        // Verify PasswordResetSuccessMail renders correctly
+        $mailable = new \App\Mail\PasswordResetSuccessMail($user);
+        $rendered = $mailable->render();
+        $this->assertStringContainsString('Password Successfully Reset', $rendered);
+        $this->assertStringContainsString($user->email, $rendered);
     }
 }

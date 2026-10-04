@@ -28,14 +28,16 @@
         <hr class="border-slate-200">
 
         @if($errors->has('loginError') || $errors->has('email'))
-            <div class="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-semibold">
-                {{ $errors->first('loginError') ?: $errors->first('email') }}
+            <div class="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-semibold flex items-center gap-2.5">
+                <i class="fa-solid fa-circle-exclamation text-red-500 text-sm flex-shrink-0"></i>
+                <span>{{ $errors->first('loginError') ?: $errors->first('email') }}</span>
             </div>
         @endif
 
-        @if(session('success'))
-            <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-700 text-xs font-semibold">
-                {{ session('success') }}
+        @if(session('success') || session('status'))
+            <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold flex items-center gap-2.5 shadow-sm">
+                <i class="fa-solid fa-circle-check text-emerald-600 text-base flex-shrink-0"></i>
+                <span>{{ session('success') ?: session('status') }}</span>
             </div>
         @endif
 

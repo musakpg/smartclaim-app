@@ -68,4 +68,19 @@ class NotificationService
             Log::error("Failed to broadcast manager notification: " . $e->getMessage());
         }
     }
+
+    /**
+     * Broadcast notification to all finance officers (e.g. for approved claims queued for disbursement).
+     */
+    public static function notifyFinance(string $title, string $message, string $type = 'info', ?string $url = null): void
+    {
+        try {
+            $financeUsers = User::whereIn('role', ['Finance', 'fin', 'finance'])->get();
+            foreach ($financeUsers as $fin) {
+                self::send($fin->user_id ?? $fin->id, $title, $message, $type, $url);
+            }
+        } catch (\Throwable $e) {
+            Log::error("Failed to broadcast finance notification: " . $e->getMessage());
+        }
+    }
 }

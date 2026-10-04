@@ -28,6 +28,8 @@ use App\Services\BudgetEnforcementService;
 use App\Services\ActiveLearningService;
 use App\Services\FraudDetectionService;
 use App\Services\NotificationService;
+use App\Services\EmailDeliveryService;
+use App\Mail\PasswordResetSuccessMail;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ClaimController extends Controller
@@ -814,13 +816,38 @@ class ClaimController extends Controller
             );
 
             $notifType = $finalStatus === 'Approved' ? 'success' : ($finalStatus === 'Rejected' ? 'danger' : ($finalStatus === 'REVISION_REQUIRED' ? 'warning' : 'info'));
+            
+            $staffMsg = "Your claim voucher #CLM-{$claim->claim_id} ({$claim->merchant_name}, RM " . number_format($claim->total_amount, 2) . ") has been marked as {$finalStatus}.";
+            if ($finalStatus === 'REVISION_REQUIRED' && !empty($claim->revision_reason)) {
+                $staffMsg .= " Reason: {$claim->revision_reason}" . (!empty($claim->remarks) ? " ({$claim->remarks})" : "");
+            } elseif ($finalStatus === 'Rejected' && !empty($claim->rejection_reason)) {
+                $staffMsg .= " Reason: {$claim->rejection_reason}" . (!empty($claim->remarks) ? " ({$claim->remarks})" : "");
+            }
+
             NotificationService::send(
                 $claim->user_id,
                 "Claim Status: {$finalStatus}",
-                "Your claim voucher #CLM-{$claim->claim_id} ({$claim->merchant_name}) has been marked as {$finalStatus}.",
+                $staffMsg,
                 $notifType,
                 route('claims.history')
             );
+
+            // Cross-department notification routing between Manager and Finance
+            if ($finalStatus === 'Pre-Approved') {
+                NotificationService::notifyManagers(
+                    "Claim Escalated for Approval: #CLM-{$claim->claim_id}",
+                    "Finance officer " . (Auth::user()->name ?? 'Finance') . " has audited claim #CLM-{$claim->claim_id} ({$claim->merchant_name}, RM " . number_format($claim->total_amount, 2) . "). Awaiting executive authorization.",
+                    'info',
+                    route('manager.verification')
+                );
+            } elseif ($finalStatus === 'Approved') {
+                NotificationService::notifyFinance(
+                    "Claim Approved for Reimbursement: #CLM-{$claim->claim_id}",
+                    "Manager " . (Auth::user()->name ?? 'Manager') . " has authorized claim #CLM-{$claim->claim_id} ({$claim->merchant_name}, RM " . number_format($claim->total_amount, 2) . ") for payment disbursement.",
+                    'success',
+                    route('finance.disbursement')
+                );
+            }
 
             return redirect()->back()->with('success', $message);
         });
@@ -1106,9 +1133,16 @@ class ClaimController extends Controller
             if ($fraudEvaluation['score'] >= 50 || $policyCheck['is_violation']) {
                 NotificationService::notifyManagers(
                     'Audit Alert: Flagged Claim',
-                    "Staff submitted claim #CLM-{$claim->claim_id} flagged with " . ($policyCheck['is_violation'] ? 'Policy Breach' : "High Risk ({$fraudEvaluation['score']}%)"),
+                    "Staff {$currentUser->name} submitted claim #CLM-{$claim->claim_id} flagged with " . ($policyCheck['is_violation'] ? 'Policy Breach' : "High Risk ({$fraudEvaluation['score']}%)"),
                     'danger',
                     route('manager.verification') . '?status=Pre-Approved'
+                );
+            } else {
+                NotificationService::notifyManagers(
+                    'New Claim Submitted for Review',
+                    "Staff {$currentUser->name} submitted claim #CLM-{$claim->claim_id} for RM " . number_format($calculatedAmount, 2) . " awaiting verification.",
+                    'info',
+                    route('manager.verification')
                 );
             }
 
@@ -1152,9 +1186,16 @@ class ClaimController extends Controller
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
-        auth()->user()->update([
+        $user = auth()->user();
+        $user->update([
             'password' => Hash::make($validated['password']),
         ]);
+
+        try {
+            EmailDeliveryService::sendMailable($user->email, new PasswordResetSuccessMail($user));
+        } catch (\Throwable $e) {
+            Log::warning("Failed to send password update confirmation email to {$user->email}: " . $e->getMessage());
+        }
 
         return redirect()->back()->with('success', 'Account password successfully updated.');
     }
@@ -1697,7 +1738,7 @@ class ClaimController extends Controller
 
             NotificationService::send(
                 $claim->user_id,
-                '?? Payment Reimbursed',
+                'Payment Reimbursed: Claim Settled',
                 "Your claim voucher #CLM-{$claim->claim_id} (RM " . number_format($claim->amount, 2) . ") has been paid. Reference: {$cleanRef}",
                 'success',
                 route('dashboard')

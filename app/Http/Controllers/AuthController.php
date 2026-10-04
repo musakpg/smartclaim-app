@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Mail\AccountActivationMail;
+use App\Mail\PasswordResetSuccessMail;
 use App\Mail\ResetPasswordMail;
 use App\Models\User;
+use App\Services\EmailDeliveryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -358,7 +360,19 @@ class AuthController extends Controller
 
             DB::table('password_reset_tokens')->where('email', $email)->delete();
 
+            // Clear any lingering session to ensure clean login handshake with success flash
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
             Log::info("SmartClaim: User {$email} successfully reset their password.");
+
+            // Dispatch security confirmation email to user's registered Gmail
+            try {
+                EmailDeliveryService::sendMailable($user->email, new PasswordResetSuccessMail($user));
+            } catch (\Throwable $e) {
+                Log::warning("Failed to dispatch password reset confirmation email to {$email}: " . $e->getMessage());
+            }
 
             return redirect()->route('login')->with('success', 'Your password has been reset successfully! You can now log in with your new password.');
         }

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use App\Services\NotificationService;
 
 class VehicleController extends Controller
 {
@@ -96,6 +97,28 @@ class VehicleController extends Controller
             ]);
 
             DB::commit();
+
+            // Dispatch notification to Staff and Managers
+            try {
+                NotificationService::send(
+                    $currentUserId,
+                    'Vehicle Registration Submitted',
+                    "Your personal vehicle {$cleanPlate} ({$vehicle->brand_model}) has been registered and is awaiting Manager verification.",
+                    'info',
+                    route('vehicles.index')
+                );
+
+                $staffName = Auth::user()->name ?? 'Staff Employee';
+                NotificationService::notifyManagers(
+                    'New Vehicle Submitted for Approval',
+                    "Staff {$staffName} submitted vehicle {$cleanPlate} ({$vehicle->brand_model}) for verification.",
+                    'info',
+                    route('manager.vehicles')
+                );
+            } catch (\Throwable $e) {
+                // Non-blocking notification dispatch
+            }
+
             return redirect()->route('vehicles.index')->with('success', 'Vehicle application submitted successfully and queued for Manager verification.');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -317,6 +340,20 @@ class VehicleController extends Controller
             'updated_at' => now(),
         ]);
 
+        if ($vehicle->user_id) {
+            $notifType = $request->decision === 'Approved' ? 'success' : 'danger';
+            $msg = $request->decision === 'Approved'
+                ? "Your personal vehicle {$vehicle->plate_number} ({$vehicle->brand_model}) has been approved for mileage reimbursement claims."
+                : "Your vehicle {$vehicle->plate_number} was rejected by Manager. Reason: " . ($request->rejection_reason ?? 'Document verification incomplete.');
+            NotificationService::send(
+                $vehicle->user_id,
+                "Vehicle Registration: {$request->decision}",
+                $msg,
+                $notifType,
+                route('vehicles.index')
+            );
+        }
+
         return redirect()->back()->with('success', "Vehicle {$vehicle->plate_number} successfully marked as {$request->decision}.");
     }
 
@@ -345,6 +382,16 @@ class VehicleController extends Controller
             'created_at'    => now(),
             'updated_at'    => now(),
         ]);
+
+        if ($vehicle->user_id) {
+            NotificationService::send(
+                $vehicle->user_id,
+                'Vehicle Registration: Approved',
+                "Your personal vehicle {$vehicle->plate_number} ({$vehicle->brand_model}) has been approved for mileage reimbursement claims.",
+                'success',
+                route('vehicles.index')
+            );
+        }
 
         return redirect()->back()->with('success', "Vehicle {$vehicle->plate_number} has been approved successfully.");
     }
@@ -377,6 +424,16 @@ class VehicleController extends Controller
             'created_at'    => now(),
             'updated_at'    => now(),
         ]);
+
+        if ($vehicle->user_id) {
+            NotificationService::send(
+                $vehicle->user_id,
+                'Vehicle Registration: Rejected',
+                "Your personal vehicle {$vehicle->plate_number} was rejected by Manager. Reason: " . ($request->rejection_reason ?? 'Document verification incomplete.'),
+                'danger',
+                route('vehicles.index')
+            );
+        }
 
         return redirect()->back()->with('success', "Vehicle {$vehicle->plate_number} has been rejected.");
     }

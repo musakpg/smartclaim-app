@@ -49,11 +49,20 @@ class CashAdvanceController extends Controller
             'status' => 'PENDING_APPROVAL',
         ]);
 
+        NotificationService::send(
+            $userId,
+            'Cash Advance Submitted',
+            "Your cash advance requisition #ADV-{$advance->advance_id} for RM " . number_format($amount, 2) . " has been submitted for Manager approval.",
+            'info',
+            route('advances.index')
+        );
+
+        $staffName = Auth::user()->name ?? 'Staff Employee';
         NotificationService::notifyManagers(
             'New Cash Advance Requisition',
-            "Staff submitted Advance Requisition #ADV-{$advance->advance_id} for RM " . number_format($amount, 2),
+            "Staff {$staffName} submitted Advance Requisition #ADV-{$advance->advance_id} for RM " . number_format($amount, 2) . ".",
             'info',
-            route('manager.advances.index') // Assuming this route still works
+            route('manager.advances.index')
         );
 
         return redirect()->back()->with('success', 'Cash advance request submitted successfully for Manager approval.');
@@ -81,21 +90,36 @@ class CashAdvanceController extends Controller
             'manager_remarks' => 'nullable|string',
         ]);
 
-        $advance = CashAdvance::findOrFail($id);
+        $advance = CashAdvance::with('user')->findOrFail($id);
         $advance->status = $request->status;
         $advance->manager_remarks = $request->manager_remarks;
         $advance->save();
 
+        $statusLabel = $request->status === 'DISBURSED_ACTIVE' ? 'Approved & Disbursed' : 'Rejected';
         $notifType = $request->status === 'DISBURSED_ACTIVE' ? 'success' : 'danger';
+        $msg = "Your cash advance requisition #ADV-{$advance->advance_id} for RM " . number_format($advance->requested_amount, 2) . " has been {$statusLabel}.";
+        if (!empty($request->manager_remarks)) {
+            $msg .= " Manager Remarks: {$request->manager_remarks}";
+        }
+
         NotificationService::send(
             $advance->user_id,
-            "Advance Requisition {$request->status}",
-            "Your cash advance requisition #ADV-{$advance->advance_id} for RM " . number_format($advance->requested_amount, 2) . " has been {$request->status}.",
+            "Advance Requisition: {$statusLabel}",
+            $msg,
             $notifType,
-            route('advances.index') // Note: Using generic route name based on existing setup
+            route('advances.index')
         );
 
-        return redirect()->back()->with('success', "Requisition status updated to {$request->status}.");
+        if ($request->status === 'DISBURSED_ACTIVE') {
+            NotificationService::notifyFinance(
+                'Cash Advance Approved for Reconciliation',
+                "Manager approved Advance Requisition #ADV-{$advance->advance_id} (RM " . number_format($advance->requested_amount, 2) . ") for employee " . ($advance->user->name ?? 'Staff') . ".",
+                'info',
+                route('finance.cash-advances.index')
+            );
+        }
+
+        return redirect()->back()->with('success', "Requisition status updated to {$statusLabel}.");
     }
 
     /**
