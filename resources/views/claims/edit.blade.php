@@ -218,10 +218,12 @@
                                             class="w-full text-xs text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 border border-slate-200 rounded-xl p-1 bg-slate-50">
                                     </div>
                                     @if($claim->receipt_image_path)
-                                        <div class="shrink-0 text-xs text-slate-500 bg-slate-100 px-3 py-2 rounded-xl flex items-center gap-1.5 border border-slate-200">
-                                            <i class="fa-solid fa-image text-slate-400"></i>
-                                            <span>Current file on record</span>
-                                        </div>
+                                        <a href="/files/{{ $claim->receipt_image_path }}" target="_blank"
+                                            class="shrink-0 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-xl flex items-center gap-1.5 border border-indigo-200 transition font-medium cursor-pointer"
+                                            title="Click to view current receipt in new tab">
+                                            <i class="fa-solid fa-arrow-up-right-from-square text-indigo-500"></i>
+                                            <span>View current receipt</span>
+                                        </a>
                                     @endif
                                 </div>
                                 <p class="text-2xs text-slate-400">

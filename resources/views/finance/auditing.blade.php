@@ -500,18 +500,15 @@
                 <!-- Modal Actions -->
                 <div class="border-t border-slate-100 pt-3 mt-auto flex flex-col gap-3 bg-white sticky bottom-0">
                     <template x-if="activeClaim.status === 'Pending'">
-                        <div class="grid grid-cols-3 gap-2">
-                            <button type="button" @click="isRejectModalOpen = true" class="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-black text-[10px] uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5">
-                                <i class="fa-solid fa-ban text-[10px]"></i> Reject
-                            </button>
-                            <button type="button" @click="isRevisionModalOpen = true" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-[10px] uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5">
-                                <i class="fa-solid fa-rotate-left text-[10px]"></i> Request Revision
+                        <div class="grid grid-cols-2 gap-3">
+                            <button type="button" @click="isRevisionModalOpen = true" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-sm">
+                                <i class="fa-solid fa-rotate-left text-xs"></i> Request Revision
                             </button>
                             <form :action="'/finance/claims/' + activeClaim.claim_id + '/status'" method="POST" class="w-full" x-data="{ loading: false }" @submit="loading = true">
                                 @csrf 
                                 <input type="hidden" name="status" value="Approved">
                                 <button type="submit" :disabled="loading"
-                                    class="w-full py-2.5 bg-[#00e1b1] hover:bg-[#00cda1] text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5">
+                                    class="w-full py-2.5 bg-[#00e1b1] hover:bg-[#00cda1] text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm">
                                     <template x-if="loading"><i class="fa-solid fa-spinner fa-spin"></i></template>
                                     <span x-text="loading ? '...' : 'Pre-Approve'"></span>
                                 </button>

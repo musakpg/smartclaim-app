@@ -612,11 +612,11 @@
                             </template>
                             <template x-if="activeClaim.receipt_image_path">
                                 <div class="w-full h-full relative flex items-center justify-center group p-2">
-                                    <img :src="'/storage/' + activeClaim.receipt_image_path"
-                                        @click="modalPreviewSrc = '/storage/' + activeClaim.receipt_image_path; isHistoryModalOpen = true"
+                                    <img :src="'/files/' + activeClaim.receipt_image_path"
+                                        @click="modalPreviewSrc = '/files/' + activeClaim.receipt_image_path; isHistoryModalOpen = true"
                                         class="max-w-full max-h-[350px] object-contain rounded-lg shadow-xs cursor-zoom-in">
                                     <button type="button"
-                                        @click="modalPreviewSrc = '/storage/' + activeClaim.receipt_image_path; isHistoryModalOpen = true"
+                                        @click="modalPreviewSrc = '/files/' + activeClaim.receipt_image_path; isHistoryModalOpen = true"
                                         class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-200 text-white font-bold text-xs gap-1.5 backdrop-blur-xs cursor-zoom-in">
                                         <i class="fa-solid fa-magnifying-glass-plus"></i> View Raw Asset Image
                                     </button>
