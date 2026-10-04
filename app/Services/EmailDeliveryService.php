@@ -60,11 +60,7 @@ class EmailDeliveryService
         // 1. Check for Google Apps Script Webhook URL (Direct Gmail Delivery via Port 443)
         $gmailWebhookUrl = config('mail.gmail_webhook_url') ?: env('GMAIL_WEBHOOK_URL');
         if (!empty($gmailWebhookUrl)) {
-            $gasResult = self::sendViaGoogleScript($gmailWebhookUrl, $to, $subject, $htmlContent);
-            if ($gasResult['success']) {
-                return $gasResult;
-            }
-            Log::warning("Google Apps Script failed, attempting fallback: " . $gasResult['message']);
+            return self::sendViaGoogleScript($gmailWebhookUrl, $to, $subject, $htmlContent);
         }
 
         // 2. Check for Resend API Key
