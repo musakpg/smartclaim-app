@@ -164,6 +164,11 @@ class AuthController extends Controller
             ], $setupUrl));
         } catch (\Throwable $e) {
             Log::error("Failed to deliver account activation email to {$email}: " . $e->getMessage());
+            DB::table('pending_registrations')->where('activation_token', $activationToken)->delete();
+
+            return redirect()->back()->withInput()->withErrors([
+                'email' => 'Failed to dispatch activation email: ' . $e->getMessage() . '. Please check SMTP configuration.',
+            ]);
         }
 
         return redirect()->route('login')->with('success', "Registration initiated! An activation link has been sent to {$email} (valid for 5 minutes). Please check your email to set your password and complete registration.");
