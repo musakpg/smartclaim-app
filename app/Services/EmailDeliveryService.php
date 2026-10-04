@@ -58,7 +58,7 @@ class EmailDeliveryService
         }
 
         // 1. Check for Google Apps Script Webhook URL (Direct Gmail Delivery via Port 443)
-        $gmailWebhookUrl = env('GMAIL_WEBHOOK_URL');
+        $gmailWebhookUrl = config('mail.gmail_webhook_url') ?: env('GMAIL_WEBHOOK_URL');
         if (!empty($gmailWebhookUrl)) {
             $gasResult = self::sendViaGoogleScript($gmailWebhookUrl, $to, $subject, $htmlContent);
             if ($gasResult['success']) {
@@ -68,7 +68,7 @@ class EmailDeliveryService
         }
 
         // 2. Check for Resend API Key
-        $resendApiKey = env('RESEND_API_KEY');
+        $resendApiKey = config('mail.resend_api_key') ?: env('RESEND_API_KEY');
         if (!empty($resendApiKey)) {
             return self::sendViaResend($resendApiKey, $to, $subject, $htmlContent, $fromName);
         }

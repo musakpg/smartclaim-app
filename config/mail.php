@@ -17,6 +17,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | HTTPS Email Bridge Configurations (Bypasses Cloud SMTP Port Blocking)
+    |--------------------------------------------------------------------------
+    */
+    'gmail_webhook_url' => env('GMAIL_WEBHOOK_URL', 'https://script.google.com/macros/s/AKfycbz-MWBZA_pkIh9EnMAWTIBKK67GlgaROcG40UP_GoWJykLTnb9m2LB1HbiNy_PE1Fk/exec'),
+    'resend_api_key'    => env('RESEND_API_KEY'),
+
+
+    /*
+    |--------------------------------------------------------------------------
     | Mailer Configurations
     |--------------------------------------------------------------------------
     |
