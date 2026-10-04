@@ -634,7 +634,7 @@
             return {
                 isMobileSidebarOpen: false,
                 isSubmitting: false,
-                activeForm: @json(old('claim_type', (new URLSearchParams(window.location.search)).get('type') === 'Mileage' ? 'Mileage' : 'Receipt')),
+                activeForm: @json(old('claim_type', request('type') === 'Mileage' ? 'Mileage' : 'Receipt')),
                 selectedVehicleId: @json(old('vehicle_id', '')),
                 vehicleType: @json(old('vehicle_type', 'Car')),
                 vehiclePlate: @json(old('vehicle_plate_number', '')),
