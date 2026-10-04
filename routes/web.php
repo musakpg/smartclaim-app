@@ -33,6 +33,20 @@ Route::get('/', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login/process', [AuthController::class, 'processLogin'])->name('login.process');
 Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Staff Registration Gateways
+Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+Route::post('/register', [AuthController::class, 'processRegister'])->name('register.process');
+
+// Account Activation & Password Setup
+Route::get('/setup-password/{token}', [AuthController::class, 'showSetupPassword'])->name('password.setup');
+Route::post('/setup-password/{token}', [AuthController::class, 'processSetupPassword'])->name('password.setup.process');
+
+// Forgot & Reset Password
+Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
+Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
+Route::post('/reset-password', [AuthController::class, 'processResetPassword'])->name('password.update');
+
 
 /*
 |--------------------------------------------------------------------------

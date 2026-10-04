@@ -60,7 +60,7 @@
             </div>
 
             <div class="text-left pt-1">
-                <button type="button" @click="Swal.fire({ title: 'Password Recovery', text: 'Please contact the IT Helpdesk or HR Administrator to reset your organizational credentials.', icon: 'info', confirmButtonColor: '#00e1b1', confirmButtonText: 'Understood' })" class="text-xs font-bold text-slate-900 hover:underline cursor-pointer">Forgot Password?</button>
+                <a href="/forgot-password" class="text-xs font-bold text-slate-900 hover:underline">Forgot Password?</a>
             </div>
 
             <div class="pt-2">
@@ -72,7 +72,7 @@
         </form>
 
         <div class="text-center text-xs text-slate-400 font-medium">
-            No Account? <button type="button" @click="Swal.fire({ title: 'Account Registration', text: 'Self-registration is restricted. User accounts are provisioned exclusively by HR & Administration.', icon: 'info', confirmButtonColor: '#00e1b1', confirmButtonText: 'Understood' })" class="text-slate-900 font-bold hover:underline cursor-pointer">Register</button>
+            No Account? <a href="/register" class="text-slate-900 font-bold hover:underline">Register</a>
         </div>
 
     </div>

@@ -19,7 +19,11 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
-        'is_active'
+        'is_active',
+        'activation_token',
+        'bank_name',
+        'bank_account_no',
+        'bank_account_holder'
     ];
 
     protected $hidden = [
