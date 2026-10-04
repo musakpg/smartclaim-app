@@ -246,7 +246,61 @@ Created and verified comprehensive PHPUnit feature test suite:
 * [`tests/Feature/VehicleComplianceTest.php`](file:///c:/laragon/www/smartclaim-app/tests/Feature/VehicleComplianceTest.php): Tests vehicle registration and roadtax expiry locks.
 * [`tests/Feature/VoucherAndExportTest.php`](file:///c:/laragon/www/smartclaim-app/tests/Feature/VoucherAndExportTest.php): Tests PDF voucher generation and authorization barriers.
 
-**Test Results:** `13 passed (37 assertions)` — 100% Green.
+**Test Results:** `19 passed (72 assertions)` — 100% Green.
+
+---
+
+### 15. Release Sprint (October 4–5, 2026): Production Hardening, Email Engine & Enterprise Notifications
+
+* **Production Cloud Deployment & Reverse Proxy Hardening**:
+  * Added Dockerized environment with [`Dockerfile`](file:///c:/laragon/www/smartclaim-app/Dockerfile), [`docker-compose.yml`](file:///c:/laragon/www/smartclaim-app/docker-compose.yml), and customized Nginx reverse proxy configuration for Render Cloud deployment.
+  * Enforced strict HTTPS scheme rewriting and trusted proxy headers in [`app/Providers/AppServiceProvider.php`](file:///c:/laragon/www/smartclaim-app/app/Providers/AppServiceProvider.php) and [`app/Http/Middleware/TrustProxies.php`](file:///c:/laragon/www/smartclaim-app/app/Http/Middleware/TrustProxies.php) to eliminate mixed content warnings and protocol mismatches on cloud hosting.
+  * Standardized all authentication and submission forms to relative action paths and secured cross-site session cookies.
+
+* **Autonomous User Registration & Activation Queue (`pending_registrations`)**:
+  * Implemented an isolated staging table for new user registrations before committing them to the primary `users` directory.
+  * Enforced a strict 5-minute activation link expiration policy to mitigate stale registrations and unauthenticated token hoarding.
+  * Engineered a dedicated password setup interface ([`resources/views/auth/setup-password.blade.php`](file:///c:/laragon/www/smartclaim-app/resources/views/auth/setup-password.blade.php)) allowing employees to configure their credentials securely upon verifying their email address.
+  * Enforced an email-only activation workflow by removing debug or temporary screen links from production authentication views.
+
+* **HTTPS Email Delivery Service & Google Apps Script Bridge**:
+  * Resolved cloud provider SMTP egress restrictions (blocking of ports 25, 465, and 587 on cloud tiers like Render) by engineering [`app/Services/EmailDeliveryService.php`](file:///c:/laragon/www/smartclaim-app/app/Services/EmailDeliveryService.php).
+  * Built and deployed a secure Google Apps Script webhook bridge that executes authenticated Gmail dispatches originating from `smartclaim.aeroart@gmail.com`.
+  * Hardened payload encoding and URL sanitization to prevent newline and carriage-return encoding issues (`%0A`) on webhook payloads.
+  * Registered `gmail_webhook_url` in [`config/mail.php`](file:///c:/laragon/www/smartclaim-app/config/mail.php) ensuring the configuration persists reliably during `php artisan config:cache`.
+
+* **Corporate HTML Email Templates & Mailables**:
+  * **[`AccountActivationMail.php`](file:///c:/laragon/www/smartclaim-app/app/Mail/AccountActivationMail.php)** & [`emails/account-activation.blade.php`](file:///c:/laragon/www/smartclaim-app/resources/views/emails/account-activation.blade.php): Branded email with one-time 5-minute activation link.
+  * **[`AccountActivatedConfirmationMail.php`](file:///c:/laragon/www/smartclaim-app/app/Mail/AccountActivatedConfirmationMail.php)** & [`emails/account-activated.blade.php`](file:///c:/laragon/www/smartclaim-app/resources/views/emails/account-activated.blade.php): Welcome confirmation with profile details and portal entry point.
+  * **[`ResetPasswordMail.php`](file:///c:/laragon/www/smartclaim-app/app/Mail/ResetPasswordMail.php)** & [`emails/reset-password.blade.php`](file:///c:/laragon/www/smartclaim-app/resources/views/emails/reset-password.blade.php): Security reset dispatch with 60-minute token expiration.
+  * **[`PasswordResetSuccessMail.php`](file:///c:/laragon/www/smartclaim-app/app/Mail/PasswordResetSuccessMail.php)** & [`emails/password-reset-success.blade.php`](file:///c:/laragon/www/smartclaim-app/resources/views/emails/password-reset-success.blade.php): Immediate security alert notifying users whenever their password is changed.
+  * **[`SystemNotificationMail.php`](file:///c:/laragon/www/smartclaim-app/app/Mail/SystemNotificationMail.php)** & [`emails/system-notification.blade.php`](file:///c:/laragon/www/smartclaim-app/resources/views/emails/system-notification.blade.php): Universal notification template supporting status badges (`Approved`, `Revision`, `Rejected`, `Disbursed`, `Info`).
+
+* **Cross-Department Notification Engine (`NotificationService`)**:
+  * Connected [`app/Services/NotificationService.php`](file:///c:/laragon/www/smartclaim-app/app/Services/NotificationService.php) directly with `EmailDeliveryService` so every system notification is simultaneously stored in the database, pushed via Web Push, and delivered to the recipient's Gmail inbox.
+  * Added `notifyFinance()` method to broadcast events to all registered Finance officers.
+  * **Claim Lifecycle Notifications**:
+    * Clean submissions alert Managers; high-risk / policy violations trigger urgent audit alerts.
+    * Finance pre-approval notifies Managers of escalation.
+    * Manager final approval alerts Staff and queues disbursement notice to Finance.
+    * Revisions and rejections include specific audit reason codes and remarks in the email body.
+    * Payment settlement alerts Staff with bank transaction reference numbers.
+  * **Vehicle Fleet Governance**:
+    * Personal vehicle submissions notify Staff and alert Managers for verification.
+    * Manager approval/rejection notifies the vehicle owner with status and reason.
+  * **Cash Advance Requisitions**:
+    * Requisition submissions alert Staff and notify Managers for approval.
+    * Manager approvals notify Staff and dispatch reconciliation alerts to Finance.
+
+* **UI, Auth & Form Experience Fixes**:
+  * Resolved missing password reset success notification by cleaning up previous session tokens and updating [`resources/views/auth/login.blade.php`](file:///c:/laragon/www/smartclaim-app/resources/views/auth/login.blade.php) to render prominent `session('success')` and `session('status')` alert badges.
+  * Added `[x-cloak]` CSS rule preventing modal and dropdown flash on initial page load.
+  * Enforced client-side validation on claim business purpose to prevent losing uploaded receipts upon submission failure.
+  * Corrected type mismatch calculation in Finance batch disbursement.
+
+* **Extended Test Suite & Regression Coverage**:
+  * Created [`tests/Feature/RegistrationAndPasswordRecoveryTest.php`](file:///c:/laragon/www/smartclaim-app/tests/Feature/RegistrationAndPasswordRecoveryTest.php) with 6 comprehensive test cases covering registration, activation expiry, password setup, reset links, session messages, and email rendering.
+  * Total passing tests expanded to **19 passed (72 assertions)**.
 
 ---
 
@@ -266,3 +320,8 @@ Created and verified comprehensive PHPUnit feature test suite:
 | **Route Lightbox Verification** | Multi-View Component | [`components/route-modal.blade.php`](file:///c:/laragon/www/smartclaim-app/resources/views/components/route-modal.blade.php) | **Complete & Verified** |
 | **Cash Advance Reconciliation** | `/finance/cash-advances` | [`CashAdvanceController.php`](file:///c:/laragon/www/smartclaim-app/app/Http/Controllers/Finance/CashAdvanceController.php) | **Complete & Verified** |
 | **Comprehensive Baseline Seeder** | `artisan db:seed` | [`ComprehensiveDemoSeeder.php`](file:///c:/laragon/www/smartclaim-app/database/seeders/ComprehensiveDemoSeeder.php) | **Complete & Verified** |
+| **Email Delivery Engine (GAS Bridge)** | Global Service | [`EmailDeliveryService.php`](file:///c:/laragon/www/smartclaim-app/app/Services/EmailDeliveryService.php) | **Production Active** |
+| **Staff Registration & Activation** | `/register`, `/setup-password/{token}` | [`AuthController.php`](file:///c:/laragon/www/smartclaim-app/app/Http/Controllers/AuthController.php) | **Complete & Verified** |
+| **Password Reset Security Workflow** | `/forgot-password`, `/reset-password` | [`AuthController.php`](file:///c:/laragon/www/smartclaim-app/app/Http/Controllers/AuthController.php) | **Complete & Verified** |
+| **Cross-Department Email Dispatcher** | Global Service | [`NotificationService.php`](file:///c:/laragon/www/smartclaim-app/app/Services/NotificationService.php) | **Complete & Verified** |
+| **Regression Feature Test Suite** | `artisan test` | [`tests/Feature/`](file:///c:/laragon/www/smartclaim-app/tests/Feature) (19 Feature Tests) | **100% Passed (72 Assertions)** |
