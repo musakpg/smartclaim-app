@@ -13,7 +13,7 @@
 
     toggleSelectAll(event, claims) {
         if (event.target.checked) {
-            this.selectedBatchIds = claims.map(c => c.claim_id);
+            this.selectedBatchIds = claims.map(c => String(c.claim_id));
         } else {
             this.selectedBatchIds = [];
         }
@@ -22,7 +22,7 @@
     get totalBatchAmount() {
         const claims = {{ json_encode($pendingDisbursements) }};
         return claims
-            .filter(c => this.selectedBatchIds.includes(c.claim_id))
+            .filter(c => this.selectedBatchIds.map(String).includes(String(c.claim_id)))
             .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0)
             .toFixed(2);
     }
@@ -141,7 +141,7 @@
                                 <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
                                     <tr>
                                         <th class="p-3.5 w-10 text-center">
-                                            <input type="checkbox" @change="toggleSelectAll($event, {{ json_encode($pendingDisbursements) }})"
+                                            <input type="checkbox" @change="toggleSelectAll($event, {{ json_encode($pendingDisbursements) }})" :checked="selectedBatchIds.length > 0 && selectedBatchIds.length === {{ count($pendingDisbursements) }}"
                                                 class="rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer">
                                         </th>
                                         <th class="p-3.5">Voucher ID & Merchant</th>
