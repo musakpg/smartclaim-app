@@ -242,6 +242,16 @@ class AuthController extends Controller
         // Delete from pending registrations queue
         DB::table('pending_registrations')->where('activation_token', $token)->delete();
 
+        // Dispatch official Account Activated confirmation email to user's inbox
+        try {
+            \App\Services\EmailDeliveryService::sendMailable(
+                $user->email,
+                new \App\Mail\AccountActivatedConfirmationMail($user, url('/'))
+            );
+        } catch (\Throwable $e) {
+            Log::warning("Failed to dispatch account activated confirmation email to {$user->email}: " . $e->getMessage());
+        }
+
         Log::info("SmartClaim: User {$user->email} successfully activated their account and created password.");
 
         return redirect()->route('login')->with('success', 'Your account has been successfully activated and password configured! You may now log in.');

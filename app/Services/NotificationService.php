@@ -29,6 +29,7 @@ class NotificationService
         }
 
         // 2. Broadcast Web Push notification to user's registered client devices
+        $user = null;
         try {
             $user = User::where('user_id', $userId)->orWhere('id', $userId)->first();
             if ($user) {
@@ -36,6 +37,20 @@ class NotificationService
             }
         } catch (\Throwable $e) {
             Log::warning("WebPush Dispatch warning: " . $e->getMessage());
+        }
+
+        // 3. Dispatch Email Notification directly to user's registered email
+        try {
+            $targetUser = $user ?? User::where('user_id', $userId)->orWhere('id', $userId)->first();
+            if ($targetUser && !empty($targetUser->email)) {
+                $actionUrl = $url ? (str_starts_with($url, 'http') ? $url : url($url)) : url('/claims');
+                EmailDeliveryService::sendMailable(
+                    $targetUser->email,
+                    new \App\Mail\SystemNotificationMail($targetUser, $title, $message, $type, $actionUrl)
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Email notification dispatch warning for user {$userId}: " . $e->getMessage());
         }
     }
 
