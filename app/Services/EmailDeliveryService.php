@@ -10,8 +10,11 @@ use Illuminate\Support\Facades\Mail;
 class EmailDeliveryService
 {
     /**
-     * Send email via Resend HTTP API (Port 443) when configured,
-     * otherwise fallback to standard Laravel Mail.
+     * Send email using the best available HTTPS channel (bypassing cloud SMTP port blocking).
+     * Priority:
+     * 1. Google Apps Script Web App (Sends directly from smartclaim.aeroart@gmail.com to ANY recipient)
+     * 2. Resend HTTPS API (Port 443)
+     * 3. Standard Laravel Mail
      *
      * @param string $to
      * @param Mailable $mailable
@@ -19,21 +22,17 @@ class EmailDeliveryService
      */
     public static function sendMailable(string $to, Mailable $mailable): array
     {
-        $resendApiKey = env('RESEND_API_KEY');
-
-        // During unit testing or if Resend key is omitted, use standard Laravel Mail
-        if (app()->environment('testing') || empty($resendApiKey)) {
+        // During unit testing, use standard Laravel Mail so Mail::fake() works
+        if (app()->environment('testing')) {
             try {
                 Mail::to($to)->send($mailable);
 
                 return [
                     'success'       => true,
                     'is_restricted' => false,
-                    'message'       => 'Delivered via Laravel Mail.',
+                    'message'       => 'Delivered via Laravel Mail (Testing).',
                 ];
             } catch (\Throwable $e) {
-                Log::error("EmailDeliveryService Mail Error for {$to}: " . $e->getMessage());
-
                 return [
                     'success'       => false,
                     'is_restricted' => false,
@@ -42,16 +41,103 @@ class EmailDeliveryService
             }
         }
 
-        // Resend HTTP API (Port 443)
+        // Render HTML & prepare subject
         try {
             $htmlContent = $mailable->render();
             $built = $mailable->build();
             $subject = $built->subject ?? 'SmartClaim Notification';
             $fromName = config('mail.from.name', 'SmartClaim System');
-
-            return self::sendViaResend($resendApiKey, $to, $subject, $htmlContent, $fromName);
         } catch (\Throwable $e) {
             Log::error("EmailDeliveryService render error for {$to}: " . $e->getMessage());
+
+            return [
+                'success'       => false,
+                'is_restricted' => false,
+                'message'       => $e->getMessage(),
+            ];
+        }
+
+        // 1. Check for Google Apps Script Webhook URL (Direct Gmail Delivery via Port 443)
+        $gmailWebhookUrl = env('GMAIL_WEBHOOK_URL');
+        if (!empty($gmailWebhookUrl)) {
+            $gasResult = self::sendViaGoogleScript($gmailWebhookUrl, $to, $subject, $htmlContent);
+            if ($gasResult['success']) {
+                return $gasResult;
+            }
+            Log::warning("Google Apps Script failed, attempting fallback: " . $gasResult['message']);
+        }
+
+        // 2. Check for Resend API Key
+        $resendApiKey = env('RESEND_API_KEY');
+        if (!empty($resendApiKey)) {
+            return self::sendViaResend($resendApiKey, $to, $subject, $htmlContent, $fromName);
+        }
+
+        // 3. Fallback to standard Laravel Mail
+        try {
+            Mail::to($to)->send($mailable);
+
+            return [
+                'success'       => true,
+                'is_restricted' => false,
+                'message'       => 'Delivered via standard Laravel Mail.',
+            ];
+        } catch (\Throwable $e) {
+            Log::error("EmailDeliveryService Mail Error for {$to}: " . $e->getMessage());
+
+            return [
+                'success'       => false,
+                'is_restricted' => false,
+                'message'       => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Deliver email through Google Apps Script HTTPS Web App.
+     * This delivers legitimately as smartclaim.aeroart@gmail.com with NO domain restrictions.
+     */
+    protected static function sendViaGoogleScript(string $webhookUrl, string $to, string $subject, string $htmlContent): array
+    {
+        $client = new Client([
+            'timeout'         => 15,
+            'allow_redirects' => true,
+        ]);
+
+        try {
+            $response = $client->post($webhookUrl, [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'to'      => $to,
+                    'subject' => $subject,
+                    'html'    => $htmlContent,
+                ],
+            ]);
+
+            $raw = $response->getBody()->getContents();
+            $body = json_decode($raw, true);
+
+            if ($response->getStatusCode() === 200 && isset($body['status']) && $body['status'] === 'success') {
+                Log::info("EmailDeliveryService: Google Apps Script sent email from smartclaim.aeroart@gmail.com to {$to}");
+
+                return [
+                    'success'       => true,
+                    'is_restricted' => false,
+                    'message'       => 'Email sent directly from smartclaim.aeroart@gmail.com via Google Apps Script.',
+                ];
+            }
+
+            Log::error("EmailDeliveryService: Google Apps Script responded with error: {$raw}");
+
+            return [
+                'success'       => false,
+                'is_restricted' => false,
+                'message'       => $body['message'] ?? 'Google Apps Script dispatch error',
+            ];
+        } catch (\Throwable $e) {
+            Log::error("EmailDeliveryService: Google Apps Script connection error: " . $e->getMessage());
 
             return [
                 'success'       => false,
@@ -96,7 +182,6 @@ class EmailDeliveryService
             $errorBody = $e->getResponse() ? (string)$e->getResponse()->getBody() : '';
             Log::warning("EmailDeliveryService: Resend ClientException for {$to}: {$errorBody}");
 
-            // Detect Resend free tier unverified domain restriction
             if (str_contains($errorBody, 'only send testing emails to your own email address')) {
                 return [
                     'success'       => false,
