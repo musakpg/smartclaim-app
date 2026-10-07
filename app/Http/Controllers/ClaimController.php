@@ -38,7 +38,10 @@ class ClaimController extends Controller
     // Comment: Render regular employee analytics dashboard
     public function index()
     {
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
 
         $totalSpending = Claim::where('user_id', $currentUserId)
             ->whereIn('status', ['Approved', 'Reimbursed'])
@@ -94,7 +97,10 @@ class ClaimController extends Controller
     // Comment: Render employee reimbursement ledger
     public function reimbursementIndex()
     {
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
 
         $approvedClaims = Claim::where('user_id', $currentUserId)
             ->whereIn('status', ['Approved', 'Reimbursed'])
@@ -111,7 +117,10 @@ class ClaimController extends Controller
     // Comment: Show claim creation view with active vehicle assets
     public function create()
     {
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
 
         $personalVehicles = Vehicle::where('user_id', $currentUserId)
             ->where('ownership_type', 'personal')
@@ -223,7 +232,7 @@ class ClaimController extends Controller
                 }
             }
 
-            $apiKey = env('GOOGLE_CLOUD_API_KEY');
+            $apiKey = config('services.google_vision.api_key');
 
             // Direct REST Vision API Call
             if (!empty($apiKey)) {
@@ -439,14 +448,14 @@ class ClaimController extends Controller
                 $day = str_pad($dateMatches[1], 2, '0', STR_PAD_LEFT);
                 $month = $monthMap[strtolower($dateMatches[2])] ?? '01';
                 $year = strlen($dateMatches[3]) == 2 ? '20' . $dateMatches[3] : $dateMatches[3];
-                if ((int) $year <= 2026) {
+                if ((int) $year <= (int) date('Y')) {
                     $transactionDate = "{$year}-{$month}-{$day}";
                 }
             } elseif (preg_match('/\b(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{2,4})\b/', $processedText, $numMatches)) {
                 $day = str_pad($numMatches[1], 2, '0', STR_PAD_LEFT);
                 $month = str_pad($numMatches[2], 2, '0', STR_PAD_LEFT);
                 $year = strlen($numMatches[3]) == 2 ? '20' . $numMatches[3] : $numMatches[3];
-                if ((int) $year <= 2026 && (int) $month <= 12 && (int) $day <= 31) {
+                if ((int) $year <= (int) date('Y') && (int) $month <= 12 && (int) $day <= 31) {
                     $transactionDate = "{$year}-{$month}-{$day}";
                 }
             }
@@ -818,7 +827,7 @@ class ClaimController extends Controller
 
             $notifType = $finalStatus === 'Approved' ? 'success' : ($finalStatus === 'Rejected' ? 'danger' : ($finalStatus === 'REVISION_REQUIRED' ? 'warning' : 'info'));
             
-            $staffMsg = "Your claim voucher #CLM-{$claim->claim_id} ({$claim->merchant_name}, RM " . number_format($claim->total_amount, 2) . ") has been marked as {$finalStatus}.";
+            $staffMsg = "Your claim voucher #CLM-{$claim->claim_id} ({$claim->merchant_name}, RM " . number_format($claim->amount, 2) . ") has been marked as {$finalStatus}.";
             if ($finalStatus === 'REVISION_REQUIRED' && !empty($claim->revision_reason)) {
                 $staffMsg .= " Reason: {$claim->revision_reason}" . (!empty($claim->remarks) ? " ({$claim->remarks})" : "");
             } elseif ($finalStatus === 'Rejected' && !empty($claim->rejection_reason)) {
@@ -837,14 +846,14 @@ class ClaimController extends Controller
             if ($finalStatus === 'Pre-Approved') {
                 NotificationService::notifyManagers(
                     "Claim Escalated for Approval: #CLM-{$claim->claim_id}",
-                    "Finance officer " . (Auth::user()->name ?? 'Finance') . " has audited claim #CLM-{$claim->claim_id} ({$claim->merchant_name}, RM " . number_format($claim->total_amount, 2) . "). Awaiting executive authorization.",
+                    "Finance officer " . (Auth::user()->name ?? 'Finance') . " has audited claim #CLM-{$claim->claim_id} ({$claim->merchant_name}, RM " . number_format($claim->amount, 2) . "). Awaiting executive authorization.",
                     'info',
                     route('manager.verification')
                 );
             } elseif ($finalStatus === 'Approved') {
                 NotificationService::notifyFinance(
                     "Claim Approved for Reimbursement: #CLM-{$claim->claim_id}",
-                    "Manager " . (Auth::user()->name ?? 'Manager') . " has authorized claim #CLM-{$claim->claim_id} ({$claim->merchant_name}, RM " . number_format($claim->total_amount, 2) . ") for payment disbursement.",
+                    "Manager " . (Auth::user()->name ?? 'Manager') . " has authorized claim #CLM-{$claim->claim_id} ({$claim->merchant_name}, RM " . number_format($claim->amount, 2) . ") for payment disbursement.",
                     'success',
                     route('finance.disbursement')
                 );
@@ -859,8 +868,11 @@ class ClaimController extends Controller
     {
         $isMileage = $request->input('claim_type') === 'Mileage';
 
-        $currentUser = Auth::user() ?? \App\Models\User::first();
-        $currentUserId = $currentUser->id ?? $currentUser->user_id ?? 1;
+        $currentUser = Auth::user();
+        if (!$currentUser) {
+            abort(401, 'Unauthenticated.');
+        }
+        $currentUserId = $currentUser->id ?? $currentUser->user_id;
 
         $vehicleId = null;
         $vehiclePlateNumber = null;
@@ -1766,7 +1778,7 @@ class ClaimController extends Controller
             $fileData = file_get_contents($fullImagePath);
             $extractedText = '';
 
-            $apiKey = env('GOOGLE_CLOUD_API_KEY');
+            $apiKey = config('services.google_vision.api_key');
 
             // PDF Text Stream Parsing
             if ($extension === 'pdf' || str_contains($mimeType, 'pdf')) {
@@ -2067,7 +2079,10 @@ class ClaimController extends Controller
     public function edit($id)
     {
         $claim = Claim::with(['items', 'vehicle'])->findOrFail($id);
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
 
         if ($claim->user_id !== $currentUserId) {
             abort(403, 'Unauthorized: You can only edit your own claims.');
@@ -2104,7 +2119,10 @@ class ClaimController extends Controller
     public function resubmit(Request $request, $id)
     {
         $claim = Claim::with('items')->findOrFail($id);
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
 
         if ($claim->user_id !== $currentUserId) {
             abort(403, 'Unauthorized: You can only resubmit your own claims.');
@@ -2158,14 +2176,13 @@ class ClaimController extends Controller
                     $claim->transaction_date = $request->input('transaction_date');
                 }
 
-                $mileageRate = MileageRate::where('vehicle_type', $vehicle->vehicle_type)->first();
-                $ratePerKm = $mileageRate ? (float) $mileageRate->rate_per_km : 0.80;
-                $claim->rate_per_km = $ratePerKm;
-                $claim->calculated_amount = round($claim->mileage_km * $ratePerKm, 2);
-                $claim->amount = $claim->calculated_amount;
+                $vehicleType = ucfirst(strtolower($vehicle->vehicle_type));
+                $mileageRate = MileageRate::whereRaw('LOWER(vehicle_type) = ?', [strtolower($vehicleType)])->latest()->first();
+                $ratePerKm = $mileageRate ? (float) $mileageRate->rate : ($vehicleType === 'Motorcycle' ? 0.30 : 0.60);
+                $claim->amount = round($claim->mileage_km * $ratePerKm, 2);
 
                 if ($request->hasFile('mileage_document')) {
-                    $claim->mileage_document_path = $request->file('mileage_document')->store('mileage_docs', 'private');
+                    $claim->receipt_image_path = $request->file('mileage_document')->store('receipts', 'private');
                 }
             } else {
                 $claim->title = $request->input('title');
@@ -2225,7 +2242,10 @@ class ClaimController extends Controller
     public function withdraw(Request $request, $id)
     {
         $claim = Claim::findOrFail($id);
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
 
         if ($claim->user_id !== $currentUserId) {
             abort(403, 'Unauthorized: You can only cancel or withdraw your own claims.');

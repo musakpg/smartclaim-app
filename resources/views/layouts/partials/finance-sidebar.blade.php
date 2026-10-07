@@ -138,10 +138,13 @@
             <span>My Profile</span>
         </a>
 
-        <a href="{{ route('logout') }}"
-            class="flex items-center gap-3 px-3.5 py-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors">
-            <i class="fa-solid fa-right-from-bracket text-sm w-4 text-center"></i>
-            <span>Sign Out</span>
-        </a>
+        <form method="POST" action="{{ route('logout') }}" class="w-full">
+            @csrf
+            <button type="submit"
+                class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors text-left font-semibold text-xs">
+                <i class="fa-solid fa-right-from-bracket text-sm w-4 text-center"></i>
+                <span>Sign Out</span>
+            </button>
+        </form>
     </div>
 </aside>

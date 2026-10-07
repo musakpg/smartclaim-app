@@ -233,7 +233,7 @@ class ModelEvaluationController extends Controller
             $fullImagePath = storage_path('app/public/' . $imagePath);
 
             $imageAnnotator = new \Google\Cloud\Vision\V1\Client\ImageAnnotatorClient([
-                'apiKey' => env('GOOGLE_CLOUD_API_KEY')
+                'apiKey' => config('services.google_vision.api_key')
             ]);
 
             $imageData = file_get_contents($fullImagePath);

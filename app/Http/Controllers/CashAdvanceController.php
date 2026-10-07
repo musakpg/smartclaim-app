@@ -14,7 +14,10 @@ class CashAdvanceController extends Controller
      */
     public function index()
     {
-        $userId = Auth::id() ?? 1;
+        $userId = Auth::id();
+        if (!$userId) {
+            abort(401, 'Unauthenticated.');
+        }
         $advances = CashAdvance::where('user_id', $userId)->latest()->paginate(10);
         $totalActiveAdvance = CashAdvance::where('user_id', $userId)
             ->whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED'])
@@ -35,7 +38,10 @@ class CashAdvanceController extends Controller
             'purpose' => 'required|string',
         ]);
 
-        $userId = Auth::id() ?? 1;
+        $userId = Auth::id();
+        if (!$userId) {
+            abort(401, 'Unauthenticated.');
+        }
         $amount = (float) $request->requested_amount;
 
         $advance = CashAdvance::create([

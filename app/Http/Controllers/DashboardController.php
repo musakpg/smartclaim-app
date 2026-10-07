@@ -15,7 +15,10 @@ class DashboardController extends Controller
     public function index()
     {
         $currentUser = Auth::user();
-        $userId = $currentUser->user_id ?? $currentUser->id ?? 1;
+        if (!$currentUser) {
+            abort(401, 'Unauthenticated.');
+        }
+        $userId = $currentUser->user_id ?? $currentUser->id;
 
         // =================================================================
         // 1. MULTI-LEVEL STATUS CARD COUNTS

@@ -21,7 +21,10 @@ class VehicleController extends Controller
      */
     public function staffIndex()
     {
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
 
         $vehicles = Vehicle::where('user_id', $currentUserId)
             ->where('ownership_type', 'personal')
@@ -44,7 +47,10 @@ class VehicleController extends Controller
      */
     public function staffStore(Request $request)
     {
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
 
         $request->validate([
             'plate_number' => [
@@ -131,7 +137,10 @@ class VehicleController extends Controller
      */
     public function staffEdit($id)
     {
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
         $vehicle = Vehicle::where('vehicle_id', $id)
             ->where('user_id', $currentUserId)
             ->firstOrFail();
@@ -148,7 +157,10 @@ class VehicleController extends Controller
      */
     public function staffUpdate(Request $request, $id)
     {
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
         $vehicle = Vehicle::where('vehicle_id', $id)
             ->where('user_id', $currentUserId)
             ->firstOrFail();
@@ -224,7 +236,10 @@ class VehicleController extends Controller
      */
     public function renewRoadtax(Request $request, $id)
     {
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
         $vehicle = Vehicle::where('vehicle_id', $id)
             ->where('user_id', $currentUserId)
             ->firstOrFail();
@@ -259,7 +274,10 @@ class VehicleController extends Controller
      */
     public function staffDestroy($id)
     {
-        $currentUserId = Auth::id() ?? 1;
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
         $vehicle = Vehicle::where('vehicle_id', $id)
             ->where('user_id', $currentUserId)
             ->firstOrFail();
@@ -336,7 +354,10 @@ class VehicleController extends Controller
         ]);
 
         $vehicle = Vehicle::where('vehicle_id', $id)->firstOrFail();
-        $managerId = Auth::id() ?? 1;
+        $managerId = Auth::id();
+        if (!$managerId) {
+            abort(401, 'Unauthenticated.');
+        }
         $managerName = Auth::user()->name ?? 'Executive Manager';
 
         $vehicle->approval_status = $request->decision;
@@ -379,7 +400,10 @@ class VehicleController extends Controller
     public function approve(Request $request, $id)
     {
         $vehicle = Vehicle::where('vehicle_id', $id)->firstOrFail();
-        $managerId   = Auth::id() ?? 1;
+        $managerId = Auth::id();
+        if (!$managerId) {
+            abort(401, 'Unauthenticated.');
+        }
         $managerName = Auth::user()->name ?? 'Executive Manager';
 
         $vehicle->approval_status       = 'Approved';
@@ -475,6 +499,11 @@ class VehicleController extends Controller
         $cleanPlate = strtoupper(str_replace(' ', '', $request->plate_number));
         $formattedModel = strtoupper(trim($request->model));
 
+        $managerId = Auth::id();
+        if (!$managerId) {
+            abort(401, 'Unauthenticated.');
+        }
+
         DB::beginTransaction();
         try {
             Vehicle::create([
@@ -486,7 +515,7 @@ class VehicleController extends Controller
                 'roadtax_expiry' => $request->roadtax_expiry ?? now()->addYear(),
                 'status' => 'Active',
                 'approval_status' => 'Approved',
-                'approved_by' => Auth::id() ?? 1,
+                'approved_by' => $managerId,
                 'approved_at' => now(),
             ]);
 

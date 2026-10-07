@@ -13,7 +13,10 @@ class NotificationController extends Controller
      */
     public function fetchLatest()
     {
-        $userId = Auth::id() ?? 1;
+        $userId = Auth::id();
+        if (!$userId) {
+            return response()->json(['error' => 'Unauthenticated.'], 401);
+        }
 
         $unreadCount = InAppNotification::where('user_id', $userId)
             ->where('is_read', false)
@@ -35,7 +38,10 @@ class NotificationController extends Controller
      */
     public function markAllAsRead()
     {
-        $userId = Auth::id() ?? 1;
+        $userId = Auth::id();
+        if (!$userId) {
+            return response()->json(['error' => 'Unauthenticated.'], 401);
+        }
 
         InAppNotification::where('user_id', $userId)
             ->where('is_read', false)

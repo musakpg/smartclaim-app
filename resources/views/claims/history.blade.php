@@ -84,10 +84,13 @@
                         class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50">
                         <i class="fa-solid fa-file-shield text-slate-400"></i> Company Policy
                     </a>
-                    <a href="{{ route('logout') }}"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600">
-                        <i class="fa-solid fa-door-open text-slate-400"></i> Sign Out
-                    </a>
+                    <form method="POST" action="{{ route('logout') }}" class="w-full">
+                        @csrf
+                        <button type="submit"
+                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 text-left">
+                            <i class="fa-solid fa-door-open text-slate-400"></i> Sign Out
+                        </button>
+                    </form>
                 </nav>
             </div>
         </div>
