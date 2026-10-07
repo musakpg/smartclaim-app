@@ -20,11 +20,11 @@
         <div>Welcome back, <span class="font-bold text-slate-800">Executive Manager</span></div>
     </div>
 
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
-        <div class="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-2xs flex items-center justify-between">
-            <div class="space-y-0.5 truncate">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 w-full flex items-center justify-between">
+            <div class="space-y-0.5 min-w-0 flex-1 truncate">
                 <span class="text-[9px] md:text-[11px] font-bold uppercase tracking-wider text-slate-400 block truncate">Pending Sign-off</span>
-                <h3 class="text-base md:text-xl font-bold text-amber-600 tracking-tight truncate">
+                <h3 class="text-base md:text-xl font-bold text-amber-600 tracking-tight truncate font-mono">
                     {{ $preApprovedCount ?? 0 }} Claims
                 </h3>
             </div>
@@ -33,10 +33,10 @@
             </div>
         </div>
 
-        <div class="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-2xs flex items-center justify-between">
-            <div class="space-y-0.5 truncate">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 w-full flex items-center justify-between">
+            <div class="space-y-0.5 min-w-0 flex-1 truncate">
                 <span class="text-[9px] md:text-[11px] font-bold uppercase tracking-wider text-slate-400 block truncate">Accepted Review</span>
-                <h3 class="text-base md:text-xl font-bold text-emerald-600 tracking-tight truncate">
+                <h3 class="text-base md:text-xl font-bold text-emerald-600 tracking-tight truncate font-mono">
                     {{ $approvedCount ?? 0 }} Claims
                 </h3>
             </div>
@@ -45,10 +45,10 @@
             </div>
         </div>
 
-        <div class="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-2xs flex items-center justify-between">
-            <div class="space-y-0.5 truncate">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 w-full flex items-center justify-between">
+            <div class="space-y-0.5 min-w-0 flex-1 truncate">
                 <span class="text-[9px] md:text-[11px] font-bold uppercase tracking-wider text-slate-400 block truncate">Rejected Review</span>
-                <h3 class="text-base md:text-xl font-bold text-rose-600 tracking-tight truncate">
+                <h3 class="text-base md:text-xl font-bold text-rose-600 tracking-tight truncate font-mono">
                     {{ $rejectedCount ?? 0 }} Claims
                 </h3>
             </div>
@@ -57,10 +57,10 @@
             </div>
         </div>
 
-        <div class="bg-white p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200/60 shadow-2xs flex items-center justify-between">
-            <div class="space-y-0.5 truncate">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 w-full flex items-center justify-between">
+            <div class="space-y-0.5 min-w-0 flex-1 truncate">
                 <span class="text-[9px] md:text-[11px] font-bold uppercase tracking-wider text-slate-400 block truncate">Total System Logs</span>
-                <h3 class="text-base md:text-xl font-bold text-indigo-600 tracking-tight truncate">
+                <h3 class="text-base md:text-xl font-bold text-indigo-600 tracking-tight truncate font-mono">
                     {{ $totalReviewCount ?? 0 }} Records
                 </h3>
             </div>
@@ -70,7 +70,7 @@
         </div>
     </div>
 
-    <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-2xs">
+    <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
         <h3 class="text-xs md:text-sm font-bold text-slate-800 tracking-tight mb-4">Monthly Approved Expense Trends (2026)</h3>
         <div class="relative w-full h-[240px] md:h-[300px]">
             <canvas id="managerBIChart"></canvas>

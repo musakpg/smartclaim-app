@@ -19,10 +19,10 @@
     <!-- 4 KPI Metrics Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
         <!-- 1. Pending Audit Verification -->
-        <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs flex items-center justify-between">
-            <div class="space-y-1 truncate">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 w-full flex items-center justify-between">
+            <div class="space-y-1 truncate min-w-0 flex-1">
                 <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block truncate">Pending Verification</span>
-                <h3 class="text-xl md:text-2xl font-black text-amber-600 font-mono tracking-tight">
+                <h3 class="text-xl md:text-2xl font-black text-amber-600 font-mono tracking-tight truncate">
                     {{ $pendingCount ?? 0 }} Claims
                 </h3>
             </div>
@@ -32,10 +32,10 @@
         </div>
 
         <!-- 2. Awaiting Payout -->
-        <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs flex items-center justify-between">
-            <div class="space-y-1 truncate">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 w-full flex items-center justify-between">
+            <div class="space-y-1 truncate min-w-0 flex-1">
                 <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block truncate">Awaiting Payout</span>
-                <h3 class="text-xl md:text-2xl font-black text-teal-600 font-mono tracking-tight">
+                <h3 class="text-xl md:text-2xl font-black text-teal-600 font-mono tracking-tight truncate">
                     {{ $approvedCount ?? 0 }} Claims
                 </h3>
             </div>
@@ -45,10 +45,10 @@
         </div>
 
         <!-- 3. Total Reimbursed / Settled -->
-        <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs flex items-center justify-between">
-            <div class="space-y-1 truncate">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 w-full flex items-center justify-between">
+            <div class="space-y-1 truncate min-w-0 flex-1">
                 <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block truncate">Reimbursed / Paid</span>
-                <h3 class="text-xl md:text-2xl font-black text-emerald-600 font-mono tracking-tight">
+                <h3 class="text-xl md:text-2xl font-black text-emerald-600 font-mono tracking-tight truncate">
                     {{ $reimbursedCount ?? 0 }} Claims
                 </h3>
             </div>
@@ -58,10 +58,10 @@
         </div>
 
         <!-- 4. Total Rejected Logs -->
-        <div class="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-xs flex items-center justify-between">
-            <div class="space-y-1 truncate">
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 w-full flex items-center justify-between">
+            <div class="space-y-1 truncate min-w-0 flex-1">
                 <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block truncate">Total Rejected</span>
-                <h3 class="text-xl md:text-2xl font-black text-rose-600 font-mono tracking-tight">
+                <h3 class="text-xl md:text-2xl font-black text-rose-600 font-mono tracking-tight truncate">
                     {{ $rejectedCount ?? 0 }} Logs
                 </h3>
             </div>
@@ -72,7 +72,7 @@
     </div>
 
     <!-- Monthly Trends Chart -->
-    <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-xs">
+    <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
         <h3 class="text-xs md:text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
             <i class="fa-solid fa-wave-square text-blue-500"></i> Monthly Approved & Disbursed Expense Trends (2026)
         </h3>
@@ -82,7 +82,7 @@
     </div>
 
     <!-- Latest Submitted Claims Queue -->
-    <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-xs space-y-4">
+    <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
         <div class="flex items-center justify-between border-b border-slate-100 pb-3 gap-2">
             <div class="space-y-0.5">
                 <h3 class="text-xs md:text-sm font-bold text-slate-800">

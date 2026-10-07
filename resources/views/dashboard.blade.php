@@ -52,71 +52,60 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
 
                     <!-- 1. Total Disbursed / Paid -->
-                    <div
-                        class="bg-gradient-to-br from-white to-emerald-50/40 p-4.5 md:p-5 rounded-3xl border border-emerald-100 shadow-2xs flex items-center justify-between">
-                        <div class="space-y-1 truncate">
-                            <span
-                                class="text-[10px] md:text-[11px] font-black uppercase tracking-wider text-emerald-700 block truncate">
-                                <i class="fa-solid fa-circle-check mr-1"></i> Disbursed to Bank
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 w-full flex items-center justify-between gap-3">
+                        <div class="space-y-1 min-w-0 flex-1 truncate">
+                            <span class="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-emerald-700 block truncate">
+                                <i class="fa-solid fa-circle-check mr-1 text-emerald-600"></i> Disbursed to Bank
                             </span>
-                            <h3 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight font-mono">
+                            <h3 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-mono truncate">
                                 RM {{ number_format($totalDisbursedAmount ?? 0, 2) }}
                             </h3>
-                            <span class="text-[11px] text-emerald-700/80 font-bold block">{{ $reimbursedCount ?? 0 }}
-                                paid claim(s)</span>
+                            <span class="text-[11px] text-emerald-700/80 font-bold block truncate">{{ $reimbursedCount ?? 0 }} paid claim(s)</span>
                         </div>
-                        <div
-                            class="w-11 h-11 bg-emerald-500 text-white rounded-2xl flex items-center justify-center text-lg shadow-xs shrink-0 ml-2">
+                        <div class="w-11 h-11 bg-emerald-500 text-white rounded-2xl flex items-center justify-center text-lg shadow-sm shrink-0">
                             <i class="fa-solid fa-wallet"></i>
                         </div>
                     </div>
 
                     <!-- 2. Processing Pipeline -->
-                    <div
-                        class="bg-white p-4.5 md:p-5 rounded-3xl border border-slate-200/60 shadow-2xs flex flex-col justify-between space-y-2">
-                        <div class="flex items-center justify-between">
-                            <span
-                                class="text-[10px] md:text-[11px] font-black uppercase tracking-wider text-slate-400 block truncate">
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 w-full space-y-3 flex flex-col justify-between">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-500 block truncate">
                                 <i class="fa-solid fa-arrows-rotate mr-1 text-blue-500"></i> Processing Pipeline
                             </span>
-                            <span
-                                class="px-2 py-0.5 bg-blue-50 text-blue-700 font-mono font-black text-[10px] rounded-lg border border-blue-100">
+                            <span class="px-2 py-0.5 bg-blue-50 text-blue-700 font-mono font-black text-[10px] rounded-lg border border-blue-100 shrink-0">
                                 {{ ($approvedCount ?? 0) + ($preApprovedCount ?? 0) + ($pendingCount ?? 0) }} Active
                             </span>
                         </div>
 
-                        <div class="grid grid-cols-3 gap-1.5 pt-1 text-center font-mono">
-                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-                                <span class="text-[9px] text-slate-400 block font-sans">Pending</span>
-                                <strong class="text-xs font-bold text-amber-600">{{ $pendingCount ?? 0 }}</strong>
+                        <div class="grid grid-cols-3 gap-2 sm:gap-3 font-mono">
+                            <div class="p-2 sm:p-3 bg-slate-50/80 rounded-xl text-center border border-slate-100/80">
+                                <span class="text-[9px] text-slate-400 block font-sans truncate">Pending</span>
+                                <strong class="text-xs sm:text-sm font-bold text-amber-600 block mt-0.5">{{ $pendingCount ?? 0 }}</strong>
                             </div>
-                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-                                <span class="text-[9px] text-slate-400 block font-sans">Pre-Appr</span>
-                                <strong class="text-xs font-bold text-indigo-600">{{ $preApprovedCount ?? 0 }}</strong>
+                            <div class="p-2 sm:p-3 bg-slate-50/80 rounded-xl text-center border border-slate-100/80">
+                                <span class="text-[9px] text-slate-400 block font-sans truncate">Pre-Appr</span>
+                                <strong class="text-xs sm:text-sm font-bold text-indigo-600 block mt-0.5">{{ $preApprovedCount ?? 0 }}</strong>
                             </div>
-                            <div class="bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-                                <span class="text-[9px] text-slate-400 block font-sans">Approved</span>
-                                <strong class="text-xs font-bold text-teal-600">{{ $approvedCount ?? 0 }}</strong>
+                            <div class="p-2 sm:p-3 bg-slate-50/80 rounded-xl text-center border border-slate-100/80">
+                                <span class="text-[9px] text-slate-400 block font-sans truncate">Approved</span>
+                                <strong class="text-xs sm:text-sm font-bold text-teal-600 block mt-0.5">{{ $approvedCount ?? 0 }}</strong>
                             </div>
                         </div>
                     </div>
 
                     <!-- 3. Rejected Claims -->
-                    <div
-                        class="bg-white p-4.5 md:p-5 rounded-3xl border border-slate-200/60 shadow-2xs flex items-center justify-between">
-                        <div class="space-y-1 truncate">
-                            <span
-                                class="text-[10px] md:text-[11px] font-black uppercase tracking-wider text-rose-600 block truncate">
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 w-full flex items-center justify-between gap-3">
+                        <div class="space-y-1 min-w-0 flex-1 truncate">
+                            <span class="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-rose-600 block truncate">
                                 <i class="fa-solid fa-triangle-exclamation mr-1"></i> Rejected Claims
                             </span>
-                            <h3 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight font-mono">
-                                {{ $rejectedCount ?? 0 }} <span
-                                    class="text-xs font-normal text-slate-400 font-sans">Voucher(s)</span>
+                            <h3 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-mono truncate">
+                                {{ $rejectedCount ?? 0 }} <span class="text-xs font-normal text-slate-400 font-sans">Voucher(s)</span>
                             </h3>
-                            <span class="text-[11px] text-slate-400 font-medium block">Policy breaches / flagged</span>
+                            <span class="text-[11px] text-slate-400 font-medium block truncate">Policy breaches / flagged</span>
                         </div>
-                        <div
-                            class="w-11 h-11 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center text-lg border border-rose-100 shrink-0 ml-2">
+                        <div class="w-11 h-11 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center text-lg border border-rose-100 shrink-0">
                             <i class="fa-solid fa-circle-xmark"></i>
                         </div>
                     </div>
@@ -125,7 +114,7 @@
 
                 <!-- Monthly Entitlement Tracker -->
                 @if(isset($expensePolicies) && count($expensePolicies) > 0)
-                <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-2xs space-y-4">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div class="space-y-0.5">
                             <h3 class="text-xs md:text-sm font-bold text-slate-800 tracking-tight"><i class="fa-solid fa-chart-pie mr-1 text-slate-400"></i> Monthly Entitlement Tracker</h3>
@@ -145,9 +134,9 @@
                                 elseif($percentage >= 75) $colorClass = 'bg-amber-500';
                             @endphp
                             <div class="space-y-1.5 p-3 rounded-2xl border {{ $percentage >= 100 ? 'border-rose-100 bg-rose-50/20' : 'border-slate-100 bg-slate-50/50' }}">
-                                <div class="flex justify-between items-center text-[11px] font-bold">
-                                    <span class="text-slate-700">{{ $catName }}</span>
-                                    <span class="text-slate-900 font-mono">RM {{ number_format($spend, 2) }} <span class="text-slate-400 font-normal">/ RM {{ number_format($budget, 2) }}</span></span>
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] font-bold">
+                                    <span class="text-slate-700 truncate sm:max-w-[55%]">{{ $catName }}</span>
+                                    <span class="text-slate-900 font-mono shrink-0">RM {{ number_format($spend, 2) }} <span class="text-slate-400 font-normal">/ RM {{ number_format($budget, 2) }}</span></span>
                                 </div>
                                 <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden flex">
                                     <div class="{{ $colorClass }} h-2 rounded-full transition-all duration-500" style="width: {{ $percentage }}%"></div>
@@ -163,7 +152,7 @@
 
                 <!-- Charts Row -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="lg:col-span-2 bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-2xs">
+                    <div class="lg:col-span-2 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <h3 class="text-xs md:text-sm font-bold text-slate-800 tracking-tight mb-4">Monthly Claimed
                             (2026)</h3>
                         <div class="relative w-full h-[220px] md:h-[280px]">
@@ -171,7 +160,7 @@
                         </div>
                     </div>
 
-                    <div class="lg:col-span-1 bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-2xs">
+                    <div class="lg:col-span-1 bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
                         <h3 class="text-xs md:text-sm font-bold text-slate-800 tracking-tight mb-4">By Category</h3>
                         <div class="relative w-full h-[220px] md:h-[280px]">
                             <canvas id="categoryDistributionChart"></canvas>
@@ -180,7 +169,7 @@
                 </div>
 
                 <!-- Recent Claims Table -->
-                <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-2xs space-y-4">
+                <div class="bg-white p-4 sm:p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-4">
                         <div class="space-y-0.5">
                             <h3 class="text-xs md:text-sm font-bold text-slate-800 tracking-tight">Recent Claims</h3>
