@@ -195,11 +195,9 @@
                         </div>
 
                         <!-- Standardized Pagination -->
-                        @if($pendingDisbursements->hasPages() || $pendingDisbursements->total() > 0)
-                            <div class="px-5 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold">
-                                {{ $pendingDisbursements->links() }}
-                            </div>
-                        @endif
+                        <div class="pt-4 border-t border-slate-100 mt-auto">
+                            {{ $pendingDisbursements->links() }}
+                        </div>
                     </div>
                 @else
                     <!-- Table 2: Settled / Paid Out History -->
@@ -258,11 +256,9 @@
                         </div>
 
                         <!-- Standardized Pagination -->
-                        @if($pendingDisbursements->hasPages() || $pendingDisbursements->total() > 0)
-                            <div class="px-5 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold">
-                                {{ $pendingDisbursements->links() }}
-                            </div>
-                        @endif
+                        <div class="pt-4 border-t border-slate-100 mt-auto">
+                            {{ $settledDisbursements->links() }}
+                        </div>
                     </div>
                 @endif
 

@@ -35,6 +35,33 @@ class ClaimAuditingController extends Controller
             return response()->json($claims);
         }
 
+        $activeType = $request->query('type', 'receipt');
+        if ($activeType === 'mileage') {
+            $claimsQuery->where(function ($q) {
+                $q->where('claim_type', 'Mileage')
+                  ->orWhere('merchant_name', 'like', '%Aero Art Transport%');
+            });
+        } else {
+            $claimsQuery->where('claim_type', '!=', 'Mileage')
+                ->where(function ($q) {
+                    $q->whereNull('merchant_name')
+                      ->orWhere('merchant_name', 'not like', '%Aero Art Transport%');
+                });
+        }
+
+        $activeStatus = $request->query('status');
+        if ($activeStatus && $activeStatus !== 'All') {
+            $claimsQuery->where('status', $activeStatus);
+        }
+
+        $claims = $claimsQuery->paginate(10)->withQueryString();
+        $claims->getCollection()->transform(function ($c) {
+            $c->user_name = $c->user->name ?? 'Unknown Staff';
+            $c->user_role = $c->user->role ?? 'Staff';
+            $c->formatted_time = $c->created_at->format('Y-m-d H:i');
+            return $c;
+        });
+
         $pendingCount = Claim::where('status', 'Pending')->count();
         $approvedCount = Claim::where('status', 'Approved')->count();
         $rejectedCount = Claim::where('status', 'Rejected')->count();
@@ -45,6 +72,9 @@ class ClaimAuditingController extends Controller
         $rejectionReasons = ClaimAuditReason::rejections()->get();
 
         return view('finance.auditing', compact(
+            'claims',
+            'activeType',
+            'activeStatus',
             'pendingCount',
             'approvedCount',
             'rejectedCount',

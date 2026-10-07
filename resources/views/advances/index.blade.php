@@ -113,11 +113,9 @@
                             </tbody>
                         </table>
                     </div>
-                    @if(method_exists($advances, 'links'))
-                        <div class="p-4 border-t border-slate-100">
-                            {{ $advances->links() }}
-                        </div>
-                    @endif
+                    <div class="pt-4 border-t border-slate-100 mt-auto">
+                        {{ $advances->links() }}
+                    </div>
                 </div>
 
             </div>

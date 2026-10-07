@@ -3,132 +3,107 @@
 @section('title', 'SmartClaim - Claim History')
 
 @section('content')
-<div x-data="historyManager()" x-init="init()" class="space-y-6">
+<div x-data="historyManager()" class="space-y-6">
                 <div class="space-y-0.5">
                     <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                         <span>Claim History</span>
                         <span class="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                            <span x-text="allClaims.length"></span> Logs
+                            <span>{{ $claims->total() }}</span> Logs
                         </span>
                     </h1>
-                    <p class="text-xs md:text-sm text-slate-500">Complete records of claims generated dynamically via
-                        local extraction engines.</p>
+                    <p class="text-xs md:text-sm text-slate-500">Complete records of claims generated dynamically via local extraction engines.</p>
                 </div>
 
-                <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-xs space-y-4">
-                    <!-- Animated Skeleton Shimmer Loading State -->
-                    <div x-show="isLoading" class="space-y-3 py-2">
-                        <template x-for="i in [1, 2, 3, 4, 5]" :key="i">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50/60 rounded-2xl border border-slate-100 gap-4 animate-pulse">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-xl bg-slate-200 animate-shimmer"></div>
-                                    <div class="space-y-2">
-                                        <div class="h-3.5 w-40 bg-slate-200 rounded animate-shimmer"></div>
-                                        <div class="h-2.5 w-24 bg-slate-200 rounded animate-shimmer"></div>
-                                    </div>
-                                </div>
-                                <div class="space-y-2 sm:text-right">
-                                    <div class="h-4 w-20 bg-slate-200 rounded sm:ml-auto animate-shimmer"></div>
-                                    <div class="h-3 w-16 bg-slate-200 rounded sm:ml-auto animate-shimmer"></div>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                    <div x-show="!isLoading" style="display: none;" class="divide-y divide-slate-100">
-                        <template x-for="claim in pagedItems" :key="claim.claim_id">
-                            <div
-                                class="flex flex-col sm:flex-row sm:items-center justify-between py-4 first:pt-0 last:pb-0 gap-4">
+                <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-xs min-h-[420px] flex flex-col justify-between">
+                    <div class="divide-y divide-slate-100 flex-1">
+                        @forelse($claims as $claim)
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between py-4 first:pt-0 last:pb-0 gap-4">
                                 <div class="flex items-start gap-3">
-                                    <div
-                                        class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 font-bold text-xs text-slate-700 font-mono">
-                                        <span x-text="'CLM-' + claim.claim_id"></span>
+                                    <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 font-bold text-xs text-slate-700 font-mono">
+                                        <span>CLM-{{ $claim->claim_id }}</span>
                                     </div>
                                     <div class="space-y-1">
                                         <div class="flex items-center gap-2">
-                                            <h4 class="font-bold text-slate-900 text-sm"
-                                                x-text="claim.claim_type === 'Mileage' ? (claim.title ?? 'Travel Allowance Claim') : claim.merchant_name">
+                                            <h4 class="font-bold text-slate-900 text-sm">
+                                                {{ $claim->claim_type === 'Mileage' ? ($claim->title ?? 'Travel Allowance Claim') : $claim->merchant_name }}
                                             </h4>
-                                            <span
-                                                class="px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wide border"
-                                                :class="claim.status === 'Approved' || claim.status === 'Reimbursed' || claim.status === 'Disbursed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                                                        claim.status === 'Pending Manager' || claim.status === 'Pending Finance' || claim.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-100' : 
-                                                        'bg-slate-50 text-slate-700 border-slate-100'"
-                                                x-text="claim.status"></span>
+                                            <span class="px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wide border
+                                                {{ in_array($claim->status, ['Approved', 'Reimbursed', 'Disbursed']) ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : '' }}
+                                                {{ in_array($claim->status, ['Pending Manager', 'Pending Finance', 'Pending']) ? 'bg-amber-50 text-amber-700 border-amber-100' : '' }}
+                                                {{ !in_array($claim->status, ['Approved', 'Reimbursed', 'Disbursed', 'Pending Manager', 'Pending Finance', 'Pending']) ? 'bg-slate-50 text-slate-700 border-slate-100' : '' }}">
+                                                {{ $claim->status }}
+                                            </span>
                                             
-                                            <template x-if="claim.sla_status">
-                                                <span class="px-2 py-0.5 rounded-full font-bold text-[9px] tracking-wide border flex items-center gap-1"
-                                                    :class="claim.sla_status === 'breached' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                                            (claim.sla_status === 'resolved' ? 'bg-slate-50 text-slate-500 border-slate-200' : 'bg-blue-50 text-blue-700 border-blue-200')">
-                                                    
-                                                    <template x-if="claim.sla_status !== 'resolved' && claim.sla_status !== 'breached'">
+                                            @if($claim->sla_status)
+                                                <span class="px-2 py-0.5 rounded-full font-bold text-[9px] tracking-wide border flex items-center gap-1
+                                                    {{ $claim->sla_status === 'breached' ? 'bg-amber-50 text-amber-700 border-amber-200' : '' }}
+                                                    {{ $claim->sla_status === 'resolved' ? 'bg-slate-50 text-slate-500 border-slate-200' : '' }}
+                                                    {{ !in_array($claim->sla_status, ['breached', 'resolved']) ? 'bg-blue-50 text-blue-700 border-blue-200' : '' }}">
+                                                    @if(!in_array($claim->sla_status, ['resolved', 'breached']))
                                                         <span class="relative flex h-1.5 w-1.5 shrink-0">
                                                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                                                             <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
                                                         </span>
-                                                    </template>
-                                                    <i x-show="claim.sla_status === 'breached'" class="fa-solid fa-triangle-exclamation text-[9px]"></i>
-                                                    <i x-show="claim.sla_status === 'resolved'" class="fa-solid fa-check text-[9px]"></i>
-                                                    
-                                                    <span x-text="
-                                                        claim.sla_status === 'breached' ? 'Delayed - Expedited Review Active' :
-                                                        (claim.status === 'Pending Manager' || claim.status === 'Pending' ? 'Est. Pre-Approval: ' + claim.time_remaining_human :
-                                                        (claim.status === 'Approved' || claim.status === 'Pending Finance' ? 'Est. Payout: by ' + claim.estimated_completion_at + ' (Finance Batch)' :
-                                                        claim.time_remaining_human))
-                                                    "></span>
+                                                    @endif
+                                                    @if($claim->sla_status === 'breached')
+                                                        <i class="fa-solid fa-triangle-exclamation text-[9px]"></i>
+                                                    @elseif($claim->sla_status === 'resolved')
+                                                        <i class="fa-solid fa-check text-[9px]"></i>
+                                                    @endif
+                                                    <span>
+                                                        @if($claim->sla_status === 'breached')
+                                                            Delayed - Expedited Review Active
+                                                        @elseif(in_array($claim->status, ['Pending Manager', 'Pending']))
+                                                            Est. Pre-Approval: {{ $claim->time_remaining_human }}
+                                                        @elseif(in_array($claim->status, ['Approved', 'Pending Finance']))
+                                                            Est. Payout: by {{ $claim->estimated_completion_at ? $claim->estimated_completion_at->format('M d, Y') : 'Finance Batch' }}
+                                                        @else
+                                                            {{ $claim->time_remaining_human }}
+                                                        @endif
+                                                    </span>
                                                 </span>
-                                            </template>
+                                            @endif
                                         </div>
 
                                         <div class="text-xs text-slate-500 font-medium space-y-1">
-                                            <template x-if="claim.claim_type === 'Mileage'">
+                                            @if($claim->claim_type === 'Mileage')
                                                 <div class="space-y-0.5">
-                                                    <span class="block">Logistics: <span
-                                                            class="font-semibold text-slate-700"
-                                                            x-text="(claim.vehicle_type ?? 'Vehicle') + ' (' + parseFloat(claim.mileage_km).toFixed(2) + ' KM)'"></span></span>
-                                                    <span
-                                                        class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md text-[11px] text-slate-600 mt-0.5">
+                                                    <span class="block">Logistics: <span class="font-semibold text-slate-700">{{ $claim->vehicle_type ?? 'Vehicle' }} ({{ number_format((float)$claim->mileage_km, 2) }} KM)</span></span>
+                                                    <span class="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md text-[11px] text-slate-600 mt-0.5">
                                                         <i class="fa-solid fa-map-location-dot text-slate-400"></i>
-                                                        <span x-text="claim.start_location ?? 'Start Node'"></span>
-                                                        <i
-                                                            class="fa-solid fa-arrow-right-long text-[9px] text-slate-400"></i>
-                                                        <span x-text="claim.destination_location ?? 'End Node'"></span>
+                                                        <span>{{ $claim->start_location ?? 'Start Node' }}</span>
+                                                        <i class="fa-solid fa-arrow-right-long text-[9px] text-slate-400"></i>
+                                                        <span>{{ $claim->destination_location ?? 'End Node' }}</span>
                                                     </span>
                                                 </div>
-                                            </template>
-                                            <template x-if="claim.claim_type !== 'Mileage'">
-                                                <span>Invoice No: <span class="font-mono text-slate-700"
-                                                        x-text="claim.receipt_invoice_no"></span></span>
-                                            </template>
+                                            @else
+                                                <span>Invoice No: <span class="font-mono text-slate-700">{{ $claim->receipt_invoice_no ?? 'N/A' }}</span></span>
+                                            @endif
                                         </div>
 
                                         <p class="text-[10px] text-slate-400 font-medium">
                                             <i class="fa-solid fa-calendar-day mr-1"></i>Processed on:
-                                            <span x-text="claim.created_at_formatted"></span>
+                                            <span>{{ $claim->created_at->format('Y-m-d H:i') }}</span>
                                         </p>
                                     </div>
                                 </div>
 
                                 <div class="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
                                     <div class="text-right">
-                                        <span
-                                            class="text-xs font-bold text-slate-400 uppercase tracking-wider block text-[10px]">Total
-                                            Amount</span>
-                                        <span class="font-bold text-slate-900 text-sm"
-                                            x-text="'RM ' + parseFloat(claim.amount).toFixed(2)"></span>
+                                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block text-[10px]">Total Amount</span>
+                                        <span class="font-bold text-slate-900 text-sm">RM {{ number_format((float)$claim->amount, 2) }}</span>
                                     </div>
 
-                                    <!-- Staff Lifecycle Actions: Edit & Resubmit for REVISION_REQUIRED -->
-                                    <template x-if="claim.status === 'REVISION_REQUIRED'">
-                                        <a :href="'/claims/' + claim.claim_id + '/edit'"
+                                    @if($claim->status === 'REVISION_REQUIRED')
+                                        <a href="/claims/{{ $claim->claim_id }}/edit"
                                             class="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-3 rounded-xl text-xs tracking-wide transition shadow-3xs">
                                             <i class="fa-solid fa-pen-to-square"></i> Edit & Resubmit
                                         </a>
-                                    </template>
+                                    @endif
 
-                                    <!-- Staff Lifecycle Actions: Withdraw Claim for Pending & REVISION_REQUIRED -->
-                                    <template x-if="['Pending', 'Submitted', 'REVISION_REQUIRED'].includes(claim.status)">
-                                        <form :action="'/claims/' + claim.claim_id + '/withdraw'" method="POST"
-                                            @submit.prevent="if(confirm('Are you sure you want to withdraw and cancel this claim voucher? This action cannot be undone.')) $el.submit()">
+                                    @if(in_array($claim->status, ['Pending', 'Submitted', 'REVISION_REQUIRED']))
+                                        <form action="/claims/{{ $claim->claim_id }}/withdraw" method="POST"
+                                            onsubmit="return confirm('Are you sure you want to withdraw and cancel this claim voucher? This action cannot be undone.')">
                                             @csrf
                                             <button type="submit"
                                                 class="inline-flex items-center gap-1 bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-700 font-bold py-2 px-2.5 rounded-xl text-xs tracking-wide transition shadow-3xs cursor-pointer border border-transparent hover:border-rose-200"
@@ -136,68 +111,38 @@
                                                 <i class="fa-solid fa-trash-can text-rose-500"></i>
                                             </button>
                                         </form>
-                                    </template>
+                                    @endif
 
-                                    <!-- PDF Voucher Download Button -->
-                                    <a :href="'/claims/' + claim.claim_id + '/voucher-pdf'" target="_blank"
+                                    <a href="/claims/{{ $claim->claim_id }}/voucher-pdf" target="_blank"
                                         class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-3 rounded-xl text-xs tracking-wide transition shadow-3xs">
                                         <i class="fa-solid fa-file-pdf text-rose-600"></i> PDF
                                     </a>
 
-                                    <button type="button" @click="openDetailModal(claim)"
+                                    <button type="button" @click="openDetailModal({{ json_encode($claim) }})"
                                         class="inline-flex items-center gap-1.5 bg-[#1e293b] hover:bg-slate-800 text-white font-bold py-2 px-3.5 rounded-xl text-xs tracking-wide transition shadow-3xs cursor-pointer">
                                         <i class="fa-solid fa-circle-info text-xs"></i> Detail
                                     </button>
                                 </div>
                             </div>
-                        </template>
-
-                        <div x-show="allClaims.length === 0" class="py-12 text-center" x-cloak>
-                            <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
-                                <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-3 border border-slate-100 shadow-inner">
-                                    <i class="fa-solid fa-receipt text-3xl"></i>
+                        @empty
+                            <div class="py-12 text-center">
+                                <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                    <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-3 border border-slate-100 shadow-inner">
+                                        <i class="fa-solid fa-receipt text-3xl"></i>
+                                    </div>
+                                    <h4 class="text-sm font-bold text-slate-800">No Historical Claims</h4>
+                                    <p class="text-xs text-slate-400 mt-1 mb-4 text-center">No expense or mileage vouchers have been submitted to date.</p>
+                                    <a href="{{ route('claims.create') }}" class="inline-flex items-center gap-2 bg-[#00d1b2] hover:bg-[#00bfa5] text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-xs transition">
+                                        <i class="fa-solid fa-plus text-[10px]"></i> Create New Claim
+                                    </a>
                                 </div>
-                                <h4 class="text-sm font-bold text-slate-800">No Historical Claims</h4>
-                                <p class="text-xs text-slate-400 mt-1 mb-4 text-center">No expense or mileage vouchers have been submitted to date.</p>
-                                <a href="{{ route('claims.create') }}" class="inline-flex items-center gap-2 bg-[#00d1b2] hover:bg-[#00bfa5] text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-xs transition">
-                                    <i class="fa-solid fa-plus text-[10px]"></i> Create New Claim
-                                </a>
                             </div>
-                        </div>
+                        @endforelse
                     </div>
 
                     <!-- Pagination Navigation -->
-                    <div x-show="allClaims.length > 0"
-                        class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold"
-                        x-cloak>
-                        <div class="text-slate-400 font-medium">
-                            Showing <span class="text-slate-700" x-text="((currentPage - 1) * perPage) + 1"></span>
-                            to <span class="text-slate-700"
-                                x-text="Math.min(currentPage * perPage, allClaims.length)"></span> of
-                            <span class="text-slate-700" x-text="allClaims.length"></span> records
-                        </div>
-
-                        <div class="flex items-center gap-1.5">
-                            <button type="button" @click="if(currentPage > 1) currentPage--"
-                                :disabled="currentPage === 1"
-                                class="px-3 py-2 border rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-slate-200 hover:border-slate-400">
-                                <i class="fa-solid pointer-events-none fa-chevron-left text-[10px]"></i> Previous
-                            </button>
-
-                            <template x-for="page in totalPages" :key="page">
-                                <button type="button" @click="currentPage = page"
-                                    :class="currentPage === page ? 'bg-[#1e293b] text-white border-[#1e293b]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'"
-                                    class="w-8 h-8 border rounded-xl transition-all text-xs font-bold cursor-pointer"
-                                    x-text="page"
-                                    x-show="totalPages <= 7 || page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1"></button>
-                            </template>
-
-                            <button type="button" @click="if(currentPage < totalPages) currentPage++"
-                                :disabled="currentPage === totalPages"
-                                class="px-3 py-2 border rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border-slate-200 hover:border-slate-400">
-                                Next <i class="fa-solid pointer-events-none fa-chevron-right text-[10px]"></i>
-                            </button>
-                        </div>
+                    <div class="pt-4 border-t border-slate-100 mt-auto">
+                        {{ $claims->links() }}
                     </div>
                 </div>
             </div>
@@ -629,32 +574,6 @@
                 activeClaim: {},
                 isHistoryModalOpen: false,
                 modalPreviewSrc: '',
-                isLoading: true,
-
-                allClaims: [],
-                currentPage: 1,
-                perPage: 5,
-
-                get totalPages() {
-                    return Math.max(1, Math.ceil(this.allClaims.length / this.perPage));
-                },
-                get pagedItems() {
-                    let start = (this.currentPage - 1) * this.perPage;
-                    return this.allClaims.slice(start, start + this.perPage);
-                },
-                init() {
-                    fetch('/claims/history', {
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        this.allClaims = data;
-                        this.isLoading = false;
-                    });
-                },
                 openDetailModal(claimData) {
                     this.activeClaim = claimData;
                     this.isModalOpen = true;

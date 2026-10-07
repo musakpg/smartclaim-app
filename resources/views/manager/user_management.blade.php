@@ -197,12 +197,9 @@
             </table>
         </div>
 
-        <!-- Standardized Pagination -->
-        @if($users->hasPages() || $users->total() > 0)
-            <div class="px-5 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold">
-                {{ $users->links() }}
-            </div>
-        @endif
+        <div class="pt-4 border-t border-slate-100 mt-auto">
+            {{ $users->links() }}
+        </div>
     </div>
 
 </div>

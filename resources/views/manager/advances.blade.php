@@ -121,11 +121,9 @@
                     </div>
 
                     <!-- Standardized Pagination -->
-                    @if($advances->hasPages() || $advances->total() > 0)
-                        <div class="px-5 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold">
-                            {{ $advances->links() }}
-                        </div>
-                    @endif
+                    <div class="pt-4 border-t border-slate-100 mt-auto">
+                        {{ $advances->links() }}
+                    </div>
                 </div>
 </div>
 @endsection

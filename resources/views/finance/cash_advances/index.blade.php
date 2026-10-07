@@ -147,7 +147,7 @@
             </div>
         </div>
 
-        <div class="pt-4 border-t border-slate-100/50 mt-4">
+        <div class="pt-4 border-t border-slate-100 mt-auto">
             {{ $advances->links() }}
         </div>
     </div>

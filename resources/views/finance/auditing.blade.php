@@ -25,64 +25,25 @@
 
                     <!-- Category Tab Filter -->
                     <div class="flex items-center p-1 bg-slate-200/60 rounded-xl max-w-md shadow-3xs text-xs mb-4">
-                        <button type="button" @click="activeTab = 'Receipt'"
-                            :class="activeTab === 'Receipt' ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-300' : 'text-slate-500 hover:text-slate-900 font-medium'"
-                            class="flex-1 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2">
+                        <a href="{{ request()->fullUrlWithQuery(['type' => 'receipt', 'page' => null]) }}"
+                            class="flex-1 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 {{ ($activeType ?? 'receipt') === 'receipt' ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-300' : 'text-slate-500 hover:text-slate-900 font-medium' }}">
                             <i class="fa-solid fa-file-invoice-dollar"></i> Based on Receipt
-                        </button>
-                        <button type="button" @click="activeTab = 'Mileage'"
-                            :class="activeTab === 'Mileage' ? 'bg-white text-blue-600 font-bold shadow-xs border border-slate-300' : 'text-slate-500 hover:text-slate-900 font-medium'"
-                            class="flex-1 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2">
+                        </a>
+                        <a href="{{ request()->fullUrlWithQuery(['type' => 'mileage', 'page' => null]) }}"
+                            class="flex-1 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 {{ ($activeType ?? 'receipt') === 'mileage' ? 'bg-white text-blue-600 font-bold shadow-xs border border-slate-300' : 'text-slate-500 hover:text-slate-900 font-medium' }}">
                             <i class="fa-solid fa-route"></i> Mileage Allowance
-                        </button>
+                        </a>
                     </div>
 
                     <!-- Claims Table Container -->
-                    <div class="bg-white rounded-3xl border border-slate-200/60 shadow-2xs overflow-hidden min-h-[420px] flex flex-col justify-between" x-data="{
-                        allClaims: [],
-                        currentPage: 1,
-                        perPage: 10,
-                        isLoading: false,
-                        get filteredClaims() {
-                            return this.allClaims.filter(c => {
-                                const isReceipt = this.activeTab === 'Receipt'
-                                    ? (c.claim_type !== 'Mileage' && !(c.merchant_name || '').includes('Aero Art Transport'))
-                                    : (c.claim_type === 'Mileage' || (c.merchant_name || '').includes('Aero Art Transport'));
-                                const matchStatus = this.statusTab === 'All' || this.statusTab === c.status;
-                                return isReceipt && matchStatus;
-                            });
-                        },
-                        get totalRecords() { return this.filteredClaims.length },
-                        get totalPages() { return Math.max(1, Math.ceil(this.totalRecords / this.perPage)) },
-                        get pagedItems() {
-                            let start = (this.currentPage - 1) * this.perPage;
-                            return this.filteredClaims.slice(start, start + this.perPage);
-                        },
-                        resetPage() { this.currentPage = 1; },
-                        async fetchClaims() {
-                            this.isLoading = true;
-                            try {
-                                const response = await fetch(window.location.href, {
-                                    headers: {
-                                        'Accept': 'application/json',
-                                        'X-Requested-With': 'XMLHttpRequest'
-                                    }
-                                });
-                                this.allClaims = await response.json();
-                            } catch (error) {
-                                console.error('Failed to fetch claims', error);
-                            } finally {
-                                this.isLoading = false;
-                            }
-                        }
-                    }" x-init="fetchClaims(); $watch('activeTab', () => resetPage()); $watch('statusTab', () => resetPage())">
-
+                    <div class="bg-white rounded-3xl border border-slate-200/60 shadow-2xs overflow-hidden min-h-[420px] flex flex-col justify-between">
                         <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                             <span class="text-xs font-bold text-slate-700 uppercase tracking-wide">
                                 <i class="fa-solid fa-list-check mr-1.5 text-slate-400"></i> Claim Records
                             </span>
-                            <span class="text-[11px] text-slate-400 font-medium"
-                                x-text="totalRecords + ' record(s) found'"></span>
+                            <span class="text-[11px] text-slate-400 font-medium">
+                                {{ $claims->total() }} record(s) found
+                            </span>
                         </div>
 
                         <div class="overflow-x-auto flex-1 min-h-[320px]">
@@ -100,86 +61,59 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-50 text-slate-700 font-medium">
-
-                                    <template x-for="(claim, index) in pagedItems" :key="claim.claim_id">
+                                    @forelse($claims as $claim)
                                         <tr class="hover:bg-slate-50/60 transition-all">
-                                            <td class="py-3.5 px-5 font-bold text-slate-900 whitespace-nowrap"
-                                                x-text="claim.user_name"></td>
+                                            <td class="py-3.5 px-5 font-bold text-slate-900 whitespace-nowrap">
+                                                {{ $claim->user_name }}
+                                            </td>
 
-                                            <td class="py-3.5 px-5 font-mono text-slate-400 whitespace-nowrap"
-                                                x-text="'CLM-' + claim.claim_id"></td>
+                                            <td class="py-3.5 px-5 font-mono text-slate-400 whitespace-nowrap">
+                                                CLM-{{ $claim->claim_id }}
+                                            </td>
 
-                                            <td class="py-3.5 px-5 font-bold text-slate-950 truncate max-w-[150px]"
-                                                x-text="claim.claim_type === 'Mileage' ? (claim.title || 'Travel Allowance Claim') : claim.merchant_name">
+                                            <td class="py-3.5 px-5 font-bold text-slate-950 truncate max-w-[150px]">
+                                                {{ $claim->claim_type === 'Mileage' ? ($claim->title ?? 'Travel Allowance Claim') : $claim->merchant_name }}
                                             </td>
 
                                             <td class="py-3.5 px-5 font-mono text-slate-500">
-                                                <template
-                                                    x-if="claim.claim_type === 'Mileage' || (claim.merchant_name || '').includes('Aero Art Transport')">
+                                                @if($claim->claim_type === 'Mileage' || str_contains($claim->merchant_name ?? '', 'Aero Art Transport'))
                                                     <div>
-                                                        <span class="text-[10px] text-slate-600 block truncate max-w-[180px]"
-                                                            x-text="'From: ' + (claim.start_location || '-')"></span>
-                                                        <span class="text-[10px] text-slate-400 block truncate max-w-[180px] mt-0.5"
-                                                            x-text="'To: ' + (claim.destination_location || '-')"></span>
+                                                        <span class="text-[10px] text-slate-600 block truncate max-w-[180px]">From: {{ $claim->start_location ?? '-' }}</span>
+                                                        <span class="text-[10px] text-slate-400 block truncate max-w-[180px] mt-0.5">To: {{ $claim->destination_location ?? '-' }}</span>
                                                     </div>
-                                                </template>
-                                                <template
-                                                    x-if="claim.claim_type !== 'Mileage' && !(claim.merchant_name || '').includes('Aero Art Transport')">
-                                                    <span x-text="claim.receipt_invoice_no || 'NOT FOUND'"></span>
-                                                </template>
+                                                @else
+                                                    <span>{{ $claim->receipt_invoice_no ?? 'NOT FOUND' }}</span>
+                                                @endif
                                             </td>
 
-                                            <td class="py-3.5 px-5 text-slate-600 font-semibold whitespace-nowrap"
-                                                x-text="claim.formatted_time"></td>
+                                            <td class="py-3.5 px-5 text-slate-600 font-semibold whitespace-nowrap">
+                                                {{ $claim->formatted_time }}
+                                            </td>
 
-                                            <td class="py-3.5 px-5 text-right font-black text-slate-900 whitespace-nowrap"
-                                                x-text="'RM ' + (parseFloat(claim.amount) > 0 ? parseFloat(claim.amount) : parseFloat(claim.calculated_amount || 0)).toFixed(2)"></td>
+                                            <td class="py-3.5 px-5 text-right font-black text-slate-900 whitespace-nowrap">
+                                                RM {{ number_format((float)$claim->amount > 0 ? (float)$claim->amount : (float)$claim->calculated_amount, 2) }}
+                                            </td>
 
                                             <td class="py-3.5 px-5 text-center whitespace-nowrap">
-                                                <span class="px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wide"
-                                                    :class="{
-                                                        'bg-emerald-50 text-emerald-700 border border-emerald-200': claim.status === 'Approved',
-                                                        'bg-amber-50 text-amber-700 border border-amber-200': claim.status === 'Pending',
-                                                        'bg-blue-50 text-blue-700 border border-blue-200': claim.status === 'Pre-Approved',
-                                                        'bg-rose-50 text-rose-700 border border-rose-200': claim.status === 'Rejected',
-                                                        'bg-emerald-100 text-emerald-800 border border-emerald-300': claim.status === 'Reimbursed'
-                                                    }" x-text="claim.status">
+                                                <span class="px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wide
+                                                    {{ $claim->status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : '' }}
+                                                    {{ $claim->status === 'Pending' ? 'bg-amber-50 text-amber-700 border border-amber-200' : '' }}
+                                                    {{ $claim->status === 'Pre-Approved' ? 'bg-blue-50 text-blue-700 border border-blue-200' : '' }}
+                                                    {{ $claim->status === 'Rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200' : '' }}
+                                                    {{ $claim->status === 'Reimbursed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : '' }}">
+                                                    {{ $claim->status }}
                                                 </span>
                                             </td>
 
                                             <td class="py-3.5 px-5 text-center whitespace-nowrap">
                                                 <button type="button"
-                                                    @click="openReviewModal(claim, claim.user_name, claim.formatted_time)"
+                                                    @click="openReviewModal({{ json_encode($claim) }}, '{{ addslashes($claim->user_name) }}', '{{ $claim->formatted_time }}')"
                                                     class="px-3 py-1.5 bg-[#0f172a] hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 mx-auto cursor-pointer uppercase tracking-wider">
                                                     <i class="fa-solid fa-magnifying-glass text-[10px]"></i> Review
                                                 </button>
                                             </td>
                                         </tr>
-                                    </template>
-                                    <!-- Animated Skeleton Shimmer Loading State -->
-                                    <template x-if="isLoading">
-                                        <tr>
-                                            <td colspan="8" class="p-4">
-                                                <div class="space-y-3 py-2">
-                                                    <template x-for="i in [1, 2, 3, 4]" :key="i">
-                                                        <div class="flex items-center justify-between p-3 bg-slate-50/60 rounded-xl border border-slate-100 gap-4 animate-pulse">
-                                                            <div class="flex items-center gap-3">
-                                                                <div class="w-8 h-8 rounded-lg bg-slate-200 animate-shimmer"></div>
-                                                                <div class="space-y-1.5">
-                                                                    <div class="h-3 w-32 bg-slate-200 rounded animate-shimmer"></div>
-                                                                    <div class="h-2.5 w-20 bg-slate-200 rounded animate-shimmer"></div>
-                                                                </div>
-                                                            </div>
-                                                            <div class="h-4 w-16 bg-slate-200 rounded animate-shimmer"></div>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </template>
-
-                                    <!-- Polished Empty State Vector Card -->
-                                    <template x-if="totalRecords === 0 && !isLoading">
+                                    @empty
                                         <tr>
                                             <td colspan="8" class="py-14 text-center">
                                                 <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
@@ -191,49 +125,15 @@
                                                 </div>
                                             </td>
                                         </tr>
-                                    </template>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>
 
-                        <!-- Pagination -->
-                        <div class="px-5 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold">
-                            <div class="text-slate-400 font-medium">
-                                Showing
-                                <span class="text-slate-700"
-                                    x-text="totalRecords === 0 ? 0 : ((currentPage - 1) * perPage) + 1"></span>
-                                to
-                                <span class="text-slate-700" x-text="Math.min(currentPage * perPage, totalRecords)"></span>
-                                of
-                                <span class="text-slate-700" x-text="totalRecords"></span>
-                                records
-                            </div>
-
-                            <div class="flex items-center gap-1.5">
-                                <button type="button" @click="if(currentPage > 1) currentPage--"
-                                    :disabled="currentPage === 1"
-                                    :class="currentPage === 1 ? 'text-slate-300 cursor-not-allowed bg-slate-50 border-slate-100' : 'text-slate-700 hover:border-slate-400 bg-white border-slate-200 cursor-pointer'"
-                                    class="px-3 py-2 border rounded-xl transition-all flex items-center gap-1.5">
-                                    <i class="fa-solid fa-chevron-left text-[10px]"></i> Previous
-                                </button>
-
-                                <template x-for="page in totalPages" :key="page">
-                                    <button type="button" @click="currentPage = page"
-                                        :class="currentPage === page ? 'bg-[#0f172a] text-white border-[#0f172a]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400 cursor-pointer'"
-                                        class="w-8 h-8 border rounded-xl transition-all text-xs font-bold" x-text="page"
-                                        x-show="totalPages <= 7 || page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1">
-                                    </button>
-                                </template>
-
-                                <button type="button" @click="if(currentPage < totalPages) currentPage++"
-                                    :disabled="currentPage === totalPages"
-                                    :class="currentPage === totalPages ? 'text-slate-300 cursor-not-allowed bg-slate-50 border-slate-100' : 'text-slate-700 hover:border-slate-400 bg-white border-slate-200 cursor-pointer'"
-                                    class="px-3 py-2 border rounded-xl transition-all flex items-center gap-1.5">
-                                    Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
-                                </button>
-                            </div>
+                        <!-- Standardized Pagination -->
+                        <div class="pt-4 border-t border-slate-100 mt-auto">
+                            {{ $claims->links() }}
                         </div>
-
                     </div>
 
                 </div>

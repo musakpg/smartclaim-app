@@ -397,8 +397,9 @@ class ClaimSubmissionController extends Controller
         $slaTrackingService = app(SlaTrackingService::class);
         $avgManagerTat = $slaTrackingService->getAverageManagerTurnaroundTime();
         $avgFinanceTat = $slaTrackingService->getAverageFinanceSettlementTime();
+        $claims = $claimsQuery->paginate(10)->withQueryString();
 
-        return view('claims.history', compact('avgManagerTat', 'avgFinanceTat'));
+        return view('claims.history', compact('avgManagerTat', 'avgFinanceTat', 'claims'));
     }
 
     /**
