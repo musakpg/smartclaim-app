@@ -13,6 +13,11 @@ use App\Http\Controllers\Manager\VehicleUsageHistoryController;
 use App\Http\Controllers\Manager\ModelEvaluationController;
 use App\Http\Controllers\Manager\ExpensePolicyController;
 use App\Http\Controllers\Manager\AiFeedbackController;
+use App\Http\Controllers\Staff\ClaimSubmissionController;
+use App\Http\Controllers\Manager\ClaimVerificationController;
+use App\Http\Controllers\Finance\ClaimAuditingController;
+use App\Http\Controllers\Finance\DisbursementController;
+use App\Http\Controllers\FileAccessController;
 
 use App\Models\User;
 use App\Notifications\WebPushNotification;
@@ -54,11 +59,10 @@ Route::post('/reset-password', [AuthController::class, 'processResetPassword'])-
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'role:Manager'])->prefix('manager')->name('manager.')->group(function () {
-    Route::get('/user-management', [ClaimController::class, 'userManagementIndex'])->name('user_management');
     // Dashboard & Claims Verification Desks
     Route::get('/dashboard', [ClaimController::class, 'managerIndex'])->name('dashboard');
-    Route::get('/verification', [ClaimController::class, 'managerVerificationIndex'])->name('verification');
-    Route::post('/claims/{id}/status', [ClaimController::class, 'updateStatus'])->name('claims.status');
+    Route::get('/verification', [ClaimVerificationController::class, 'index'])->name('verification');
+    Route::post('/claims/{id}/status', [ClaimVerificationController::class, 'updateStatus'])->name('claims.status');
 
     // Fleet Management & Vehicle Auditing
     Route::get('/vehicles', [VehicleController::class, 'managerIndex'])->name('vehicles');
@@ -104,7 +108,7 @@ Route::middleware(['auth', 'role:Manager'])->prefix('manager')->name('manager.')
     // Intelligence, Analytics & Export
     Route::get('/price-intelligence', [ClaimController::class, 'priceIntelligenceIndex'])->name('price_intelligence');
     Route::get('/reports', [ClaimController::class, 'managerReportsIndex'])->name('reports');
-    Route::get('/reports/sla-analytics', [ClaimController::class, 'slaAnalytics'])->name('reports.sla_analytics');
+    Route::get('/reports/sla-analytics', [ClaimVerificationController::class, 'slaAnalytics'])->name('reports.sla_analytics');
     Route::get('/export/claims-csv', [ExportController::class, 'exportClaimsCsv'])->name('export.claims_csv');
     Route::get('/profile', [ClaimController::class, 'managerProfileIndex'])->name('profile');
 
@@ -126,17 +130,17 @@ Route::middleware(['auth', 'role:Finance'])->prefix('finance')->name('finance.')
     Route::get('/staff-directory', [ClaimController::class, 'financeStaffDirectoryIndex'])->name('staff_directory');
     // Dashboard & Auditing
     Route::get('/dashboard', [ClaimController::class, 'financeIndex'])->name('dashboard');
-    Route::get('/auditing', [ClaimController::class, 'auditingIndex'])->name('auditing');
-    Route::post('/claims/{id}/status', [ClaimController::class, 'updateStatus'])->name('claims.status');
+    Route::get('/auditing', [ClaimAuditingController::class, 'index'])->name('auditing');
+    Route::post('/claims/{id}/status', [ClaimAuditingController::class, 'updateStatus'])->name('claims.status');
 
     // Cash Advance Reconciliation
     Route::get('/cash-advances', [\App\Http\Controllers\CashAdvanceController::class, 'financeIndex'])->name('cash-advances.index');
 
     // Unified Payment Disbursement Desk (Single & Batch with AI Slip OCR)
-    Route::get('/disbursement', [ClaimController::class, 'financeDisbursementIndex'])->name('disbursement');
-    Route::post('/disbursement/{id}/settle', [ClaimController::class, 'processDisbursement'])->name('disbursement.settle');
-    Route::post('/disbursement/batch-settle', [ClaimController::class, 'processBatchDisbursement'])->name('disbursement.batch_settle');
-    Route::post('/disbursement/scan-slip', [ClaimController::class, 'asyncScanBankSlip'])->name('disbursement.scan_slip');
+    Route::get('/disbursement', [DisbursementController::class, 'index'])->name('disbursement');
+    Route::post('/disbursement/{id}/settle', [DisbursementController::class, 'processDisbursement'])->name('disbursement.settle');
+    Route::post('/disbursement/batch-settle', [DisbursementController::class, 'processBatchDisbursement'])->name('disbursement.batch_settle');
+    Route::post('/disbursement/scan-slip', [DisbursementController::class, 'asyncScanBankSlip'])->name('disbursement.scan_slip');
 
     // Reports & Profile
     Route::get('/reports', [ClaimController::class, 'financeReportsIndex'])->name('reports');
@@ -153,14 +157,14 @@ Route::middleware(['auth'])->group(function () {
 
     // Core Claims Management
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
-    Route::get('/claims/history', [ClaimController::class, 'history'])->name('claims.history');
-    Route::get('/claims/{id}/edit', [ClaimController::class, 'edit'])->name('claims.edit');
-    Route::put('/claims/{id}/resubmit', [ClaimController::class, 'resubmit'])->name('claims.resubmit');
-    Route::post('/claims/{id}/withdraw', [ClaimController::class, 'withdraw'])->name('claims.withdraw');
-    Route::post('/claims/store', [ClaimController::class, 'store'])->name('claims.store');
-    Route::post('/claims/async-scan', [ClaimController::class, 'asyncScan'])->name('claims.asyncScan');
-    Route::post('/claims/check-duplicate', [ClaimController::class, 'checkDuplicate'])->name('claims.checkDuplicate');
+    Route::get('/claims/create', [ClaimSubmissionController::class, 'create'])->name('claims.create');
+    Route::get('/claims/history', [ClaimSubmissionController::class, 'history'])->name('claims.history');
+    Route::get('/claims/{id}/edit', [ClaimSubmissionController::class, 'edit'])->name('claims.edit');
+    Route::put('/claims/{id}/resubmit', [ClaimSubmissionController::class, 'resubmit'])->name('claims.resubmit');
+    Route::post('/claims/{id}/withdraw', [ClaimSubmissionController::class, 'withdraw'])->name('claims.withdraw');
+    Route::post('/claims/store', [ClaimSubmissionController::class, 'store'])->name('claims.store');
+    Route::post('/claims/async-scan', [ClaimSubmissionController::class, 'asyncScan'])->name('claims.asyncScan');
+    Route::post('/claims/check-duplicate', [ClaimSubmissionController::class, 'checkDuplicate'])->name('claims.checkDuplicate');
     Route::get('/claims/{id}/voucher-pdf', [ExportController::class, 'downloadVoucherPdf'])->name('claims.voucher_pdf');
 
     // Information & Payout Status for Staff
@@ -222,12 +226,13 @@ Route::middleware(['auth', 'role:Manager'])->get('/test-push', function () {
 
 });
 
-// Download Official PDF Claim Voucher
-Route::get('/claims/{id}/download-pdf', [App\Http\Controllers\ClaimController::class, 'downloadPdfVoucher'])
+// Download Official PDF Claim Voucher (Unified with ExportController)
+Route::get('/claims/{id}/download-pdf', [ExportController::class, 'downloadVoucherPdf'])
     ->name('claims.download_pdf')
     ->middleware('auth');
+
 // Secured Private File Storage Serving
-Route::get('/files/{folder}/{filename}', [App\Http\Controllers\ClaimController::class, 'serveFile'])
+Route::get('/files/{folder}/{filename}', [FileAccessController::class, 'serveFile'])
     ->name('files.serve')
     ->middleware('auth')
     ->where('filename', '.*');
