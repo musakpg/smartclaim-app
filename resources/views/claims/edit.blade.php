@@ -25,7 +25,7 @@
         @include('layouts.partials.staff-sidebar')
 
         <!-- Main Workspace Area -->
-        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
             <div class="w-full space-y-6 pb-24">
 
                 <!-- Header Title Banner -->
@@ -268,5 +268,6 @@
         </main>
     </div>
 
+    @include('layouts.partials.bottom-nav')
 </body>
 </html>

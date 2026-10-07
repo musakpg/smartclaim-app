@@ -24,11 +24,11 @@
         @include('layouts.partials.staff-sidebar')
 
         <!-- Main Content Area -->
-        <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <main class="flex-1 flex flex-col min-w-0 overflow-hidden pb-24 md:pb-8">
 
 
             <!-- Page Body Content -->
-            <div class="flex-1 p-4 md:p-8 max-w-2xl mx-auto w-full pb-24 overflow-y-auto space-y-6">
+            <div class="flex-1 p-4 md:p-8 max-w-2xl mx-auto w-full pb-24 md:pb-8 overflow-y-auto space-y-6">
                 <!-- Page Title & Navigation Back Button -->
                 <div class="flex items-center justify-between">
                     <div>
@@ -155,6 +155,7 @@
             };
         }
     </script>
+    @include('layouts.partials.bottom-nav')
 </body>
 
 </html>

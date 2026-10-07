@@ -29,7 +29,7 @@
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
             <!-- Main Page Content Area -->
-            <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
+            <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
                 <div class="space-y-6">
 
                     @if(session('success'))
@@ -161,6 +161,7 @@
             </main>
         </div>
     </div>
+    @include('layouts.partials.bottom-nav')
 </body>
 
 </html>

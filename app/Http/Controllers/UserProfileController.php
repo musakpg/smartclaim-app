@@ -17,6 +17,12 @@ class UserProfileController extends Controller
     public function profileIndex()
     {
         $user = auth()->user();
+        if ($user && strtolower($user->role) === 'manager') {
+            return redirect()->route('manager.profile');
+        }
+        if ($user && in_array(strtolower($user->role), ['finance', 'fin'])) {
+            return redirect()->route('finance.profile');
+        }
         return view('profile.index', compact('user'));
     }
 

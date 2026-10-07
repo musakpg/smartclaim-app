@@ -137,6 +137,7 @@ Route::middleware(['auth', 'role:Manager'])->prefix('manager')->name('manager.')
 
     // Manager Cash Advances Desk
     Route::get('/cash-advances', [CashAdvanceApprovalController::class, 'managerIndex'])->name('advances.index');
+    Route::get('/advances', [CashAdvanceApprovalController::class, 'managerIndex'])->name('advances');
     Route::post('/cash-advances/{id}/status', [CashAdvanceApprovalController::class, 'updateStatus'])->name('advances.status');
 });
 

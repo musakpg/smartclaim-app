@@ -18,7 +18,7 @@
 
         @include('layouts.partials.manager-sidebar')
 
-        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-4 sm:py-6 space-y-6 pb-24 md:pb-8 md:pb-8">
             @if(session('success'))
                 <div class="mb-4 p-4 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm">
                     {{ session('success') }}
@@ -138,6 +138,7 @@
             </div>
         </main>
     </div>
+    @include('layouts.partials.bottom-nav')
 </body>
 
 </html>

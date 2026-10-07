@@ -63,7 +63,7 @@
         @include('layouts.partials.manager-sidebar')
 
         <!-- Main Workspace -->
-        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 pb-24 md:pb-8">
 
             <!-- Page Header -->
             <div class="border-b border-slate-200 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -600,6 +600,7 @@
             </div>
 
         </main>
+        @include('layouts.partials.bottom-nav')
     </div>
 
     <!-- ========================================================================= -->

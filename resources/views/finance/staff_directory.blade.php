@@ -30,7 +30,7 @@
 
 
 
-            <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
+            <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
 
                 <!-- Header & Search -->
                 <div
@@ -134,6 +134,7 @@
             </main>
         </div>
     </div>
+    @include('layouts.partials.bottom-nav')
 </body>
 
 </html>

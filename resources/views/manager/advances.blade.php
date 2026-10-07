@@ -56,7 +56,7 @@
                                 <h2 class="text-sm font-black text-slate-900 uppercase tracking-wider">Requisition Ledger</h2>
                             </div>
                             <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs">
+                            <table class="w-full text-left text-xs min-w-[650px]">
                                 <thead class="bg-slate-50/50 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100">
                                     <tr>
                                         <th class="py-3 px-4">Ref ID</th>
