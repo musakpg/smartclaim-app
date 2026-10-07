@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -25,8 +25,8 @@
         @include('layouts.partials.staff-sidebar')
 
         <!-- Main Workspace Area -->
-        <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <div class="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full pb-24 overflow-y-auto space-y-6">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
+            <div class="w-full space-y-6 pb-24">
 
                 <!-- Header Title Banner -->
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

@@ -57,7 +57,7 @@
 
 
             <!-- Main Page Content -->
-            <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-y-auto space-y-6">
+            <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
 
                 <!-- Title & Actions -->
                 <div class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -195,7 +195,7 @@
                         </div>
 
                         <!-- Standardized Pagination -->
-                        <div class="pt-4 border-t border-slate-100 mt-auto">
+                        <div class="px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl mt-auto">
                             {{ $pendingDisbursements->links() }}
                         </div>
                     </div>
@@ -256,7 +256,7 @@
                         </div>
 
                         <!-- Standardized Pagination -->
-                        <div class="pt-4 border-t border-slate-100 mt-auto">
+                        <div class="px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl mt-auto">
                             {{ $settledDisbursements->links() }}
                         </div>
                     </div>

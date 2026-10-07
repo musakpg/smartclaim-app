@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" x-data="{ isMobileSidebarOpen: false }">
 
 <head>
@@ -29,7 +29,7 @@
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
             <!-- Main Page Content Area -->
-            <main class="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full pb-24 lg:pb-8 overflow-y-auto">
+            <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
                 <div class="space-y-6">
 
                     @if(session('success'))

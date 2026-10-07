@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" x-data="{ 
     isMobileSidebarOpen: false, 
     isDetailModalOpen: false, 
@@ -31,7 +31,7 @@
         @include('layouts.partials.staff-sidebar')
 
         <!-- Main Content Workspace -->
-        <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-y-auto space-y-6">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
 
             <!-- Header Banner -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-200 gap-4">

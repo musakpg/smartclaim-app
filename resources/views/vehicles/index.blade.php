@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -35,7 +35,7 @@
 
 
             <!-- Page Body Content -->
-            <div class="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full pb-24 overflow-y-auto space-y-6">
+            <div class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-24 overflow-y-auto">
                 <!-- Page Title & Header Actions -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>

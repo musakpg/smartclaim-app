@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -63,7 +63,7 @@
         @include('layouts.partials.manager-sidebar')
 
         <!-- Main Workspace -->
-        <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-hidden space-y-6">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
             <!-- Page Header -->
             <div class="border-b border-slate-200 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -608,7 +608,7 @@
 
     <!-- Document Review Modal -->
     <div x-show="reviewModalOpen" x-cloak
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
         <div class="bg-white rounded-3xl max-w-4xl w-full p-6 space-y-4 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             @click.away="reviewModalOpen = false">
 
@@ -719,7 +719,7 @@
 
     <!-- Rejection Justification Modal -->
     <div x-show="rejectModalOpen" x-cloak
-        class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
+        class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/50">
         <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl"
             @click.away="rejectModalOpen = false">
             <div class="flex justify-between items-center pb-2 border-b border-slate-100">

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" x-data="{
     isMobileSidebarOpen: false,
     editModalOpen: false,
@@ -34,7 +34,7 @@
     <div class="flex flex-col lg:flex-row min-h-screen">
         @include('layouts.partials.manager-sidebar')
 
-        <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-hidden space-y-6 pb-24">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
             <!-- Header -->
             <div class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -164,7 +164,7 @@
     </div>
 
     <!-- Edit Policy Modal -->
-    <div x-show="editModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+    <div x-show="editModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 transition-opacity">
         <div class="bg-white rounded-3xl shadow-xl w-full max-w-lg overflow-hidden" @click.away="editModalOpen = false">
             <div class="p-5 border-b border-slate-100 flex items-center justify-between">
                 <h3 class="text-base font-black text-slate-800 tracking-tight">Edit Policy Parameters</h3>
@@ -203,7 +203,7 @@
 
                 <div class="space-y-1.5">
                     <label class="block text-xs font-bold text-slate-700">Policy Status</label>
-                    <select name="is_active" x-model="editPolicy.is_active" class="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm font-medium">
+                    <select name="is_active" x-model="editPolicy.is_active" class="w-full border border-slate-200 rounded-xl bg-white px-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-blue-500 text-sm font-medium outline-none">
                         <option value="1">Active (Enforced)</option>
                         <option value="0">Disabled (Bypass)</option>
                     </select>
@@ -229,7 +229,7 @@
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div x-show="deleteModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+    <div x-show="deleteModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 transition-opacity">
         <div class="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden" @click.away="deleteModalOpen = false">
             <div class="p-6 text-center space-y-4">
                 <div class="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-sm border border-rose-200">

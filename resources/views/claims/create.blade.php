@@ -9,7 +9,7 @@
 @endpush
 
 @section('content')
-<div x-data="ocrForm()" @google-maps-loaded.window="initGoogleMapsDependentLogic()" class="max-w-4xl mx-auto w-full space-y-6">
+<div x-data="ocrForm()" @google-maps-loaded.window="initGoogleMapsDependentLogic()" class="w-full space-y-6">
 
                 <!-- Header Title Banner -->
                 <div class="space-y-0.5">

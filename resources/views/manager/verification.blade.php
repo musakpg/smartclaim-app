@@ -143,7 +143,7 @@
                     </div>
 
                     <!-- Pagination -->
-                    <div class="pt-4 border-t border-slate-100 mt-auto">
+                    <div class="px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl mt-auto">
                         {{ $claims->links() }}
                     </div>
                 </div>
@@ -488,7 +488,7 @@
 
     <!-- Executive Rejection Modal Screen -->
     <div x-show="isRejectModalOpen" x-cloak
-        class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs transition-all duration-300">
+        class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 transition-all duration-300">
         <div class="relative bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl overflow-hidden border border-slate-100 space-y-4"
             @click.away="isRejectModalOpen = false" x-transition:enter="transition ease-out duration-200 transform"
             x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
@@ -554,7 +554,7 @@
 
     <!-- Request Revision Modal Screen -->
     <div x-show="isRevisionModalOpen" x-cloak
-        class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs transition-all duration-300">
+        class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 transition-all duration-300">
         <div class="relative bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl overflow-hidden border border-slate-100 space-y-4"
             @click.away="isRevisionModalOpen = false" x-transition:enter="transition ease-out duration-200 transform"
             x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en"
     x-data="{ isMobileSidebarOpen: false, isAuditingOpen: false, isAdminOpen: true, activeSubTab: 'mileage_rates', isCreateModalOpen: false, deleteModalOpen: false, deleteActionUrl: '' }">
 
@@ -18,7 +18,7 @@
     <div class="flex flex-col lg:flex-row min-h-screen">
 
         @include('layouts.partials.manager-sidebar')
-        <main class="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full overflow-hidden">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div class="space-y-6">
                 <div class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div>
@@ -127,7 +127,7 @@
     </div>
 
     <!-- Create Mileage Rate Modal -->
-    <div x-show="isCreateModalOpen" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+    <div x-show="isCreateModalOpen" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 transition-opacity">
         <div class="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden" @click.away="isCreateModalOpen = false">
             <div class="p-5 border-b border-slate-100 flex items-center justify-between">
                 <h3 class="text-base font-black text-slate-800 tracking-tight">Create New Mileage Rate</h3>
@@ -139,7 +139,7 @@
                 @csrf
                 <div class="space-y-1.5">
                     <label class="block text-xs font-bold text-slate-700">Vehicle Type</label>
-                    <select name="vehicle_type" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm font-medium">
+                    <select name="vehicle_type" required class="w-full border border-slate-200 rounded-xl bg-white px-4 py-2.5 text-slate-800 focus:ring-2 focus:ring-blue-500 text-sm font-medium outline-none">
                         <option value="">Select Vehicle Type</option>
                         <option value="Car">Car</option>
                         <option value="Motorcycle">Motorcycle</option>
@@ -176,7 +176,7 @@
         </div>
     </div>
     <!-- Delete Confirmation Modal -->
-    <div x-show="deleteModalOpen" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity">
+    <div x-show="deleteModalOpen" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 transition-opacity">
         <div class="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden" @click.away="deleteModalOpen = false">
             <div class="p-6 text-center space-y-4">
                 <div class="w-16 h-16 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-sm border border-rose-200">

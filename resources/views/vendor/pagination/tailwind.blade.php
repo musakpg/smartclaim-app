@@ -1,6 +1,6 @@
 @if ($paginator->hasPages() || $paginator->total() > 0)
     <nav role="navigation" aria-label="Pagination Navigation" class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold w-full">
-        <div class="text-slate-400 font-medium">
+        <div class="text-slate-400 font-medium leading-relaxed mb-1 sm:mb-0">
             @if ($paginator->total() > 0)
                 Showing <span class="text-slate-700 font-bold">{{ $paginator->firstItem() }}</span>
                 to <span class="text-slate-700 font-bold">{{ $paginator->lastItem() }}</span>

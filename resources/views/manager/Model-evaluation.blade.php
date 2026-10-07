@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -25,7 +25,7 @@
         @include('layouts.partials.manager-sidebar')
 
         <!-- Main Workspace -->
-        <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 overflow-y-auto space-y-6">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
 
             <!-- Header & Actions -->
             <div class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -255,7 +255,7 @@
 
     <!-- Upload & Live Evaluation Modal -->
     <div x-show="isUploadModalOpen" x-cloak
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50">
         <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl"
             @click.away="!isSubmitting && (isUploadModalOpen = false)">
             <div class="flex justify-between items-center pb-2 border-b border-slate-100">

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" x-data="{ isMobileSidebarOpen: false }">
 
 <head>
@@ -18,7 +18,7 @@
 
         @include('layouts.partials.manager-sidebar')
 
-        <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-hidden">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div class="space-y-6">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="space-y-1">

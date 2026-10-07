@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en"
     x-data="{ 
         isMobileSidebarOpen: false, 
@@ -27,7 +27,7 @@
     <div class="flex flex-col lg:flex-row min-h-screen">
         @include('layouts.partials.manager-sidebar')
 
-        <main class="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 lg:pb-8 overflow-hidden">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div class="space-y-6">
 
                 <!-- Header Title Banner -->
@@ -234,7 +234,7 @@
 
     <!-- Modal: Add New Exception Code -->
     <div x-show="isAddModalOpen" x-cloak
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-all">
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 transition-all">
         <div class="relative bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4"
             @click.away="isAddModalOpen = false" x-transition:enter="transition ease-out duration-200 transform"
             x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
@@ -296,7 +296,7 @@
 
     <!-- Modal: Edit Exception Code -->
     <div x-show="isEditModalOpen" x-cloak
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-all">
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 transition-all">
         <div class="relative bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-100 space-y-4"
             @click.away="isEditModalOpen = false" x-transition:enter="transition ease-out duration-200 transform"
             x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">

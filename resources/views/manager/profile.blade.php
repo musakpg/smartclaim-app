@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" x-data="{ isMobileSidebarOpen: false, isAuditingOpen: false, isAdminOpen: false }">
 
 <head>
@@ -18,7 +18,7 @@
 
         @include('layouts.partials.manager-sidebar')
 
-        <main class="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full overflow-hidden">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             @if(session('success'))
                 <div class="mb-4 p-4 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm">
                     {{ session('success') }}

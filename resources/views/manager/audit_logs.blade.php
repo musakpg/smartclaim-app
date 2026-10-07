@@ -170,7 +170,7 @@
             </div>
         </div>
 
-        <div class="pt-4 border-t border-slate-100 mt-auto">
+        <div class="px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl mt-auto">
             {{ $auditLogs->links() }}
         </div>
     </div>

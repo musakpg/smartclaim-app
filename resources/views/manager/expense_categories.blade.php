@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en"
     x-data="{ isMobileSidebarOpen: false, isAuditingOpen: false, isAdminOpen: true, activeSubTab: 'expense_categories',
               isAddModalOpen: false,
@@ -22,7 +22,7 @@
 
         @include('layouts.partials.manager-sidebar')
 
-        <main class="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full pb-24 lg:pb-8 overflow-hidden">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             <div class="space-y-6">
                 <div class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div>
@@ -135,7 +135,7 @@
             </div>
 
             <!-- Add Category Modal -->
-            <div x-show="isAddModalOpen" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-900/60 backdrop-blur-sm p-4">
+            <div x-show="isAddModalOpen" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-900/50 p-4">
                 <div x-show="isAddModalOpen" x-transition.opacity class="relative w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100" @click.away="isAddModalOpen = false">
                     <div class="p-5 border-b border-slate-100 flex items-center justify-between">
                         <h3 class="text-lg font-black text-slate-900">Add New Category</h3>
@@ -205,7 +205,7 @@
             </div>
 
             <!-- Edit Category Modal -->
-            <div x-show="isEditModalOpen" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-900/60 backdrop-blur-sm p-4">
+            <div x-show="isEditModalOpen" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-900/50 p-4">
                 <div x-show="isEditModalOpen" x-transition.opacity class="relative w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100" @click.away="isEditModalOpen = false">
                     <div class="p-5 border-b border-slate-100 flex items-center justify-between">
                         <h3 class="text-lg font-black text-slate-900">Edit Category</h3>

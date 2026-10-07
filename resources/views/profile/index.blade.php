@@ -1,4 +1,4 @@
-﻿<!-- Comment: Staff Account Profile & Banking Configuration Workspace -->
+<!-- Comment: Staff Account Profile & Banking Configuration Workspace -->
 <!DOCTYPE html>
 <html lang="en" x-data="{ isMobileSidebarOpen: false, activeTab: 'banking' }">
 
@@ -30,7 +30,7 @@
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
 
 
-            <main class="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 lg:pb-8 overflow-y-auto space-y-6">
+            <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6 overflow-y-auto">
 
                 <!-- Header Section -->
                 <div class="border-b border-slate-200 pb-5">
