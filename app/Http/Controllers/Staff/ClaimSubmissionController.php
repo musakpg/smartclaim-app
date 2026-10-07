@@ -652,4 +652,26 @@ class ClaimSubmissionController extends Controller
 
         return response()->json($result);
     }
+
+    /**
+     * Render employee reimbursement ledger.
+     */
+    public function reimbursementIndex()
+    {
+        $currentUserId = Auth::id();
+        if (!$currentUserId) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        $approvedClaims = Claim::where('user_id', $currentUserId)
+            ->whereIn('status', ['Approved', 'Reimbursed'])
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        $approvedTotal = $approvedClaims->sum('amount');
+        $paidTotal = $approvedClaims->where('status', 'Reimbursed')->sum('amount');
+        $processingTotal = $approvedClaims->where('status', 'Approved')->sum('amount');
+
+        return view('reimbursement.index', compact('approvedClaims', 'approvedTotal', 'paidTotal', 'processingTotal'));
+    }
 }

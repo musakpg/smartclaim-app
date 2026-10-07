@@ -1,16 +1,17 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Staff;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Controller;
+use App\Models\Claim;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
-class DashboardController extends Controller
+class StaffDashboardController extends Controller
 {
     /**
-     * Render the dynamic dashboard metrics and charts populated from corporate user database logs.
+     * Render the dynamic dashboard metrics, budget tracking, and charts for authenticated staff.
      */
     public function index()
     {
@@ -20,44 +21,39 @@ class DashboardController extends Controller
         }
         $userId = $currentUser->user_id ?? $currentUser->id;
 
-        // =================================================================
-        // 1. MULTI-LEVEL STATUS CARD COUNTS
-        // =================================================================
-        $reimbursedCount = DB::table('claims')
-            ->where('user_id', $userId)
+        // Multi-level status counts
+        $reimbursedCount = Claim::where('user_id', $userId)
             ->where('status', 'Reimbursed')
             ->count();
 
-        $approvedCount = DB::table('claims')
-            ->where('user_id', $userId)
+        $approvedCount = Claim::where('user_id', $userId)
             ->where('status', 'Approved')
             ->count();
 
-        $preApprovedCount = DB::table('claims')
-            ->where('user_id', $userId)
+        $preApprovedCount = Claim::where('user_id', $userId)
             ->where('status', 'Pre-Approved')
             ->count();
 
-        $pendingCount = DB::table('claims')
-            ->where('user_id', $userId)
+        $pendingCount = Claim::where('user_id', $userId)
             ->where('status', 'Pending')
             ->count();
 
-        $rejectedCount = DB::table('claims')
-            ->where('user_id', $userId)
+        $rejectedCount = Claim::where('user_id', $userId)
             ->where('status', 'Rejected')
             ->count();
 
-        $totalDisbursedAmount = (float) DB::table('claims')
-            ->where('user_id', $userId)
+        $totalClaimsCount = Claim::where('user_id', $userId)->count();
+
+        $totalDisbursedAmount = (float) Claim::where('user_id', $userId)
             ->where('status', 'Reimbursed')
             ->sum('amount');
 
-        // =================================================================
-        // 2. LINE CHART DATA (MONTHLY APPROVED & REIMBURSED SPENDING)
-        // =================================================================
-        $currentYear = Carbon::now()->year;
+        $totalSpending = (float) Claim::where('user_id', $userId)
+            ->whereIn('status', ['Approved', 'Reimbursed'])
+            ->sum('amount');
 
+        // Line chart and sparklines: Monthly spending
+        $currentYear = Carbon::now()->year;
         $monthlySpending = DB::table('claims')
             ->select(DB::raw('MONTH(transaction_date) as month'), DB::raw('SUM(amount) as total'))
             ->whereYear('transaction_date', $currentYear)
@@ -72,10 +68,10 @@ class DashboardController extends Controller
             $lineChartData[(int) $spend->month] = (float) $spend->total;
         }
         $lineChartData = array_values($lineChartData);
+        $sparklineValues = $lineChartData;
+        $barValues = $lineChartData;
 
-        // =================================================================
-        // 3. BAR CHART DATA (CATEGORY DISTRIBUTION)
-        // =================================================================
+        // Category distribution
         $categoryDistribution = DB::table('claims')
             ->select('predicted_category as category', DB::raw('SUM(amount) as total'))
             ->where('user_id', $userId)
@@ -85,20 +81,18 @@ class DashboardController extends Controller
             ->get();
 
         $barLabels = [];
-        $barValues = [];
+        $categoryBarValues = [];
         foreach ($categoryDistribution as $dist) {
             $barLabels[] = $dist->category ?? 'General';
-            $barValues[] = (float) $dist->total;
+            $categoryBarValues[] = (float) $dist->total;
         }
 
         if (empty($barLabels)) {
             $barLabels = ['Meals & Entertainment', 'Fuel / Automotive', 'Office Supplies'];
-            $barValues = [0, 0, 0];
+            $categoryBarValues = [0, 0, 0];
         }
 
-        // =================================================================
-        // 4. MONTHLY ENTITLEMENT TRACKER (CURRENT MONTH SPEND BY CATEGORY)
-        // =================================================================
+        // Monthly entitlement budget tracking
         $currentMonth = Carbon::now()->month;
         $monthlyCategorySpend = DB::table('claims')
             ->select('predicted_category as category', DB::raw('SUM(amount) as total'))
@@ -118,27 +112,40 @@ class DashboardController extends Controller
             ->where('expense_policies.is_active', true)
             ->get();
 
-        // =================================================================
-        // 5. RECENT CLAIMS FOR THIS LOGGED-IN STAFF
-        // =================================================================
-        $recentClaims = \App\Models\Claim::where('user_id', $userId)
+        $monthlyBudget = 10000.00;
+        $currentMonthTotal = Claim::where('user_id', $userId)
+            ->whereIn('status', ['Approved', 'Reimbursed'])
+            ->whereMonth('transaction_date', $currentMonth)
+            ->whereYear('transaction_date', $currentYear)
+            ->sum('amount');
+
+        $percentageUsed = $monthlyBudget > 0 ? min(100, round(($currentMonthTotal / $monthlyBudget) * 100)) : 0;
+
+        // Recent claims submitted by this user
+        $recentClaims = Claim::where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();
 
         return view('dashboard', [
             'totalDisbursedAmount' => $totalDisbursedAmount,
+            'totalSpending' => $totalSpending,
             'reimbursedCount' => $reimbursedCount,
             'approvedCount' => $approvedCount,
             'preApprovedCount' => $preApprovedCount,
             'pendingCount' => $pendingCount,
             'rejectedCount' => $rejectedCount,
+            'totalClaimsCount' => $totalClaimsCount,
             'lineChartData' => $lineChartData,
+            'sparklineValues' => $sparklineValues,
             'barLabels' => $barLabels,
             'barValues' => $barValues,
             'recentClaims' => $recentClaims,
             'monthlyCategorySpend' => $monthlyCategorySpend,
-            'expensePolicies' => $expensePolicies
+            'expensePolicies' => $expensePolicies,
+            'monthlyBudget' => $monthlyBudget,
+            'currentMonthTotal' => $currentMonthTotal,
+            'percentageUsed' => $percentageUsed,
         ]);
     }
 }
