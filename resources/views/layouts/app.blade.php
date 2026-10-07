@@ -14,6 +14,9 @@
 
     <style>
         [x-cloak] { display: none !important; }
+        @media (min-width: 1024px) {
+            aside[x-cloak] { display: flex !important; }
+        }
     </style>
     @stack('styles')
 </head>

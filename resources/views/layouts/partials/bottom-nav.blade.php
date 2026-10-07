@@ -33,7 +33,6 @@
     @foreach ($navItems as $item)
         @if (!empty($item['is_fab']))
             <a href="{{ route($item['route']) }}" 
-               @click="if (typeof isMobileSidebarOpen !== 'undefined') isMobileSidebarOpen = false;"
                class="flex flex-col items-center justify-center flex-1 pb-1 transition-all duration-150 {{ $item['active'] ? 'text-blue-600 font-bold' : 'text-slate-700 font-semibold' }}">
                 <div class="w-12 h-12 -mt-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/40 ring-4 ring-white hover:bg-blue-700 active:scale-95 transition-all">
                     <i class="{{ $item['icon'] }} text-lg"></i>
@@ -42,7 +41,6 @@
             </a>
         @else
             <a href="{{ route($item['route']) }}" 
-               @click="if (typeof isMobileSidebarOpen !== 'undefined') isMobileSidebarOpen = false;"
                class="flex flex-col items-center justify-center flex-1 py-1 transition-all duration-150 {{ $item['active'] ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-slate-600 font-medium' }}">
                 <div class="relative flex items-center justify-center">
                     <i class="{{ $item['icon'] }} text-base"></i>

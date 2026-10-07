@@ -37,8 +37,8 @@
     @click="isMobileSidebarOpen = false"></div>
 
 <!-- Unified Persistent Sidebar (Mobile & Desktop) -->
-<aside :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    class="fixed inset-y-0 left-0 z-[60] w-64 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 font-sans select-none lg:static lg:h-screen lg:sticky lg:top-0"
+<aside x-cloak :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+    class="fixed inset-y-0 left-0 z-[60] w-64 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 font-sans select-none -translate-x-full lg:translate-x-0 lg:static lg:h-screen lg:sticky lg:top-0"
     x-data="{ isClaimsOpen: {{ request()->routeIs('claims.*') ? 'true' : 'false' }} }">
     
     <div>
@@ -125,7 +125,7 @@
     </div>
 
     <!-- Bottom Sticky Actions -->
-    <div class="p-4 border-t border-slate-100 space-y-1 text-xs font-semibold shrink-0 pb-28 lg:pb-4">
+    <div class="p-4 border-t border-slate-100 space-y-1 text-xs font-semibold shrink-0">
         <a href="{{ route('profile.index') }}"
             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors {{ request()->routeIs('profile.*') ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
             <i class="fa-solid fa-user-gear text-sm w-4 text-center"></i>

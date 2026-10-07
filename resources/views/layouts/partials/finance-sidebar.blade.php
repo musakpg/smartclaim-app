@@ -24,8 +24,8 @@
     class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[55] lg:hidden">
 </div>
 
-<aside :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    class="fixed inset-y-0 left-0 z-[60] w-64 bg-[#0d1527] border-r border-slate-800 text-slate-300 flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 font-sans select-none lg:static lg:h-screen lg:sticky lg:top-0"
+<aside x-cloak :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+    class="fixed inset-y-0 left-0 z-[60] w-64 bg-[#0d1527] border-r border-slate-800 text-slate-300 flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 font-sans select-none -translate-x-full lg:translate-x-0 lg:static lg:h-screen lg:sticky lg:top-0"
     x-data="{ 
         activeDropdown: '{{ request()->routeIs('finance.auditing*') ? 'auditing' : '' }}',
         toggle(menu) {
@@ -132,7 +132,7 @@
         </a>
     </nav>
 
-    <div class="p-4 border-t border-slate-800/80 space-y-1 text-xs font-semibold shrink-0 pb-28 lg:pb-4">
+    <div class="p-4 border-t border-slate-800/80 space-y-1 text-xs font-semibold shrink-0">
         <a href="{{ route('finance.profile') }}"
             class="flex items-center gap-3 px-3.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors {{ request()->routeIs('finance.profile') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
             <i class="fa-solid fa-user-shield text-sm w-4 text-center"></i>

@@ -6,6 +6,12 @@
     display: none !important;
 }
 
+@media (min-width: 1024px) {
+    aside[x-cloak] {
+        display: flex !important;
+    }
+}
+
 /* Modern UI Shimmer & Skeleton Animations */
 @keyframes shimmer {
     0% {
