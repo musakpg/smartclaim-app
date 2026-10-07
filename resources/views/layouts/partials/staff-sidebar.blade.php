@@ -54,7 +54,7 @@
         </div>
 
         <!-- Navigation Menu -->
-        <nav class="px-4 py-4 space-y-1.5 overflow-y-auto text-xs font-semibold">
+        <nav class="px-4 py-4 space-y-1.5 overflow-y-auto text-xs font-semibold" style="scrollbar-gutter: stable;">
             <a href="{{ route('dashboard') }}"
                 class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-150 {{ request()->routeIs('dashboard') ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
                 <i class="fa-solid fa-house text-sm w-4 text-center"></i>
@@ -74,7 +74,8 @@
                 </button>
 
                 <div class="grid transition-[grid-template-rows,opacity] duration-200 ease-out"
-                    :class="isClaimsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
+                    :class="isClaimsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'"
+                    x-cloak>
                     <div class="overflow-hidden">
                         <div class="pl-7 pr-2 pt-1 pb-1.5 space-y-1">
                             <a href="{{ route('claims.create') }}?type=Receipt"

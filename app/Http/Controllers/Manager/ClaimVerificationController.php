@@ -33,7 +33,7 @@ class ClaimVerificationController extends Controller
             $claimsQuery->whereIn('status', ['Pending', 'Pre-Approved', 'Pending Manager']);
         }
 
-        $claims = $claimsQuery->paginate(15);
+        $claims = $claimsQuery->paginate(10)->withQueryString();
         $claims->getCollection()->transform(function ($c) {
             $c->user_name = $c->user->name ?? 'Staff User';
             return $c;

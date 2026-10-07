@@ -53,7 +53,7 @@ class AuditLogController extends Controller
             });
         }
 
-        $auditLogs = $query->latest()->paginate(20)->withQueryString();
+        $auditLogs = $query->latest()->paginate(10)->withQueryString();
 
         return view('manager.audit_logs', compact('auditLogs'));
     }

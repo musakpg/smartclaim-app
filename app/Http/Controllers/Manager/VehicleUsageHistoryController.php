@@ -48,7 +48,7 @@ class VehicleUsageHistoryController extends Controller
             $query->whereDate('transaction_date', '<=', $request->date_to);
         }
 
-        $logs = $query->latest('transaction_date')->paginate(15)->withQueryString();
+        $logs = $query->latest('transaction_date')->paginate(10)->withQueryString();
 
         // Calculate analytical summary metrics
         $metricsQuery = clone $query;

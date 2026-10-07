@@ -25,16 +25,10 @@
     class="fixed inset-0 bg-slate-900/60 z-40 lg:hidden backdrop-blur-sm" 
     @click="isMobileSidebarOpen = false"></div>
 
-<!-- Comment: Manager Sidebar Navigation with Silky Smooth Grid Height Transition -->
+<!-- Manager Sidebar Navigation -->
 <aside
     class="w-64 bg-[#0d1527] text-slate-300 min-h-screen flex flex-col border-r border-slate-800 shrink-0 font-sans select-none fixed lg:static top-0 bottom-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:translate-x-0"
-    :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-    x-data="{ 
-        activeDropdown: '{{ request()->routeIs('manager.vehicles*') || request()->routeIs('manager.vehicle_history*') ? 'fleet' : (request()->routeIs('manager.user_management*') || request()->routeIs('manager.expense_policies*') || request()->routeIs('manager.expense_categories*') || request()->routeIs('manager.mileage_rates*') || request()->routeIs('manager.audit_logs*') || request()->routeIs('manager.audit_reasons*') ? 'admin' : (request()->routeIs('manager.model-evaluation*') || request()->routeIs('manager.ai_feedback*') ? 'ai' : '')) }}',
-        toggle(menu) {
-            this.activeDropdown = this.activeDropdown === menu ? '' : menu;
-        }
-    }">
+    :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'">
 
     <!-- Brand Header -->
     <div class="px-6 py-5 border-b border-slate-800/80 flex items-center gap-3 shrink-0">
@@ -48,8 +42,8 @@
         </div>
     </div>
 
-    <!-- Navigation Menu -->
-    <nav class="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto text-xs font-semibold">
+    <!-- Navigation Menu (Persistent Scrollbar Gutter to Prevent Width Jumps) -->
+    <nav class="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto text-xs font-semibold" style="scrollbar-gutter: stable;">
 
         <!-- 1. DASHBOARD -->
         <a href="{{ route('manager.dashboard') }}"
@@ -66,107 +60,116 @@
         </a>
 
         <!-- 3. FLEET MANAGEMENT (DROPDOWN) -->
-        <div>
-            <button type="button" @click="toggle('fleet')"
+        <div x-data="{ open: {{ request()->is('manager/vehicles*') || request()->is('manager/vehicle*') || request()->routeIs('manager.vehicles*') || request()->routeIs('manager.vehicle_history*') ? 'true' : 'false' }} }">
+            <button type="button" @click="open = !open"
                 class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 cursor-pointer"
-                :class="activeDropdown === 'fleet' ? 'text-slate-200 bg-slate-800/40' : ''">
+                :class="open ? 'text-slate-200 bg-slate-800/40' : ''">
                 <div class="flex items-center gap-3">
                     <i class="fa-solid fa-car-side text-sm w-4 text-center"></i>
                     <span>Fleet Management</span>
                 </div>
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300 ease-out"
-                    :class="activeDropdown === 'fleet' ? 'rotate-180 text-emerald-400' : 'text-slate-500'"></i>
+                    :class="open ? 'rotate-180 text-emerald-400' : 'text-slate-500'"></i>
             </button>
 
-            <div class="grid transition-[grid-template-rows,opacity] duration-300 ease-out"
-                :class="activeDropdown === 'fleet' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
-                <div class="overflow-hidden">
-                    <div class="pl-7 pr-2 pt-1 pb-1.5 space-y-1">
-                        <a href="{{ route('manager.vehicles') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.vehicles*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-id-card-clip text-[11px] mr-2"></i> Fleet & Verification
-                        </a>
-                        <a href="{{ route('manager.vehicle_history') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.vehicle_history*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-clock-rotate-left text-[11px] mr-2"></i> Trip & Usage History
-                        </a>
-                    </div>
+            <div x-show="open" x-cloak
+                x-transition:enter="transition-all ease-out duration-200"
+                x-transition:enter-start="opacity-0 -translate-y-1"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition-all ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 -translate-y-1">
+                <div class="pl-7 pr-2 pt-1 pb-1.5 space-y-1">
+                    <a href="{{ route('manager.vehicles') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.vehicles*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-id-card-clip text-[11px] mr-2"></i> Fleet & Verification
+                    </a>
+                    <a href="{{ route('manager.vehicle_history') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.vehicle_history*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-clock-rotate-left text-[11px] mr-2"></i> Trip & Usage History
+                    </a>
                 </div>
             </div>
         </div>
 
         <!-- 4. ADMINISTRATION (DROPDOWN) -->
-        <div>
-            <button type="button" @click="toggle('admin')"
+        <div x-data="{ open: {{ request()->is('manager/user*') || request()->is('manager/expense*') || request()->is('manager/mileage*') || request()->is('manager/audit*') || request()->routeIs('manager.user_management*') || request()->routeIs('manager.expense_policies*') || request()->routeIs('manager.expense_categories*') || request()->routeIs('manager.mileage_rates*') || request()->routeIs('manager.audit_logs*') || request()->routeIs('manager.audit_reasons*') ? 'true' : 'false' }} }">
+            <button type="button" @click="open = !open"
                 class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 cursor-pointer"
-                :class="activeDropdown === 'admin' ? 'text-slate-200 bg-slate-800/40' : ''">
+                :class="open ? 'text-slate-200 bg-slate-800/40' : ''">
                 <div class="flex items-center gap-3">
                     <i class="fa-solid fa-sliders text-sm w-4 text-center"></i>
                     <span>Administration</span>
                 </div>
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300 ease-out"
-                    :class="activeDropdown === 'admin' ? 'rotate-180 text-emerald-400' : 'text-slate-500'"></i>
+                    :class="open ? 'rotate-180 text-emerald-400' : 'text-slate-500'"></i>
             </button>
 
-            <div class="grid transition-[grid-template-rows,opacity] duration-300 ease-out"
-                :class="activeDropdown === 'admin' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
-                <div class="overflow-hidden">
-                    <div class="pl-7 pr-2 pt-1 pb-1.5 space-y-1">
-                        <a href="{{ route('manager.user_management') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.user_management*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-users-gear text-[11px] mr-2"></i> User Management
-                        </a>
-                        <a href="{{ route('manager.expense_policies') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.expense_policies*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-shield-halved text-[11px] mr-2"></i> Expense Policies & Caps
-                        </a>
-                        <a href="{{ route('manager.expense_categories') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.expense_categories*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-tags text-[11px] mr-2"></i> Expense Categories
-                        </a>
-                        <a href="{{ route('manager.mileage_rates') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.mileage_rates*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-gauge text-[11px] mr-2"></i> Mileage Rates
-                        </a>
-                        <a href="{{ route('manager.audit_logs') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.audit_logs*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-list-check text-[11px] mr-2"></i> Audit Logs
-                        </a>
-                        <a href="{{ route('manager.audit_reasons') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.audit_reasons*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-clipboard-question text-[11px] mr-2"></i> Audit Exception Codes
-                        </a>
-                    </div>
+            <div x-show="open" x-cloak
+                x-transition:enter="transition-all ease-out duration-200"
+                x-transition:enter-start="opacity-0 -translate-y-1"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition-all ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 -translate-y-1">
+                <div class="pl-7 pr-2 pt-1 pb-1.5 space-y-1">
+                    <a href="{{ route('manager.user_management') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.user_management*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-users-gear text-[11px] mr-2"></i> User Management
+                    </a>
+                    <a href="{{ route('manager.expense_policies') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.expense_policies*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-shield-halved text-[11px] mr-2"></i> Expense Policies & Caps
+                    </a>
+                    <a href="{{ route('manager.expense_categories') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.expense_categories*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-tags text-[11px] mr-2"></i> Expense Categories
+                    </a>
+                    <a href="{{ route('manager.mileage_rates') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.mileage_rates*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-gauge text-[11px] mr-2"></i> Mileage Rates
+                    </a>
+                    <a href="{{ route('manager.audit_logs') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.audit_logs*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-list-check text-[11px] mr-2"></i> Audit Logs
+                    </a>
+                    <a href="{{ route('manager.audit_reasons') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.audit_reasons*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-clipboard-question text-[11px] mr-2"></i> Audit Exception Codes
+                    </a>
                 </div>
             </div>
         </div>
 
         <!-- 5. AI & SYSTEM HEALTH (DROPDOWN) -->
-        <div>
-            <button type="button" @click="toggle('ai')"
+        <div x-data="{ open: {{ request()->is('manager/model-evaluation*') || request()->is('manager/ai-feedback*') || request()->routeIs('manager.model-evaluation*') || request()->routeIs('manager.ai_feedback*') ? 'true' : 'false' }} }">
+            <button type="button" @click="open = !open"
                 class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 cursor-pointer"
-                :class="activeDropdown === 'ai' ? 'text-slate-200 bg-slate-800/40' : ''">
+                :class="open ? 'text-slate-200 bg-slate-800/40' : ''">
                 <div class="flex items-center gap-3">
                     <i class="fa-solid fa-microchip text-sm w-4 text-center"></i>
                     <span>AI & System Health</span>
                 </div>
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300 ease-out"
-                    :class="activeDropdown === 'ai' ? 'rotate-180 text-emerald-400' : 'text-slate-500'"></i>
+                    :class="open ? 'rotate-180 text-emerald-400' : 'text-slate-500'"></i>
             </button>
 
-            <div class="grid transition-[grid-template-rows,opacity] duration-300 ease-out"
-                :class="activeDropdown === 'ai' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
-                <div class="overflow-hidden">
-                    <div class="pl-7 pr-2 pt-1 pb-1.5 space-y-1">
-                        <a href="{{ route('manager.model-evaluation') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.model-evaluation*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-chart-line text-[11px] mr-2"></i> Model Benchmark
-                        </a>
-                        <a href="{{ route('manager.ai_feedback') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.ai_feedback*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-brain text-[11px] mr-2"></i> Active Learning Ledger
-                        </a>
-                    </div>
+            <div x-show="open" x-cloak
+                x-transition:enter="transition-all ease-out duration-200"
+                x-transition:enter-start="opacity-0 -translate-y-1"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition-all ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 -translate-y-1">
+                <div class="pl-7 pr-2 pt-1 pb-1.5 space-y-1">
+                    <a href="{{ route('manager.model-evaluation') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.model-evaluation*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-chart-line text-[11px] mr-2"></i> Model Benchmark
+                    </a>
+                    <a href="{{ route('manager.ai_feedback') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.ai_feedback*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-brain text-[11px] mr-2"></i> Active Learning Ledger
+                    </a>
                 </div>
             </div>
         </div>
@@ -179,31 +182,34 @@
         </a>
 
         <!-- 7. REPORTS & BI ANALYTICS (DROPDOWN) -->
-        <div>
-            <button type="button" @click="toggle('reports')"
+        <div x-data="{ open: {{ request()->is('manager/reports*') || request()->is('manager/sla*') || request()->routeIs('manager.reports*') ? 'true' : 'false' }} }">
+            <button type="button" @click="open = !open"
                 class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 cursor-pointer"
-                :class="activeDropdown === 'reports' ? 'text-slate-200 bg-slate-800/40' : ''">
+                :class="open ? 'text-slate-200 bg-slate-800/40' : ''">
                 <div class="flex items-center gap-3">
                     <i class="fa-solid fa-chart-simple text-sm w-4 text-center"></i>
                     <span>Reports & BI Analytics</span>
                 </div>
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300 ease-out"
-                    :class="activeDropdown === 'reports' ? 'rotate-180 text-emerald-400' : 'text-slate-500'"></i>
+                    :class="open ? 'rotate-180 text-emerald-400' : 'text-slate-500'"></i>
             </button>
 
-            <div class="grid transition-[grid-template-rows,opacity] duration-300 ease-out"
-                :class="activeDropdown === 'reports' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
-                <div class="overflow-hidden">
-                    <div class="pl-7 pr-2 pt-1 pb-1.5 space-y-1">
-                        <a href="{{ route('manager.reports') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.reports') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-chart-pie text-[11px] mr-2"></i> Overview
-                        </a>
-                        <a href="{{ route('manager.reports.sla_analytics') }}"
-                            class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.reports.sla_analytics') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
-                            <i class="fa-solid fa-stopwatch text-[11px] mr-2"></i> SLA & Approval Velocity
-                        </a>
-                    </div>
+            <div x-show="open" x-cloak
+                x-transition:enter="transition-all ease-out duration-200"
+                x-transition:enter-start="opacity-0 -translate-y-1"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition-all ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 -translate-y-1">
+                <div class="pl-7 pr-2 pt-1 pb-1.5 space-y-1">
+                    <a href="{{ route('manager.reports') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.reports') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-chart-pie text-[11px] mr-2"></i> Overview
+                    </a>
+                    <a href="{{ route('manager.reports.sla_analytics') }}"
+                        class="block px-3 py-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 transition-colors {{ request()->routeIs('manager.reports.sla_analytics*') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+                        <i class="fa-solid fa-stopwatch text-[11px] mr-2"></i> SLA & Approval Velocity
+                    </a>
                 </div>
             </div>
         </div>
@@ -220,7 +226,7 @@
         <form method="POST" action="{{ route('logout') }}" class="w-full">
             @csrf
             <button type="submit"
-                class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors text-left font-semibold text-xs">
+                class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors text-left font-semibold text-xs cursor-pointer">
                 <i class="fa-solid fa-right-from-bracket text-sm w-4 text-center"></i>
                 <span>Sign Out</span>
             </button>

@@ -14,7 +14,7 @@ class UserManagementController extends Controller
      */
     public function userManagementIndex()
     {
-        $users = User::orderBy('name', 'asc')->get();
+        $users = User::orderBy('name', 'asc')->paginate(10)->withQueryString();
         return view('manager.user_management', compact('users'));
     }
 

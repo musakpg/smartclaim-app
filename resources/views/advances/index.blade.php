@@ -56,8 +56,8 @@
                 </div>
 
                 <!-- Advances Table -->
-                <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden">
-                    <div class="overflow-x-auto">
+                <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden min-h-[420px] flex flex-col justify-between">
+                    <div class="overflow-x-auto flex-1">
                         <table class="w-full text-left text-xs min-w-[650px]">
                             <thead
                                 class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">

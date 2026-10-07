@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" x-data="{ 
     isMobileSidebarOpen: false,
     isModalOpen: false, 
@@ -20,7 +20,7 @@
     },
 
     get totalBatchAmount() {
-        const claims = {{ json_encode($pendingDisbursements) }};
+        const claims = {{ json_encode($pendingDisbursements->items()) }};
         return claims
             .filter(c => this.selectedBatchIds.map(String).includes(String(c.claim_id)))
             .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0)
@@ -135,13 +135,13 @@
 
                 <!-- Table 1: Pending Disbursement Payout List (With Checkbox for Batch) -->
                 @if($tab === 'pending')
-                    <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden">
-                        <div class="overflow-x-auto">
+                    <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden min-h-[420px] flex flex-col justify-between">
+                        <div class="overflow-x-auto flex-1">
                             <table class="w-full text-left text-xs min-w-[750px]">
                                 <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
                                     <tr>
                                         <th class="p-3.5 w-10 text-center">
-                                            <input type="checkbox" @change="toggleSelectAll($event, {{ json_encode($pendingDisbursements) }})" :checked="selectedBatchIds.length > 0 && selectedBatchIds.length === {{ count($pendingDisbursements) }}"
+                                            <input type="checkbox" @change="toggleSelectAll($event, {{ json_encode($pendingDisbursements->items()) }})" :checked="selectedBatchIds.length > 0 && selectedBatchIds.length === {{ $pendingDisbursements->count() }}"
                                                 class="rounded border-slate-300 text-blue-600 focus:ring-0 cursor-pointer">
                                         </th>
                                         <th class="p-3.5">Voucher ID & Merchant</th>
@@ -193,11 +193,18 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Standardized Pagination -->
+                        @if($pendingDisbursements->hasPages() || $pendingDisbursements->total() > 0)
+                            <div class="px-5 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold">
+                                {{ $pendingDisbursements->links() }}
+                            </div>
+                        @endif
                     </div>
                 @else
                     <!-- Table 2: Settled / Paid Out History -->
-                    <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden">
-                        <div class="overflow-x-auto">
+                    <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden min-h-[420px] flex flex-col justify-between">
+                        <div class="overflow-x-auto flex-1">
                             <table class="w-full text-left text-xs min-w-[750px]">
                                 <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
                                     <tr>
@@ -249,6 +256,13 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Standardized Pagination -->
+                        @if($pendingDisbursements->hasPages() || $pendingDisbursements->total() > 0)
+                            <div class="px-5 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold">
+                                {{ $pendingDisbursements->links() }}
+                            </div>
+                        @endif
                     </div>
                 @endif
 

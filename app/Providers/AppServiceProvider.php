@@ -24,5 +24,8 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\URL::forceScheme('https');
             request()->server->set('HTTPS', 'on');
         }
+
+        \Illuminate\Pagination\Paginator::useTailwind();
+        \Illuminate\Pagination\Paginator::defaultView('vendor.pagination.tailwind');
     }
 }

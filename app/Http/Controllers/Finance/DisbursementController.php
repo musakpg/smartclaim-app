@@ -25,15 +25,16 @@ class DisbursementController extends Controller
         $pendingDisbursements = Claim::with(['user.activeCashAdvance', 'items'])
             ->where('status', 'Approved')
             ->orderBy('updated_at', 'desc')
-            ->get();
+            ->paginate(10, ['*'], 'pending_page')
+            ->withQueryString();
 
         $settledDisbursements = Claim::with(['user.activeCashAdvance', 'items'])
             ->where('status', 'Reimbursed')
             ->orderBy('paid_at', 'desc')
-            ->take(30)
-            ->get();
+            ->paginate(10, ['*'], 'settled_page')
+            ->withQueryString();
 
-        $totalPendingAmount = $pendingDisbursements->sum('amount');
+        $totalPendingAmount = Claim::where('status', 'Approved')->sum('amount');
         $totalSettledAmount = Claim::where('status', 'Reimbursed')->sum('amount');
 
         return view('finance.disbursement', compact(

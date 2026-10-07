@@ -38,10 +38,10 @@
                     </div>
 
                     <!-- Claims Table Container -->
-                    <div class="bg-white rounded-3xl border border-slate-200/60 shadow-2xs overflow-hidden" x-data="{
+                    <div class="bg-white rounded-3xl border border-slate-200/60 shadow-2xs overflow-hidden min-h-[420px] flex flex-col justify-between" x-data="{
                         allClaims: [],
                         currentPage: 1,
-                        perPage: 5,
+                        perPage: 10,
                         isLoading: false,
                         get filteredClaims() {
                             return this.allClaims.filter(c => {
@@ -85,7 +85,7 @@
                                 x-text="totalRecords + ' record(s) found'"></span>
                         </div>
 
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto flex-1 min-h-[320px]">
                             <table class="w-full text-left border-collapse text-xs min-w-[700px]">
                                 <thead>
                                     <tr class="border-b border-slate-100 text-slate-400 font-bold tracking-wide uppercase bg-slate-50/50">

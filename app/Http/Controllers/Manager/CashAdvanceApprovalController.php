@@ -14,7 +14,7 @@ class CashAdvanceApprovalController extends Controller
      */
     public function managerIndex()
     {
-        $advances = CashAdvance::with('user')->latest()->paginate(10);
+        $advances = CashAdvance::with('user')->latest()->paginate(10)->withQueryString();
         $pendingCount = CashAdvance::where('status', 'PENDING_APPROVAL')->count();
         $totalDisbursed = CashAdvance::whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED', 'CLEARED'])->sum('requested_amount');
 

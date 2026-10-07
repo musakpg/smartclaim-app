@@ -13,7 +13,7 @@ class AiFeedbackController extends Controller
      */
     public function index()
     {
-        $feedbacks = AiLearningFeedback::with('user')->latest()->paginate(10);
+        $feedbacks = AiLearningFeedback::with('user')->latest()->paginate(10)->withQueryString();
         $totalTunedKeywords = AiLearningFeedback::where('is_applied', true)->count();
 
         return view('manager.ai-feedback', compact('feedbacks', 'totalTunedKeywords'));

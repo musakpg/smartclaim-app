@@ -19,7 +19,7 @@ class CashAdvanceRequestController extends Controller
         if (!$userId) {
             abort(401, 'Unauthenticated.');
         }
-        $advances = CashAdvance::where('user_id', $userId)->latest()->paginate(10);
+        $advances = CashAdvance::where('user_id', $userId)->latest()->paginate(10)->withQueryString();
         $totalActiveAdvance = CashAdvance::where('user_id', $userId)
             ->whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED'])
             ->sum('remaining_balance');

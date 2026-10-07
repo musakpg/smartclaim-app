@@ -51,7 +51,7 @@
         </button>
     </div>
 
-    <nav class="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto text-xs font-semibold">
+    <nav class="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto text-xs font-semibold" style="scrollbar-gutter: stable;">
 
         <a href="{{ route('finance.dashboard') }}"
             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 {{ request()->routeIs('finance.dashboard') ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60' }}">
@@ -59,20 +59,21 @@
             <span>Finance Dashboard</span>
         </a>
 
-        <div>
-            <button type="button" @click="toggle('auditing')"
+        <div x-data="{ open: {{ request()->is('finance/auditing*') || request()->routeIs('finance.auditing*') ? 'true' : 'false' }} }">
+            <button type="button" @click="open = !open"
                 class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 cursor-pointer"
-                :class="activeDropdown === 'auditing' ? 'text-slate-200 bg-slate-800/40' : ''">
+                :class="open ? 'text-slate-200 bg-slate-800/40' : ''">
                 <div class="flex items-center gap-3">
                     <i class="fa-solid fa-magnifying-glass-chart text-sm w-4 text-center"></i>
                     <span>Claims Auditing</span>
                 </div>
                 <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-300 ease-out"
-                    :class="activeDropdown === 'auditing' ? 'rotate-180 text-emerald-400' : 'text-slate-500'"></i>
+                    :class="open ? 'rotate-180 text-emerald-400' : 'text-slate-500'"></i>
             </button>
 
             <div class="grid transition-[grid-template-rows,opacity] duration-300 ease-out"
-                :class="activeDropdown === 'auditing' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'">
+                :class="open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'"
+                x-cloak>
                 <div class="overflow-hidden">
                     <div class="pl-7 pr-2 pt-1 pb-1.5 space-y-1">
                         <a href="{{ route('finance.auditing', ['status' => 'Pending']) }}"

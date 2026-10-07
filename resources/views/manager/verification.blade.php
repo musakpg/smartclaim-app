@@ -44,7 +44,7 @@
                     </a>
                 </div>
 
-                <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden">
+                <div class="bg-white rounded-3xl border border-slate-200/60 shadow-xs overflow-hidden min-h-[420px] flex flex-col justify-between">
 
                     <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                         <span class="text-xs font-bold text-slate-700 uppercase tracking-wide">
@@ -54,7 +54,7 @@
                             x-text="totalRecords + ' record(s) in this matrix'"></span>
                     </div>
 
-                    <div class="overflow-x-auto">
+                    <div class="overflow-x-auto flex-1 min-h-[320px]">
                         <table class="w-full text-left border-collapse text-xs min-w-[720px]">
                             <thead>
                                 <tr

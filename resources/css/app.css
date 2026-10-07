@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+[x-cloak] {
+    display: none !important;
+}
+
 /* Modern UI Shimmer & Skeleton Animations */
 @keyframes shimmer {
     0% {

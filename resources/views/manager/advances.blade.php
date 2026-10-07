@@ -50,11 +50,12 @@
                     </div>
 
                     <!-- Advance Requisitions Table -->
-                    <div class="bg-white rounded-3xl border border-slate-200/60 shadow-2xs overflow-hidden">
-                        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
-                            <h2 class="text-sm font-black text-slate-900 uppercase tracking-wider">Requisition Ledger</h2>
-                        </div>
-                        <div class="overflow-x-auto">
+                    <div class="bg-white rounded-3xl border border-slate-200/60 shadow-2xs overflow-hidden min-h-[420px] flex flex-col justify-between">
+                        <div>
+                            <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                                <h2 class="text-sm font-black text-slate-900 uppercase tracking-wider">Requisition Ledger</h2>
+                            </div>
+                            <div class="overflow-x-auto">
                             <table class="w-full text-left text-xs">
                                 <thead class="bg-slate-50/50 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100">
                                     <tr>
@@ -118,5 +119,13 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Standardized Pagination -->
+                    @if($advances->hasPages() || $advances->total() > 0)
+                        <div class="px-5 py-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold">
+                            {{ $advances->links() }}
+                        </div>
+                    @endif
+                </div>
 </div>
 @endsection

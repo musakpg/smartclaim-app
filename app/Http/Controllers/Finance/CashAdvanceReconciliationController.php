@@ -12,7 +12,7 @@ class CashAdvanceReconciliationController extends Controller
      */
     public function financeIndex()
     {
-        $advances = CashAdvance::with('user')->whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED', 'CLEARED'])->latest()->paginate(10);
+        $advances = CashAdvance::with('user')->whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED', 'CLEARED'])->latest()->paginate(10)->withQueryString();
         $totalFloatIssued = CashAdvance::whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED', 'CLEARED'])->sum('requested_amount');
         $totalReconciled = CashAdvance::whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED', 'CLEARED'])->sum('settled_amount');
         $outstandingBalance = CashAdvance::whereIn('status', ['DISBURSED_ACTIVE', 'PARTIALLY_RECONCILED'])->sum('remaining_balance');
