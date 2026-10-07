@@ -1,33 +1,13 @@
-<!DOCTYPE html>
-<html lang="en" x-data="managerWorkspace()">
+@extends('layouts.manager')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartClaim - Claims Verification Workspace</title>
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0b1727">
+@section('title', 'SmartClaim - Claims Verification Workspace')
+
+@push('styles')
     <meta name="google-maps-api-key" content="{{ config('services.google.maps_api_key') }}">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <style>
-        [x-cloak] {
-            display: none !important;
-        }
-    </style>
-</head>
+@endpush
 
-<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
-    :class="isModalOpen || isMobileSidebarOpen ? 'overflow-hidden' : ''">
-
-    <div class="flex flex-col lg:flex-row min-h-screen">
-
-        <!-- Global Centralized Manager Sidebar Partial -->
-        @include('layouts.partials.manager-sidebar')
-
-        <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-hidden">
-            <div class="space-y-6">
+@section('content')
+<div x-data="managerWorkspace()" class="space-y-6">
 
                 <div class="border-b border-slate-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div>
@@ -147,11 +127,13 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="py-12 text-center text-slate-400 font-medium">
-                                            <div class="flex flex-col items-center justify-center space-y-2">
-                                                <i class="fa-solid fa-folder-open text-4xl text-slate-200 mb-2"></i>
-                                                <span class="text-sm text-slate-500 font-bold">No claims pending sign-off</span>
-                                                <span class="text-xs text-slate-400">All submissions have been audited.</span>
+                                        <td colspan="7" class="py-14 text-center">
+                                            <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                                <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-3 border border-slate-100 shadow-inner">
+                                                    <i class="fa-solid fa-clipboard-check text-3xl"></i>
+                                                </div>
+                                                <h4 class="text-sm font-bold text-slate-800">Queue Completely Clear</h4>
+                                                <p class="text-xs text-slate-400 mt-1 text-center">No expense or mileage submissions currently require executive sign-off in this view.</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -166,8 +148,6 @@
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
 
     <!-- Sign-off Modal Screen -->
     <div x-show="isModalOpen" x-cloak
@@ -690,6 +670,9 @@
             </div>
         </div>
     </div>
+</div>
+
+@push('scripts')
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('managerWorkspace', () => ({
@@ -796,6 +779,5 @@
         });
     </script>
     <x-route-modal />
-</body>
-
-</html>
+@endpush
+@endsection

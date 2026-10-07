@@ -1,37 +1,13 @@
-<!DOCTYPE html>
-<html lang="en" x-data="financeWorkspace()">
+@extends('layouts.finance')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartClaim - Claims Auditing Workspace</title>
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0b1727">
+@section('title', 'SmartClaim - Claims Auditing Workspace')
+
+@push('styles')
     <meta name="google-maps-api-key" content="{{ config('services.google.maps_api_key') }}">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
-</head>
+@endpush
 
-<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
-    :class="isModalOpen || isMobileSidebarOpen || isHistoryModalOpen ? 'overflow-hidden lg:overflow-auto' : ''">
-
-    <div class="min-h-screen flex flex-col lg:flex-row">
-
-        <!-- Finance Sidebar Partial -->
-        @include('layouts.partials.finance-sidebar')
-
-        <!-- Main Wrapper -->
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-
-
-
-            <!-- Main Content Area -->
-            <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-y-auto">
-                <div class="space-y-6">
+@section('content')
+<div x-data="financeWorkspace()" class="space-y-6">
 
                     <!-- Workspace Title Header -->
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200 pb-5">
@@ -180,26 +156,38 @@
                                             </td>
                                         </tr>
                                     </template>
+                                    <!-- Animated Skeleton Shimmer Loading State -->
                                     <template x-if="isLoading">
                                         <tr>
-                                            <td colspan="8" class="py-12 text-center text-slate-400 font-medium">
-                                                <div class="flex flex-col items-center justify-center space-y-2">
-                                                    <i class="fa-solid fa-spinner fa-spin text-4xl text-slate-300 mb-2"></i>
-                                                    <span class="text-sm text-slate-500 font-bold">Loading Audit Records...</span>
-                                                    <span class="text-xs text-slate-400">Fetching forensic ledger from server.</span>
+                                            <td colspan="8" class="p-4">
+                                                <div class="space-y-3 py-2">
+                                                    <template x-for="i in [1, 2, 3, 4]" :key="i">
+                                                        <div class="flex items-center justify-between p-3 bg-slate-50/60 rounded-xl border border-slate-100 gap-4 animate-pulse">
+                                                            <div class="flex items-center gap-3">
+                                                                <div class="w-8 h-8 rounded-lg bg-slate-200 animate-shimmer"></div>
+                                                                <div class="space-y-1.5">
+                                                                    <div class="h-3 w-32 bg-slate-200 rounded animate-shimmer"></div>
+                                                                    <div class="h-2.5 w-20 bg-slate-200 rounded animate-shimmer"></div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="h-4 w-16 bg-slate-200 rounded animate-shimmer"></div>
+                                                        </div>
+                                                    </template>
                                                 </div>
                                             </td>
                                         </tr>
                                     </template>
 
-                                    <!-- Empty State -->
+                                    <!-- Polished Empty State Vector Card -->
                                     <template x-if="totalRecords === 0 && !isLoading">
                                         <tr>
-                                            <td colspan="8" class="py-12 text-center text-slate-400 font-medium">
-                                                <div class="flex flex-col items-center justify-center space-y-2">
-                                                    <i class="fa-solid fa-folder-open text-4xl text-slate-200 mb-2"></i>
-                                                    <span class="text-sm text-slate-500 font-bold">No claims found</span>
-                                                    <span class="text-xs text-slate-400">Try adjusting your filters or search query.</span>
+                                            <td colspan="8" class="py-14 text-center">
+                                                <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                                    <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-3 border border-slate-100 shadow-inner">
+                                                        <i class="fa-solid fa-file-invoice-dollar text-3xl"></i>
+                                                    </div>
+                                                    <h4 class="text-sm font-bold text-slate-800">No Audit Records Found</h4>
+                                                    <p class="text-xs text-slate-400 mt-1 text-center">The auditing queue is clear or no claims matched the specified filter criteria.</p>
                                                 </div>
                                             </td>
                                         </tr>
@@ -249,9 +237,6 @@
                     </div>
 
                 </div>
-            </main>
-        </div>
-    </div>
 
     <!-- Review Modal -->
     <div x-show="isModalOpen" x-cloak
@@ -680,6 +665,9 @@
     </div>
     <x-route-modal />
 
+</div>
+
+@push('scripts')
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('financeWorkspace', () => ({
@@ -780,6 +768,5 @@
             }));
         });
     </script>
-</body>
-
-</html>
+@endpush
+@endsection

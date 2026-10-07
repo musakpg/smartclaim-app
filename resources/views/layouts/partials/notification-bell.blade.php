@@ -28,7 +28,7 @@
             </button>
         </div>
 
-        <!-- 🔔 Manual Sync & Register Device Banner (Sentiasa Boleh Ditekan) -->
+        <!-- Manual Sync & Register Device Banner (Always Active) -->
         <div class="p-2.5 bg-blue-50/80 border-b border-blue-100 flex items-center justify-between gap-2 text-xs">
             <div class="flex items-center gap-2">
                 <i class="fa-solid fa-mobile-screen text-blue-600"></i>

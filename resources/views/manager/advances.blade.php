@@ -1,31 +1,9 @@
-<!DOCTYPE html>
-<html lang="en" x-data="{ isMobileSidebarOpen: false }">
+@extends('layouts.manager')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartClaim - Manager Cash Advances</title>
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0b1727">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-</head>
+@section('title', 'SmartClaim - Manager Cash Advances')
 
-<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
-    :class="isMobileSidebarOpen ? 'overflow-hidden lg:overflow-auto' : ''">
-
-    <div class="min-h-screen flex flex-col lg:flex-row">
-
-        <!-- Manager Sidebar Partial -->
-        @include('layouts.partials.manager-sidebar')
-
-        <!-- Main Wrapper -->
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-
-            <!-- Main Content -->
-            <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
-                <div class="space-y-6">
+@section('content')
+<div class="space-y-6">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div class="space-y-1">
                             <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
@@ -125,16 +103,20 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="6" class="text-center py-8 text-slate-400 font-medium">No cash advance requisitions recorded.</td>
+                                            <td colspan="6" class="py-12 text-center">
+                                                <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                                    <div class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mb-3 border border-slate-200/60 shadow-inner">
+                                                        <i class="fa-solid fa-hand-holding-dollar text-2xl"></i>
+                                                    </div>
+                                                    <h4 class="text-sm font-bold text-slate-800">No Cash Advance Requisitions</h4>
+                                                    <p class="text-xs text-slate-400 mt-1 text-center">No employee float requests currently require manager review.</p>
+                                                </div>
+                                            </td>
                                         </tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                </div>
-            </main>
-        </div>
-    </div>
-</body>
-</html>
+</div>
+@endsection

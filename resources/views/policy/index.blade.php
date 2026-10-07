@@ -1,4 +1,4 @@
-<!-- Comment: Dynamic Company Policy & Expense Eligibility Workspace -->
+﻿<!-- Comment: Dynamic Company Policy & Expense Eligibility Workspace -->
 <!DOCTYPE html>
 <html lang="en" x-data="{ isMobileSidebarOpen: false }">
 
@@ -8,7 +8,7 @@
     <title>SmartClaim - Company Policy & Guidelines</title>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0b1727">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>

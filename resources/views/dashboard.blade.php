@@ -1,31 +1,8 @@
-<!DOCTYPE html>
-<html lang="en" x-data="{ isMobileSidebarOpen: false }">
+@extends('layouts.staff')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartClaim - Dashboard</title>
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0b1727">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <style>
-        [x-cloak] {
-            display: none !important;
-        }
-    </style>
-</head>
+@section('title', 'SmartClaim - Analytics Dashboard')
 
-<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased" :class="isMobileSidebarOpen ? 'overflow-hidden lg:overflow-auto' : ''">
-
-    <div class="flex min-h-screen flex-col lg:flex-row">
-
-        <!-- Centralized Staff Sidebar Component -->
-        @include('layouts.partials.staff-sidebar')
-
-        <!-- Main Content Workspace -->
-        <main class="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full pb-24 lg:pb-8 overflow-hidden">
+@section('content')
             <div class="space-y-6 md:space-y-8">
 
                 <!-- Header Actions -->
@@ -287,9 +264,17 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="py-8 text-center text-slate-400 font-semibold">
-                                            <i class="fa-solid fa-folder-open block text-xl mb-1.5 text-slate-300"></i> No
-                                            claims records found.
+                                        <td colspan="6" class="py-12 text-center">
+                                            <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                                <div class="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mb-3 border border-slate-200/60 shadow-inner">
+                                                    <i class="fa-solid fa-receipt text-2xl"></i>
+                                                </div>
+                                                <h4 class="text-sm font-bold text-slate-800">No Expense Claims Yet</h4>
+                                                <p class="text-xs text-slate-400 mt-1 mb-4 text-center">You have not submitted any reimbursement claims for this period.</p>
+                                                <a href="{{ route('claims.create') }}" class="inline-flex items-center gap-2 bg-[#00d1b2] hover:bg-[#00bfa5] text-white text-xs font-bold py-2 px-4 rounded-xl shadow-xs transition">
+                                                    <i class="fa-solid fa-plus text-[10px]"></i> Submit Your First Claim
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforelse
@@ -299,9 +284,8 @@
                 </div>
 
             </div>
-        </main>
-    </div>
 
+@push('scripts')
     <!-- Chart.js Engine -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
@@ -366,6 +350,5 @@
             });
         });
     </script>
-</body>
-
-</html>
+@endpush
+@endsection

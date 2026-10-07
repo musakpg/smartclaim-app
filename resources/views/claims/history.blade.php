@@ -1,105 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
+@extends('layouts.staff')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartClaim - Claim History</title>
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0b1727">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <style>
-        [x-cloak] {
-            display: none !important;
-        }
-    </style>
-</head>
+@section('title', 'SmartClaim - Claim History')
 
-<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased" x-data="historyManager()" x-init="init()" :class="isModalOpen || isMobileSidebarOpen ? 'overflow-hidden' : ''">
-
-    <div class="flex min-h-screen flex-col lg:flex-row">
-
-        <!-- Mobile Sidebar Drawer -->
-        <div x-show="isMobileSidebarOpen" x-cloak class="lg:hidden fixed inset-0 z-50 flex" role="dialog"
-            aria-modal="true">
-            <div x-show="isMobileSidebarOpen" x-transition:enter="transition-opacity ease-linear duration-300"
-                x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                x-transition:leave="transition-opacity ease-linear duration-300" x-transition:leave-start="opacity-100"
-                x-transition:leave-end="opacity-0" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
-                @click="isMobileSidebarOpen = false"></div>
-            <div x-show="isMobileSidebarOpen" x-transition:enter="transition ease-in-out duration-300 transform"
-                x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
-                x-transition:leave="transition ease-in-out duration-300 transform"
-                x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
-                class="relative flex w-full max-w-xs flex-1 flex-col bg-white pt-5 pb-4 border-r border-[#e2e8f0]">
-                <div class="absolute top-4 right-4">
-                    <button type="button" @click="isMobileSidebarOpen = false"
-                        class="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-lg text-slate-500 cursor-pointer">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-                <div class="px-6 pb-4 border-b border-[#f1f5f9] flex items-center gap-2">
-                    <i class="fa-solid fa-wallet text-slate-800 text-xl"></i>
-                    <span class="font-bold text-lg tracking-tight text-slate-900">SmartClaim</span>
-                </div>
-                <nav class="mt-4 flex-1 px-4 space-y-1 overflow-y-auto" x-data="{ isClaimsOpenMobile: true }">
-                    <a href="{{ route('dashboard') }}"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50">
-                        <i class="fa-solid fa-house"></i> Dashboard
-                    </a>
-                    <div>
-                        <button type="button" @click.prevent="isClaimsOpenMobile = !isClaimsOpenMobile"
-                            class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-900 cursor-pointer">
-                            <span class="flex items-center gap-3"><i class="fa-solid fa-file-pen"></i> Claims</span>
-                            <i class="fa-solid text-[10px]"
-                                :class="isClaimsOpenMobile ? 'fa-chevron-down rotate-180' : 'fa-chevron-right'"></i>
-                        </button>
-                        <div x-show="isClaimsOpenMobile"
-                            class="pl-6 mt-1 space-y-1 py-1 bg-slate-50 rounded-xl border border-slate-100">
-                            <a href="{{ route('claims.create') }}?type=Receipt"
-                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-500 flex items-center gap-2"><i
-                                    class="fa-solid fa-file-invoice text-[11px] text-slate-400"></i> Based on Receipt
-                                (OCR)</a>
-                            <a href="{{ route('claims.create') }}?type=Mileage"
-                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-medium text-slate-500 flex items-center gap-2"><i
-                                    class="fa-solid fa-motorcycle text-[11px] text-slate-400"></i> Mileage Allowance</a>
-                            <a href="{{ route('claims.history') }}"
-                                class="w-full text-left px-3 py-2 rounded-lg text-xs font-bold text-blue-600 bg-blue-50/60 flex items-center gap-2">
-                                <i class="fa-solid fa-clipboard-list text-[11px] text-blue-600"></i> My Claims
-                            </a>
-                        </div>
-                    </div>
-
-                    <a href="{{ route('reimbursement.index') }}"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50">
-                        <i class="fa-solid fa-hand-holding-dollar text-slate-400"></i> Reimbursement Status
-                    </a>
-                    <a href="{{ route('profile.index') }}"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50">
-                        <i class="fa-solid fa-user text-slate-400"></i> My Profile
-                    </a>
-                    <a href="{{ route('policy.index') }}"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-50">
-                        <i class="fa-solid fa-file-shield text-slate-400"></i> Company Policy
-                    </a>
-                    <form method="POST" action="{{ route('logout') }}" class="w-full">
-                        @csrf
-                        <button type="submit"
-                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 hover:bg-rose-50 hover:text-rose-600 text-left">
-                            <i class="fa-solid fa-door-open text-slate-400"></i> Sign Out
-                        </button>
-                    </form>
-                </nav>
-            </div>
-        </div>
-
-        <!-- Reusable Staff Navigation Sidebar (Desktop) -->
-        @include('layouts.partials.staff-sidebar')
-
-        <main class="flex-1 p-4 md:p-8 max-w-5xl mx-auto w-full pb-24 lg:pb-8 overflow-hidden">
-            <div class="space-y-6">
+@section('content')
+<div x-data="historyManager()" x-init="init()" class="space-y-6">
                 <div class="space-y-0.5">
                     <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                         <span>Claim History</span>
@@ -112,9 +16,23 @@
                 </div>
 
                 <div class="bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-xs space-y-4">
-                    <div x-show="isLoading" class="flex flex-col items-center justify-center py-12">
-                        <i class="fa-solid fa-circle-notch fa-spin text-slate-300 text-3xl mb-3"></i>
-                        <p class="text-sm font-medium text-slate-500">Loading history records...</p>
+                    <!-- Animated Skeleton Shimmer Loading State -->
+                    <div x-show="isLoading" class="space-y-3 py-2">
+                        <template x-for="i in [1, 2, 3, 4, 5]" :key="i">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50/60 rounded-2xl border border-slate-100 gap-4 animate-pulse">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-slate-200 animate-shimmer"></div>
+                                    <div class="space-y-2">
+                                        <div class="h-3.5 w-40 bg-slate-200 rounded animate-shimmer"></div>
+                                        <div class="h-2.5 w-24 bg-slate-200 rounded animate-shimmer"></div>
+                                    </div>
+                                </div>
+                                <div class="space-y-2 sm:text-right">
+                                    <div class="h-4 w-20 bg-slate-200 rounded sm:ml-auto animate-shimmer"></div>
+                                    <div class="h-3 w-16 bg-slate-200 rounded sm:ml-auto animate-shimmer"></div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                     <div x-show="!isLoading" style="display: none;" class="divide-y divide-slate-100">
                         <template x-for="claim in pagedItems" :key="claim.claim_id">
@@ -220,7 +138,7 @@
                                         </form>
                                     </template>
 
-                                    <!-- Butang Muat Turun PDF Baris Rekod -->
+                                    <!-- PDF Voucher Download Button -->
                                     <a :href="'/claims/' + claim.claim_id + '/voucher-pdf'" target="_blank"
                                         class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-3 rounded-xl text-xs tracking-wide transition shadow-3xs">
                                         <i class="fa-solid fa-file-pdf text-rose-600"></i> PDF
@@ -234,10 +152,17 @@
                             </div>
                         </template>
 
-                        <div x-show="allClaims.length === 0" class="py-12 text-center text-slate-400 font-semibold"
-                            x-cloak>
-                            <i class="fa-solid fa-folder-open block text-2xl mb-2 text-slate-300"></i> No historical
-                            claims loaded.
+                        <div x-show="allClaims.length === 0" class="py-12 text-center" x-cloak>
+                            <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-3 border border-slate-100 shadow-inner">
+                                    <i class="fa-solid fa-receipt text-3xl"></i>
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-800">No Historical Claims</h4>
+                                <p class="text-xs text-slate-400 mt-1 mb-4 text-center">No expense or mileage vouchers have been submitted to date.</p>
+                                <a href="{{ route('claims.create') }}" class="inline-flex items-center gap-2 bg-[#00d1b2] hover:bg-[#00bfa5] text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-xs transition">
+                                    <i class="fa-solid fa-plus text-[10px]"></i> Create New Claim
+                                </a>
+                            </div>
                         </div>
                     </div>
 
@@ -691,7 +616,9 @@
             </div>
         </div>
     </div>
+</div>
 
+@push('scripts')
     <script>
         function historyManager() {
             return {
@@ -735,6 +662,5 @@
             }
         }
     </script>
-</body>
-
-</html>
+@endpush
+@endsection

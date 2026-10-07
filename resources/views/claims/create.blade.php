@@ -1,36 +1,15 @@
-<!DOCTYPE html>
-<html lang="en" x-data="ocrForm()" @google-maps-loaded.window="initGoogleMapsDependentLogic()">
+@extends('layouts.staff')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>SmartClaim - Submit Claim</title>
+@section('title', 'SmartClaim - Submit Claim')
+
+@push('styles')
     <meta name="google-maps-api-key" content="{{ config('services.google.maps_api_key', env('GOOGLE_MAPS_API_KEY')) }}">
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0b1727">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://unpkg.com/imask"></script>
-    <style>
-        [x-cloak] {
-            display: none !important;
-        }
-    </style>
-</head>
+@endpush
 
-<body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
-    :class="isModalOpen || isMobileSidebarOpen ? 'overflow-hidden' : ''">
-
-    <div class="flex min-h-screen flex-col lg:flex-row">
-        <!-- Reusable Staff Navigation Sidebar -->
-        @include('layouts.partials.staff-sidebar')
-
-        <!-- Main Workspace Area -->
-        <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
-            <div class="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full pb-24 overflow-y-auto space-y-6">
+@section('content')
+<div x-data="ocrForm()" @google-maps-loaded.window="initGoogleMapsDependentLogic()" class="max-w-4xl mx-auto w-full space-y-6">
 
                 <!-- Header Title Banner -->
                 <div class="space-y-0.5">
@@ -596,9 +575,22 @@
                     Parsing document layout, running OCR text extraction, and predicting category via TF-IDF...
                 </p>
             </div>
+
+            <!-- Animated Skeleton Shimmer Progress Bar -->
+            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-1 relative">
+                <div class="h-full bg-emerald-500 rounded-full animate-shimmer w-full"></div>
+            </div>
+
+            <!-- Skeleton Shimmer Placeholder Bars -->
+            <div class="w-full space-y-2 pt-2 border-t border-slate-100">
+                <div class="h-3 bg-slate-100 rounded-lg animate-shimmer w-3/4 mx-auto"></div>
+                <div class="h-2.5 bg-slate-100 rounded-lg animate-shimmer w-1/2 mx-auto"></div>
+            </div>
         </div>
     </div>
+</div>
 
+@push('scripts')
     <!-- Google Places API and Alpine.js Form Engine -->
     <script>
         function loadGoogleMaps(callback) {
@@ -1066,6 +1058,5 @@
             };
         }
     </script>
-</body>
-
-</html>
+@endpush
+@endsection
