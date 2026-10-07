@@ -25,8 +25,8 @@
         @include('layouts.partials.staff-sidebar')
 
         <!-- Main Workspace Area -->
-        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
-            <div class="w-full space-y-6 pb-24">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 overflow-y-auto pb-28 md:pb-8">
+            <div class="w-full space-y-6 pb-28 md:pb-8">
 
                 <!-- Header Title Banner -->
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

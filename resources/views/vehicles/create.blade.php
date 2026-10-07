@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -24,11 +24,11 @@
         @include('layouts.partials.staff-sidebar')
 
         <!-- Main Content Area -->
-        <main class="flex-1 flex flex-col min-w-0 overflow-hidden pb-24 md:pb-8">
+        <main class="flex-1 flex flex-col min-w-0">
 
 
             <!-- Page Body Content -->
-            <div class="flex-1 p-4 md:p-8 max-w-2xl mx-auto w-full pb-24 md:pb-8 overflow-y-auto space-y-6">
+            <div class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 pb-28 md:pb-8">
                 <!-- Page Title & Navigation Back Button -->
                 <div class="flex items-center justify-between">
                     <div>
@@ -54,7 +54,7 @@
                 @endif
 
                 <!-- Vehicle Registration Form -->
-                <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs">
+                <div class="w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-6 sm:p-8 space-y-6">
                     <form action="{{ route('vehicles.store') }}" method="POST" enctype="multipart/form-data"
                         class="space-y-5 text-xs">
                         @csrf

@@ -27,18 +27,18 @@
 
 <!-- Mobile Backdrop -->
 <div x-show="isMobileSidebarOpen" x-cloak 
-    x-transition:enter="transition-opacity ease-linear duration-300"
+    x-transition:enter="transition-opacity ease-linear duration-200"
     x-transition:enter-start="opacity-0" 
     x-transition:enter-end="opacity-100"
-    x-transition:leave="transition-opacity ease-linear duration-300" 
+    x-transition:leave="transition-opacity ease-linear duration-150" 
     x-transition:leave-start="opacity-100"
     x-transition:leave-end="opacity-0" 
-    class="fixed inset-0 bg-slate-900/60 z-40 lg:hidden backdrop-blur-sm" 
+    class="fixed inset-0 bg-slate-900/80 z-[55] lg:hidden backdrop-blur-sm" 
     @click="isMobileSidebarOpen = false"></div>
 
 <!-- Unified Persistent Sidebar (Mobile & Desktop) -->
 <aside :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 font-sans select-none lg:static lg:h-screen lg:sticky lg:top-0"
+    class="fixed inset-y-0 left-0 z-[60] w-64 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 font-sans select-none lg:static lg:h-screen lg:sticky lg:top-0"
     x-data="{ isClaimsOpen: {{ request()->routeIs('claims.*') ? 'true' : 'false' }} }">
     
     <div>
@@ -125,7 +125,7 @@
     </div>
 
     <!-- Bottom Sticky Actions -->
-    <div class="p-4 border-t border-slate-100 space-y-1 text-xs font-semibold shrink-0">
+    <div class="p-4 border-t border-slate-100 space-y-1 text-xs font-semibold shrink-0 pb-28 lg:pb-4">
         <a href="{{ route('profile.index') }}"
             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors {{ request()->routeIs('profile.*') ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
             <i class="fa-solid fa-user-gear text-sm w-4 text-center"></i>

@@ -15,7 +15,7 @@
     <div x-show="isOpen" x-cloak x-transition:enter="transition ease-out duration-200"
         x-transition:enter-start="opacity-0 translate-y-1 scale-95"
         x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-        class="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-100 z-50 overflow-hidden">
+        class="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-sm rounded-2xl bg-white shadow-2xl border border-slate-100 z-50 overflow-hidden">
 
         <!-- Header -->
         <div class="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">

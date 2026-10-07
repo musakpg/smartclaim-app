@@ -31,7 +31,7 @@
         @include('layouts.partials.staff-sidebar')
 
         <!-- Main Content Workspace -->
-        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 overflow-y-auto pb-24 md:pb-8">
+        <main class="flex-1 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 overflow-y-auto pb-28 md:pb-8">
 
             <!-- Header Banner -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-slate-200 gap-4">

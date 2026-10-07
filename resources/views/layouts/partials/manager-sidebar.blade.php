@@ -16,18 +16,18 @@
 
 <!-- Mobile Backdrop -->
 <div x-show="isMobileSidebarOpen" x-cloak 
-    x-transition:enter="transition-opacity ease-linear duration-300"
+    x-transition:enter="transition-opacity ease-linear duration-200"
     x-transition:enter-start="opacity-0" 
     x-transition:enter-end="opacity-100"
-    x-transition:leave="transition-opacity ease-linear duration-300" 
+    x-transition:leave="transition-opacity ease-linear duration-150" 
     x-transition:leave-start="opacity-100"
     x-transition:leave-end="opacity-0" 
-    class="fixed inset-0 bg-slate-900/60 z-40 lg:hidden backdrop-blur-sm" 
+    class="fixed inset-0 bg-slate-900/80 z-[55] lg:hidden backdrop-blur-sm" 
     @click="isMobileSidebarOpen = false"></div>
 
 <!-- Manager Sidebar Navigation -->
 <aside
-    class="w-64 bg-[#0d1527] text-slate-300 min-h-screen flex flex-col border-r border-slate-800 shrink-0 font-sans select-none fixed lg:static top-0 bottom-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:translate-x-0"
+    class="w-64 bg-[#0d1527] text-slate-300 min-h-screen flex flex-col border-r border-slate-800 shrink-0 font-sans select-none fixed lg:static top-0 bottom-0 left-0 z-[60] transform transition-transform duration-200 ease-in-out lg:translate-x-0"
     :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'">
 
     <!-- Brand Header -->
@@ -216,7 +216,7 @@
     </nav>
 
     <!-- Bottom Actions -->
-    <div class="p-4 border-t border-slate-800/80 space-y-1 text-xs font-semibold shrink-0">
+    <div class="p-4 border-t border-slate-800/80 space-y-1 text-xs font-semibold shrink-0 pb-28 lg:pb-4">
         <a href="{{ route('manager.profile') }}"
             class="flex items-center gap-3 px-3.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors {{ request()->routeIs('manager.profile') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
             <i class="fa-solid fa-user-gear text-sm w-4 text-center"></i>
