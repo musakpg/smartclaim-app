@@ -66,8 +66,8 @@ class VehicleController extends Controller
         ]);
 
         $cleanPlate = strtoupper(trim($request->plate_number));
-        $grantPath = $request->file('grant_document')->store('vehicles/grants', 'public');
-        $roadtaxPath = $request->file('roadtax_document')->store('vehicles/roadtax', 'public');
+        $grantPath = $request->file('grant_document')->store('vehicles/grants', 'private');
+        $roadtaxPath = $request->file('roadtax_document')->store('vehicles/roadtax', 'private');
 
         DB::beginTransaction();
         try {
@@ -170,17 +170,25 @@ class VehicleController extends Controller
         DB::beginTransaction();
         try {
             if ($request->hasFile('grant_document')) {
-                if ($vehicle->grant_document_path && Storage::disk('public')->exists($vehicle->grant_document_path)) {
-                    Storage::disk('public')->delete($vehicle->grant_document_path);
+                if ($vehicle->grant_document_path) {
+                    if (Storage::disk('private')->exists($vehicle->grant_document_path)) {
+                        Storage::disk('private')->delete($vehicle->grant_document_path);
+                    } elseif (Storage::disk('public')->exists($vehicle->grant_document_path)) {
+                        Storage::disk('public')->delete($vehicle->grant_document_path);
+                    }
                 }
-                $vehicle->grant_document_path = $request->file('grant_document')->store('vehicles/grants', 'public');
+                $vehicle->grant_document_path = $request->file('grant_document')->store('vehicles/grants', 'private');
             }
 
             if ($request->hasFile('roadtax_document')) {
-                if ($vehicle->roadtax_document_path && Storage::disk('public')->exists($vehicle->roadtax_document_path)) {
-                    Storage::disk('public')->delete($vehicle->roadtax_document_path);
+                if ($vehicle->roadtax_document_path) {
+                    if (Storage::disk('private')->exists($vehicle->roadtax_document_path)) {
+                        Storage::disk('private')->delete($vehicle->roadtax_document_path);
+                    } elseif (Storage::disk('public')->exists($vehicle->roadtax_document_path)) {
+                        Storage::disk('public')->delete($vehicle->roadtax_document_path);
+                    }
                 }
-                $vehicle->roadtax_document_path = $request->file('roadtax_document')->store('vehicles/roadtax', 'public');
+                $vehicle->roadtax_document_path = $request->file('roadtax_document')->store('vehicles/roadtax', 'private');
             }
 
             $cleanPlate = strtoupper(trim($request->plate_number));
@@ -226,7 +234,7 @@ class VehicleController extends Controller
             'new_roadtax_document' => 'required|image|max:5120',
         ]);
 
-        $roadtaxPath = $request->file('new_roadtax_document')->store('vehicles/roadtax', 'public');
+        $roadtaxPath = $request->file('new_roadtax_document')->store('vehicles/roadtax', 'private');
 
         $vehicle->roadtax_expiry = $request->new_roadtax_expiry;
         $vehicle->roadtax_document_path = $roadtaxPath;
@@ -260,11 +268,19 @@ class VehicleController extends Controller
             return redirect()->route('vehicles.index')->withErrors(['error' => 'Active approved vehicles cannot be deleted if referenced in historical ledgers.']);
         }
 
-        if ($vehicle->grant_document_path && Storage::disk('public')->exists($vehicle->grant_document_path)) {
-            Storage::disk('public')->delete($vehicle->grant_document_path);
+        if ($vehicle->grant_document_path) {
+            if (Storage::disk('private')->exists($vehicle->grant_document_path)) {
+                Storage::disk('private')->delete($vehicle->grant_document_path);
+            } elseif (Storage::disk('public')->exists($vehicle->grant_document_path)) {
+                Storage::disk('public')->delete($vehicle->grant_document_path);
+            }
         }
-        if ($vehicle->roadtax_document_path && Storage::disk('public')->exists($vehicle->roadtax_document_path)) {
-            Storage::disk('public')->delete($vehicle->roadtax_document_path);
+        if ($vehicle->roadtax_document_path) {
+            if (Storage::disk('private')->exists($vehicle->roadtax_document_path)) {
+                Storage::disk('private')->delete($vehicle->roadtax_document_path);
+            } elseif (Storage::disk('public')->exists($vehicle->roadtax_document_path)) {
+                Storage::disk('public')->delete($vehicle->roadtax_document_path);
+            }
         }
 
         $plate = $vehicle->plate_number;

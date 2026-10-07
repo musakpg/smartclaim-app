@@ -31,7 +31,7 @@ use NotificationChannels\WebPush\PushSubscription;
 */
 Route::get('/', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login/process', [AuthController::class, 'processLogin'])->name('login.process');
-Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
 // Staff Registration Gateways
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
@@ -195,7 +195,7 @@ Route::middleware(['auth'])->group(function () {
 | 5. Development & Testing Diagnostics
 |--------------------------------------------------------------------------
 */
-Route::get('/test-push', function () {
+Route::middleware(['auth', 'role:Manager'])->get('/test-push', function () {
     $subCount = PushSubscription::count();
     if ($subCount === 0) {
         return 'Tiada peranti berdaftar dalam database table push_subscriptions. Sila tekan Sync Device di telefon dahulu.';
@@ -229,4 +229,5 @@ Route::get('/claims/{id}/download-pdf', [App\Http\Controllers\ClaimController::c
 // Secured Private File Storage Serving
 Route::get('/files/{folder}/{filename}', [App\Http\Controllers\ClaimController::class, 'serveFile'])
     ->name('files.serve')
-    ->middleware('auth');
+    ->middleware('auth')
+    ->where('filename', '.*');

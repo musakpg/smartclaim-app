@@ -15,6 +15,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Carbon\Carbon;
@@ -1995,24 +1996,63 @@ class ClaimController extends Controller
     // Secured Private File Storage Serving
     public function serveFile($folder, $filename)
     {
-        // Prevent directory traversal
-        $folder = basename($folder);
-        $filename = basename($filename);
-        
-        $path = $folder . '/' . $filename;
-        
-        if (!\Illuminate\Support\Facades\Storage::disk('private')->exists($path)) {
-            // Fallback for files that were previously in public disk
-            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
-                return response()->file(storage_path('app/public/' . $path));
-            }
-            abort(404, 'File not found.');
+        // Enforce authentication
+        if (!Auth::check()) {
+            abort(403, 'Unauthorized access.');
         }
 
-        $fullPath = storage_path('app/private/' . $path);
-        
-        // Return file directly
-        return response()->file($fullPath);
+        // Prevent directory traversal attacks
+        if (str_contains($folder, '..') || str_contains($filename, '..') || str_contains($folder, '\\') || str_contains($filename, '\\')) {
+            abort(403, 'Invalid file path traversal attempt.');
+        }
+
+        $cleanFolder = trim($folder, '/');
+        $cleanFilename = trim($filename, '/');
+        $path = $cleanFolder . '/' . $cleanFilename;
+
+        $currentUser = Auth::user();
+        $currentUserId = $currentUser->user_id ?? $currentUser->id;
+        $normalizedRole = strtolower(trim($currentUser->role ?? ''));
+        $isPrivileged = in_array($normalizedRole, ['manager', 'finance', 'fin']);
+
+        // Authorize: Only the document/claim owner, Finance auditors, or Managers can access files
+        if (!$isPrivileged) {
+            $baseName = basename($cleanFilename);
+
+            $ownsClaim = Claim::where('user_id', $currentUserId)
+                ->where(function ($query) use ($path, $baseName) {
+                    $query->where('receipt_image_path', $path)
+                        ->orWhere('payment_proof_path', $path)
+                        ->orWhere('receipt_image_path', 'like', "%{$baseName}")
+                        ->orWhere('payment_proof_path', 'like', "%{$baseName}");
+                })
+                ->exists();
+
+            $ownsVehicle = Vehicle::where('user_id', $currentUserId)
+                ->where(function ($query) use ($path, $baseName) {
+                    $query->where('grant_document_path', $path)
+                        ->orWhere('roadtax_document_path', $path)
+                        ->orWhere('grant_document_path', 'like', "%{$baseName}")
+                        ->orWhere('roadtax_document_path', 'like', "%{$baseName}");
+                })
+                ->exists();
+
+            if (!$ownsClaim && !$ownsVehicle) {
+                abort(403, 'Unauthorized access to this private document.');
+            }
+        }
+
+        // Verify physical presence on storage disk
+        if (Storage::disk('private')->exists($path)) {
+            return response()->file(Storage::disk('private')->path($path));
+        }
+
+        // Legacy fallback for documents previously stored in public disk
+        if (Storage::disk('public')->exists($path)) {
+            return response()->file(Storage::disk('public')->path($path));
+        }
+
+        abort(404, 'File not found on storage disk.');
     }
     public function slaAnalytics(\App\Services\SlaTrackingService $slaTrackingService)
     {
