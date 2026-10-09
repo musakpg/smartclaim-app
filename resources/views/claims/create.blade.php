@@ -143,6 +143,22 @@
                                 </div>
                             </div>
 
+                            @if(auth()->check() && auth()->user()->is_demo)
+                                <div class="mb-6 p-4 rounded-xl bg-blue-50/80 border border-blue-200/80 flex items-start space-x-3 text-blue-900 shadow-sm">
+                                    <div class="mt-0.5 flex-shrink-0">
+                                        <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div class="text-xs leading-relaxed">
+                                        <strong class="font-semibold text-blue-950">Demo Mode Notice — Simulated OCR Active:</strong>
+                                        <p class="mt-0.5 text-blue-800/90">
+                                            In this public showcase sandbox, live Google Cloud Vision API calls are safely mocked with a standardized reference payload to conserve API quotas. Full optical extraction runs dynamically on authenticated production pipelines.
+                                        </p>
+                                    </div>
+                                </div>
+                            @endif
+
                             <!-- Extracted Metadata Fields -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 md:gap-y-5">
                                 <div class="space-y-1.5">

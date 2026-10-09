@@ -19,6 +19,8 @@
 </head>
 
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased">
+    @include('layouts.partials.demo-banner')
+
 
     <div class="flex min-h-screen flex-col lg:flex-row">
         <!-- Reusable Staff Navigation Sidebar -->

@@ -21,20 +21,8 @@
     @stack('styles')
 </head>
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased" :class="isMobileSidebarOpen ? 'overflow-hidden lg:overflow-auto' : ''">
-    @auth
-        @if(auth()->user()->is_demo)
-            <!-- Demo Mode Global Isolation Banner -->
-            <div class="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 text-slate-950 font-medium px-4 py-2 text-xs flex items-center justify-between shadow-sm sticky top-0 z-[45] border-b border-amber-600">
-                <div class="flex items-center gap-2.5 mx-auto sm:mx-0">
-                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-950 text-amber-300">DEMO MODE</span>
-                    <span class="font-bold">Demo Mode (Read-Only) — Viewing isolated sample environment.</span>
-                </div>
-                <div class="hidden md:flex items-center gap-2 text-[11px] font-semibold text-slate-900">
-                    <i class="fa-solid fa-shield-halved text-slate-950"></i> Protected Showcase Data
-                </div>
-            </div>
-        @endif
-    @endauth
+    @include('layouts.partials.demo-banner')
+
 
     @if(session('warning'))
         <div class="fixed top-12 right-4 z-50 max-w-md p-3.5 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl shadow-lg flex items-start gap-3" x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 6000)">

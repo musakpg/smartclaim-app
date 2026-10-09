@@ -20,6 +20,8 @@
 
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
     :class="isMobileSidebarOpen ? 'overflow-hidden lg:overflow-auto' : ''">
+    @include('layouts.partials.demo-banner')
+
 
     <div class="min-h-screen flex flex-col lg:flex-row">
 

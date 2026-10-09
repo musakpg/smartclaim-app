@@ -57,6 +57,7 @@
         get lPages() { return Math.max(1, Math.ceil(this.lTotal / this.lPer)) },
         get lPaged() { return this.allLogs.slice((this.lPage-1)*this.lPer, this.lPage*this.lPer) }
     }">
+    @include('layouts.partials.demo-banner')
 
     <div class="flex flex-col lg:flex-row min-h-screen">
         <!-- Reusable Manager Navigation Sidebar -->

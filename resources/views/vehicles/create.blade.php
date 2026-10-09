@@ -18,6 +18,8 @@
 </head>
 
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased" x-data="vehicleForm()">
+    @include('layouts.partials.demo-banner')
+
 
     <div class="flex flex-col lg:flex-row min-h-screen">
         <!-- Reusable Sidebar Partial (Mobile & Desktop) -->

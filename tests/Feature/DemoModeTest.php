@@ -164,4 +164,40 @@ class DemoModeTest extends TestCase
         $this->assertEquals('Kedai Runcit Mulia Sejati Baru', $result['merchant_name']);
         $this->assertEquals(100.20, $result['amount']);
     }
+
+    public function test_demo_staff_has_verified_active_vehicle_for_mileage_claims()
+    {
+        $this->seed(\Database\Seeders\DemoSeeder::class);
+
+        $vehicle = \App\Models\Vehicle::where('plate_number', 'VCE 2024')->first();
+        $this->assertNotNull($vehicle);
+        $this->assertEquals('Proton X50 1.5 TGDi', $vehicle->brand_model);
+        $this->assertEquals('Approved', $vehicle->approval_status);
+        $this->assertEquals('Active', $vehicle->status);
+        $this->assertEquals('personal', $vehicle->ownership_type);
+
+        $this->actingAs($this->demoStaff);
+        $response = $this->get(route('claims.create'));
+        $response->assertStatus(200);
+        $response->assertSee('VCE 2024');
+        $response->assertSee('Proton X50 1.5 TGDi');
+    }
+
+    public function test_demo_banner_and_simulated_ocr_notice_rendered_for_demo_users()
+    {
+        $this->actingAs($this->demoStaff);
+
+        // Claims create view shows both the global demo banner and the simulated OCR notice
+        $response = $this->get(route('claims.create'));
+        $response->assertStatus(200);
+        $response->assertSee('Demo Mode (Read-Only) — Viewing isolated sample environment.');
+        $response->assertSee('Demo Mode Notice — Simulated OCR Active:');
+
+        // Manager portal also renders the global demo banner
+        $this->actingAs($this->demoManager);
+        $managerResponse = $this->get(route('manager.dashboard'));
+        $managerResponse->assertStatus(200);
+        $managerResponse->assertSee('Demo Mode (Read-Only) — Viewing isolated sample environment.');
+    }
 }
+

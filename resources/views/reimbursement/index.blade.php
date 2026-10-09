@@ -24,6 +24,8 @@
 
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
     :class="(isDetailModalOpen || isZoomModalOpen || isMobileSidebarOpen) ? 'overflow-hidden' : ''">
+    @include('layouts.partials.demo-banner')
+
 
     <div class="flex min-h-screen flex-col lg:flex-row">
 

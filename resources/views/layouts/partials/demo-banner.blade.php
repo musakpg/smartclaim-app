@@ -1,14 +1,9 @@
-@auth
-    @if(auth()->user()->is_demo)
-        <!-- Demo Mode In-Page Banner -->
-        <div class="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 text-slate-950 font-medium px-4 py-2.5 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-sm rounded-2xl mb-4 border border-amber-600">
-            <div class="flex items-center gap-2.5">
-                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-950 text-amber-300">DEMO MODE</span>
-                <span class="font-bold">Demo Mode Active (Read-Only) &mdash; Viewing isolated showcase metrics & data.</span>
-            </div>
-            <div class="hidden sm:flex items-center gap-2 text-[11px] font-semibold text-slate-900">
-                <i class="fa-solid fa-shield-halved text-slate-950"></i> Protected Sandbox Environment
-            </div>
+@if(auth()->check() && auth()->user()->is_demo)
+    <div class="bg-amber-500 text-black px-4 py-1.5 flex items-center justify-between text-xs font-semibold tracking-wide shadow-sm z-50">
+        <div class="flex items-center space-x-2">
+            <span class="bg-black text-amber-400 text-[10px] uppercase font-black px-1.5 py-0.5 rounded tracking-wider">Demo Mode</span>
+            <span>Demo Mode (Read-Only) — Viewing isolated sample environment.</span>
         </div>
-    @endif
-@endauth
+        <span class="text-[11px] opacity-90 hidden sm:inline">Protected Showcase Data</span>
+    </div>
+@endif

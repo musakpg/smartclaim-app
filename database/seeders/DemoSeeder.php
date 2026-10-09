@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Claim;
 use App\Models\ClaimItem;
 use App\Models\Category;
+use App\Models\Vehicle;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\File;
@@ -61,6 +62,23 @@ class DemoSeeder extends Seeder
                 'bank_name' => 'Public Bank',
                 'bank_account_no' => '339182746501',
                 'bank_account_holder' => 'Demo Manager',
+            ]
+        );
+
+        // Seed verified, active vehicle for Demo Staff to enable immediate Mileage Claims
+        Vehicle::updateOrCreate(
+            ['plate_number' => 'VCE 2024'],
+            [
+                'user_id' => $staff->user_id,
+                'brand_model' => 'Proton X50 1.5 TGDi',
+                'vehicle_type' => 'Car',
+                'engine_capacity' => 1500,
+                'ownership_type' => 'personal',
+                'roadtax_expiry' => Carbon::now()->addMonths(12)->toDateString(),
+                'status' => 'Active',
+                'approval_status' => 'Approved',
+                'approved_by' => $manager->user_id,
+                'approved_at' => Carbon::now()->subMonths(1),
             ]
         );
 

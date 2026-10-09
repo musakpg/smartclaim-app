@@ -28,6 +28,8 @@
 
 <body class="bg-[#f8fafc] text-[#1e293b] font-sans antialiased"
     :class="(isStaffModalOpen || isZoomModalOpen || isMobileSidebarOpen) ? 'overflow-hidden' : ''">
+    @include('layouts.partials.demo-banner')
+
 
     <div class="flex flex-col lg:flex-row min-h-screen">
         @include('layouts.partials.manager-sidebar')

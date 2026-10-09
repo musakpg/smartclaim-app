@@ -25,6 +25,8 @@
         previewModalOpen: false, 
         previewImage: '' 
     }">
+    @include('layouts.partials.demo-banner')
+
 
     <div class="flex flex-col lg:flex-row min-h-screen">
         <!-- Reusable Sidebar Partial (Mobile & Desktop) -->
