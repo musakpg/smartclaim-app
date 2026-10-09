@@ -74,6 +74,10 @@
                         <input type="hidden" name="claim_type" :value="activeForm">
                         <input type="hidden" name="extracted_raw_text" id="extracted_raw_text">
                         <input type="hidden" name="raw_ocr_amount" :value="rawOcrAmount">
+                        <input type="hidden" name="ai_predicted_category" :value="aiPredictedCategory">
+                        <input type="hidden" name="ai_predicted_amount" :value="aiPredictedAmount">
+                        <input type="hidden" name="ai_predicted_merchant" :value="aiPredictedMerchant">
+                        <input type="hidden" name="ai_predicted_date" :value="aiPredictedDate">
 
                         <!-- ========================================================================= -->
                         <!-- SECTION A: RECEIPT-BASED CLAIM FORM                                       -->
@@ -650,6 +654,10 @@
                 rawOcrAmount: @json(old('raw_ocr_amount', '0.00')),
                 paymentMethod: @json(old('payment_method', 'Cash')),
                 category: @json(old('category', '')),
+                aiPredictedCategory: @json(old('ai_predicted_category', '')),
+                aiPredictedAmount: @json(old('ai_predicted_amount', '')),
+                aiPredictedMerchant: @json(old('ai_predicted_merchant', '')),
+                aiPredictedDate: @json(old('ai_predicted_date', '')),
                 businessPurpose: @json(old('business_purpose', '')),
                 items: [],
                 currencyMask: null,
@@ -867,6 +875,11 @@
                                 this.paymentMethod = data.payment_method;
                                 if (data.predicted_category) { this.category = data.predicted_category; }
 
+                                this.aiPredictedCategory = data.predicted_category || '';
+                                this.aiPredictedAmount = data.amount ? String(data.amount) : '';
+                                this.aiPredictedMerchant = data.merchant_name || '';
+                                this.aiPredictedDate = data.transaction_date || '';
+
                                 this.items = Array.isArray(data.items) ? data.items : [];
                                 document.getElementById('extracted_raw_text').value = data.raw_text;
                                 this.$nextTick(() => { this.checkDuplicateAndPopup(); });
@@ -964,6 +977,10 @@
                     this.amount = '';
                     this.rawOcrAmount = '0.00';
                     this.category = '';
+                    this.aiPredictedCategory = '';
+                    this.aiPredictedAmount = '';
+                    this.aiPredictedMerchant = '';
+                    this.aiPredictedDate = '';
                     this.isDuplicate = false;
                     this.duplicateMessage = '';
                     this.items = [];

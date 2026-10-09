@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
+use App\Models\AiFeedback;
 use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Claim;
@@ -300,6 +301,63 @@ class ClaimSubmissionController extends Controller
                         ]);
                     }
                 }
+            }
+
+            // Record Discrepancy Entries in ai_feedback for Continuous Learning Feedback Loop
+            $initialAiCat = $request->input('ai_predicted_category') ?? $request->input('ai_raw_prediction');
+            if (!empty($initialAiCat) && $initialAiCat !== $predictedCategory) {
+                AiFeedback::recordDiscrepancy(
+                    $claim->claim_id,
+                    $claim->receipt_invoice_no,
+                    (int) $currentUserId,
+                    'category',
+                    $initialAiCat,
+                    $predictedCategory,
+                    88.50,
+                    $claim->extracted_raw_text
+                );
+            }
+
+            $initialAiAmt = $request->input('ai_predicted_amount') ?? ($rawOcrAmount > 0 ? (string)$rawOcrAmount : null);
+            if (!empty($initialAiAmt) && abs((float)$initialAiAmt - (float)$calculatedAmount) > 0.01) {
+                AiFeedback::recordDiscrepancy(
+                    $claim->claim_id,
+                    $claim->receipt_invoice_no,
+                    (int) $currentUserId,
+                    'amount',
+                    (string)$initialAiAmt,
+                    (string)$calculatedAmount,
+                    92.00,
+                    $claim->extracted_raw_text
+                );
+            }
+
+            $initialAiMerch = $request->input('ai_predicted_merchant');
+            if (!empty($initialAiMerch) && !empty($merchantName) && strtolower(trim($initialAiMerch)) !== strtolower(trim($merchantName))) {
+                AiFeedback::recordDiscrepancy(
+                    $claim->claim_id,
+                    $claim->receipt_invoice_no,
+                    (int) $currentUserId,
+                    'merchant',
+                    $initialAiMerch,
+                    $merchantName,
+                    85.00,
+                    $claim->extracted_raw_text
+                );
+            }
+
+            $initialAiDt = $request->input('ai_predicted_date');
+            if (!empty($initialAiDt) && !empty($targetTransactionDate) && $initialAiDt !== $targetTransactionDate) {
+                AiFeedback::recordDiscrepancy(
+                    $claim->claim_id,
+                    $claim->receipt_invoice_no,
+                    (int) $currentUserId,
+                    'date',
+                    $initialAiDt,
+                    $targetTransactionDate,
+                    86.00,
+                    $claim->extracted_raw_text
+                );
             }
 
             AuditLog::log(

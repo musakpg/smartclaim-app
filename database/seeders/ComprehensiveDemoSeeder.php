@@ -26,6 +26,7 @@ class ComprehensiveDemoSeeder extends Seeder
         ClaimItem::truncate();
         AuditLog::truncate();
         \App\Models\AiLearningFeedback::truncate();
+        \App\Models\AiFeedback::truncate();
         Claim::truncate();
         Schema::enableForeignKeyConstraints();
 
@@ -448,6 +449,59 @@ class ComprehensiveDemoSeeder extends Seeder
             'raw_text_sample' => 'IKEA Restaurant Swedish Meatballs RM20.00',
             'extracted_keywords' => ['ikea', 'restaurant', 'meatballs', 'swedish'],
             'is_applied' => true
+        ]);
+
+        // 8. Seed Discrepancy Capture AiFeedback Records
+        \App\Models\AiFeedback::create([
+            'claim_id' => 3,
+            'receipt_reference' => 'MRDIY-9921',
+            'user_id' => $staff1->user_id,
+            'field_name' => 'category',
+            'predicted_value' => 'General / Office Supplies',
+            'actual_value' => 'Site Tools & Hardware (Mr. DIY, Tools, Repairs)',
+            'confidence_score' => 76.50,
+            'correction_status' => 'corrected_by_staff',
+            'raw_text_sample' => 'MR D.I.Y. (KUCHAI LAMA) SDN BHD HIGHLIGHTER PEN TRANSPARENT TAPE SCISSORS OFFICE FILE TOTAL RM 19.90 CASH',
+            'created_at' => Carbon::now()->subDays(4),
+        ]);
+
+        \App\Models\AiFeedback::create([
+            'claim_id' => 2,
+            'receipt_reference' => 'NOBU-8812',
+            'user_id' => $staff1->user_id,
+            'field_name' => 'amount',
+            'predicted_value' => '45.00',
+            'actual_value' => '450.00',
+            'confidence_score' => 82.00,
+            'correction_status' => 'corrected_by_staff',
+            'raw_text_sample' => 'NOBU RESTAURANT KLCC MENARA 3 RM 450.00 VISA DEBIT CARD PAID',
+            'created_at' => Carbon::now()->subDays(5),
+        ]);
+
+        \App\Models\AiFeedback::create([
+            'claim_id' => 4,
+            'receipt_reference' => 'SBX-7711',
+            'user_id' => $staff1->user_id,
+            'field_name' => 'merchant',
+            'predicted_value' => 'BERJAYA FOOD BERHAD',
+            'actual_value' => 'Starbucks Coffee',
+            'confidence_score' => 91.20,
+            'correction_status' => 'corrected_by_staff',
+            'raw_text_sample' => 'BERJAYA FOOD BERHAD STARBUCKS COFFEE MALAYSIA 1X CARAMEL MACCHIATO 16.50',
+            'created_at' => Carbon::now()->subDays(3),
+        ]);
+
+        \App\Models\AiFeedback::create([
+            'claim_id' => null,
+            'receipt_reference' => 'BHP-1092',
+            'user_id' => $manager->user_id,
+            'field_name' => 'category',
+            'predicted_value' => 'General',
+            'actual_value' => 'Fuel & Fleet Logistics (Corporate Fleet / Petrol)',
+            'confidence_score' => 84.00,
+            'correction_status' => 'corrected_by_staff',
+            'raw_text_sample' => 'BHPetrol Station RM50.00 RON95 PRIMAX PUMP 02',
+            'created_at' => Carbon::now()->subDays(7),
         ]);
     }
 }

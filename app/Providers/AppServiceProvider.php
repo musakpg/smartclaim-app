@@ -20,9 +20,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Enforce HTTPS scheme and set HTTPS on when running in production or behind reverse proxy
-        if ($this->app->environment('production') || env('APP_ENV') === 'production' || request()->header('X-Forwarded-Proto') === 'https') {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
-            request()->server->set('HTTPS', 'on');
+        if (!$this->app->runningInConsole()) {
+            if ($this->app->environment('production') || env('APP_ENV') === 'production' || (request()->hasHeader('X-Forwarded-Proto') && request()->header('X-Forwarded-Proto') === 'https')) {
+                \Illuminate\Support\Facades\URL::forceScheme('https');
+                request()->server->set('HTTPS', 'on');
+            }
         }
 
         \Illuminate\Pagination\Paginator::useTailwind();

@@ -122,6 +122,8 @@ Route::middleware(['auth', 'role:Manager'])->prefix('manager')->name('manager.')
 
     // AI & NLP Model Benchmark Evaluation
     Route::get('/model-evaluation', [ModelEvaluationController::class, 'index'])->name('model-evaluation');
+    Route::get('/model-evaluation/export', [ModelEvaluationController::class, 'exportDataset'])->name('model-evaluation.export');
+    Route::get('/ai/export', [ModelEvaluationController::class, 'exportDataset'])->name('ai.export');
     Route::post('/model-evaluation/run', [ModelEvaluationController::class, 'runBenchmark'])->name('model-evaluation.run');
     Route::post('/model-evaluation/upload', [ModelEvaluationController::class, 'uploadAndEvaluate'])->name('model-evaluation.upload');
     Route::get('/api/benchmark/metrics', [ModelEvaluationController::class, 'getMetricsApi'])->name('api.benchmark.metrics');
