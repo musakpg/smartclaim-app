@@ -124,6 +124,13 @@
             </div>
         </div>
 
+        <div class="mt-8 pt-4 border-t border-slate-200/80 text-center text-xs text-slate-500 space-y-1">
+            <p class="font-medium text-slate-600">SmartClaim v1.0.0-rc · Evaluation Sandbox Environment</p>
+            <p>Observing system anomalies or running QA checks? Submit technical logs to 
+               <a href="mailto:smartclaim.aeroart@gmail.com" class="text-blue-600 hover:text-blue-700 underline font-semibold">smartclaim.aeroart@gmail.com</a>
+            </p>
+        </div>
+
     </div>
 
     <!-- Inactive Account Modal -->

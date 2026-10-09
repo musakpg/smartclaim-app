@@ -37,4 +37,12 @@ class AuthenticationAndRbacTest extends TestCase
         $response = $this->actingAs($finance)->get('/finance/dashboard');
         $response->assertStatus(200);
     }
+
+    public function test_login_page_renders_evaluation_sandbox_footer()
+    {
+        $response = $this->get(route('login'));
+        $response->assertStatus(200);
+        $response->assertSee('SmartClaim v1.0.0-rc · Evaluation Sandbox Environment');
+        $response->assertSee('smartclaim.aeroart@gmail.com');
+    }
 }
