@@ -19,9 +19,18 @@ class ClaimVerificationController extends Controller
      */
     public function index(Request $request)
     {
+        $isDemo = (bool) (auth()->user()->is_demo ?? false);
         $currentTab = $request->query('tab', 'pending');
 
         $claimsQuery = Claim::with(['items', 'user', 'auditLogs.user'])->orderBy('updated_at', 'desc');
+
+        if ($isDemo) {
+            $claimsQuery->where('is_demo', true);
+        } else {
+            $claimsQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+        }
 
         if ($currentTab === 'pending') {
             $claimsQuery->whereIn('status', ['Pending', 'Pre-Approved', 'Pending Manager']);
@@ -39,10 +48,19 @@ class ClaimVerificationController extends Controller
             return $c;
         });
 
-        $preApprovedCount = Claim::whereIn('status', ['Pending', 'Pre-Approved', 'Pending Manager'])->count();
-        $approvedCount = Claim::where('status', 'Approved')->count();
-        $rejectedCount = Claim::where('status', 'Rejected')->count();
-        $totalReviewCount = Claim::count();
+        $countQuery = Claim::query();
+        if ($isDemo) {
+            $countQuery->where('is_demo', true);
+        } else {
+            $countQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+        }
+
+        $preApprovedCount = (clone $countQuery)->whereIn('status', ['Pending', 'Pre-Approved', 'Pending Manager'])->count();
+        $approvedCount = (clone $countQuery)->where('status', 'Approved')->count();
+        $rejectedCount = (clone $countQuery)->where('status', 'Rejected')->count();
+        $totalReviewCount = (clone $countQuery)->count();
 
         $revisionReasons = ClaimAuditReason::revisions()->get();
         $rejectionReasons = ClaimAuditReason::rejections()->get();

@@ -280,6 +280,7 @@ class ClaimSubmissionController extends Controller
                 'is_policy_violation' => $policyCheck['is_violation'],
                 'policy_violation_reason' => $policyCheck['reason'],
                 'estimated_payout_date' => Carbon::now()->addWeekdays(5)->toDateString(),
+                'is_demo' => (bool) ($currentUser->is_demo ?? false),
             ]);
 
             $itemsData = $request->input('items', []);
@@ -374,7 +375,18 @@ class ClaimSubmissionController extends Controller
             abort(401, 'Unauthenticated.');
         }
 
-        $claimsQuery = Claim::with(['items', 'auditLogs.user'])->where('user_id', $currentUserId)->latest();
+        $isDemo = (bool) (Auth::user()->is_demo ?? false);
+        $claimsQuery = Claim::with(['items', 'auditLogs.user'])->where('user_id', $currentUserId);
+
+        if ($isDemo) {
+            $claimsQuery->where('is_demo', true);
+        } else {
+            $claimsQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+        }
+
+        $claimsQuery->latest();
 
         if ($request->wantsJson() || $request->ajax()) {
             $claims = $claimsQuery->get()->map(function ($c) {

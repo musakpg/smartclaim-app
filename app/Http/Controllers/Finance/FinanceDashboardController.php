@@ -16,23 +16,51 @@ class FinanceDashboardController extends Controller
      */
     public function financeIndex()
     {
-        $claims = Claim::with(['items', 'user', 'auditLogs.user'])->orderBy('created_at', 'desc')->get();
+        $isDemo = (bool) (auth()->user()->is_demo ?? false);
+        $claimsQuery = Claim::with(['items', 'user', 'auditLogs.user'])->orderBy('created_at', 'desc');
 
-        $pendingCount = Claim::where('status', 'Pending')->count();
-        $preApprovedCount = Claim::where('status', 'Pre-Approved')->count();
-        $approvedCount = Claim::where('status', 'Approved')->count();
-        $reimbursedCount = Claim::where('status', 'Reimbursed')->count();
-        $rejectedCount = Claim::where('status', 'Rejected')->count();
+        if ($isDemo) {
+            $claimsQuery->where('is_demo', true);
+        } else {
+            $claimsQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+        }
+        $claims = $claimsQuery->get();
 
-        $totalApprovedFundsCount = Claim::whereIn('status', ['Approved', 'Reimbursed'])->count();
-        $totalApprovedFundsSum = Claim::whereIn('status', ['Approved', 'Reimbursed'])->sum('amount');
+        $countQuery = Claim::query();
+        if ($isDemo) {
+            $countQuery->where('is_demo', true);
+        } else {
+            $countQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+        }
+
+        $pendingCount = (clone $countQuery)->where('status', 'Pending')->count();
+        $preApprovedCount = (clone $countQuery)->where('status', 'Pre-Approved')->count();
+        $approvedCount = (clone $countQuery)->where('status', 'Approved')->count();
+        $reimbursedCount = (clone $countQuery)->where('status', 'Reimbursed')->count();
+        $rejectedCount = (clone $countQuery)->where('status', 'Rejected')->count();
+
+        $totalApprovedFundsCount = (clone $countQuery)->whereIn('status', ['Approved', 'Reimbursed'])->count();
+        $totalApprovedFundsSum = (clone $countQuery)->whereIn('status', ['Approved', 'Reimbursed'])->sum('amount');
 
         $currentYear = Carbon::now()->year;
-        $monthlyExpenses = DB::table('claims')
+        $monthlyExpensesQuery = DB::table('claims')
             ->select(DB::raw('MONTH(created_at) as month'), DB::raw('SUM(amount) as total_amount'))
             ->whereYear('created_at', $currentYear)
-            ->whereIn('status', ['Approved', 'Reimbursed'])
-            ->groupBy(DB::raw('MONTH(created_at)'))
+            ->whereIn('status', ['Approved', 'Reimbursed']);
+        
+        if ($isDemo) {
+            $monthlyExpensesQuery->where('is_demo', true);
+        } else {
+            $monthlyExpensesQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+        }
+
+        $monthlyExpenses = $monthlyExpensesQuery->groupBy(DB::raw('MONTH(created_at)'))
             ->orderBy('month', 'asc')
             ->pluck('total_amount', 'month')
             ->toArray();

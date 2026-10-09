@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -16,7 +16,20 @@
         }
     </style>
 </head>
-<body class="bg-white text-slate-800 font-sans antialiased min-h-screen flex items-center justify-center p-6" x-data="{ showInactiveModal: {{ session('account_inactive') ? 'true' : 'false' }} }">
+<body class="bg-white text-slate-800 font-sans antialiased min-h-screen flex items-center justify-center p-6" 
+      x-data="{ 
+          showInactiveModal: {{ session('account_inactive') ? 'true' : 'false' }},
+          quickLogin(email, password) {
+              const emailInput = document.getElementById('email');
+              const passwordInput = document.getElementById('password');
+              if (emailInput && passwordInput) {
+                  emailInput.value = email;
+                  passwordInput.value = password;
+                  const form = document.querySelector('form');
+                  if (form) form.submit();
+              }
+          }
+      }">
 
     <div class="w-full max-w-sm mx-auto space-y-8">
         
@@ -75,6 +88,40 @@
 
         <div class="text-center text-xs text-slate-400 font-medium">
             No Account? <a href="/register" class="text-slate-900 font-bold hover:underline">Register</a>
+        </div>
+
+        <!-- Quick Demo Access Component -->
+        <div class="pt-5 border-t border-slate-200 space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                    <i class="fa-solid fa-bolt text-amber-500"></i> Quick Demo Access
+                </span>
+                <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">Read-Only</span>
+            </div>
+            <p class="text-[11px] text-slate-400">One-click instant login into isolated showcase profiles:</p>
+            
+            <div class="grid grid-cols-3 gap-2">
+                <button type="button" @click="quickLogin('demo-staff@smartclaim.com', 'demo1234')"
+                        class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-all text-center group cursor-pointer shadow-xs">
+                    <i class="fa-solid fa-user-pen text-sm text-slate-400 group-hover:text-emerald-600 mb-1"></i>
+                    <span class="text-[11px] font-bold text-slate-800 group-hover:text-emerald-800">Staff</span>
+                    <span class="text-[9px] text-slate-400 font-medium">Claims</span>
+                </button>
+
+                <button type="button" @click="quickLogin('demo-finance@smartclaim.com', 'demo1234')"
+                        class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all text-center group cursor-pointer shadow-xs">
+                    <i class="fa-solid fa-file-invoice-dollar text-sm text-slate-400 group-hover:text-blue-600 mb-1"></i>
+                    <span class="text-[11px] font-bold text-slate-800 group-hover:text-blue-800">Finance</span>
+                    <span class="text-[9px] text-slate-400 font-medium">Audit Desk</span>
+                </button>
+
+                <button type="button" @click="quickLogin('demo-manager@smartclaim.com', 'demo1234')"
+                        class="flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 transition-all text-center group cursor-pointer shadow-xs">
+                    <i class="fa-solid fa-shield-halved text-sm text-slate-400 group-hover:text-purple-600 mb-1"></i>
+                    <span class="text-[11px] font-bold text-slate-800 group-hover:text-purple-800">Manager</span>
+                    <span class="text-[9px] text-slate-400 font-medium">Sign-Off</span>
+                </button>
+            </div>
         </div>
 
     </div>

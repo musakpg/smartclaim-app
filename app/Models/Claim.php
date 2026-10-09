@@ -45,6 +45,7 @@ class Claim extends Model
         'risk_score',
         'fraud_flags',
         'exif_date_taken',
+        'is_demo',
     ];
 
     protected $casts = [
@@ -55,6 +56,7 @@ class Claim extends Model
         'fraud_flags' => 'array',
         'is_policy_violation' => 'boolean',
         'risk_score' => 'integer',
+        'is_demo' => 'boolean',
     ];
 
     /**
@@ -102,6 +104,17 @@ class Claim extends Model
         
         return $km * $rate;
     }
+
+    public function getReceiptPathAttribute()
+    {
+        return $this->receipt_image_path;
+    }
+
+    public function getReceiptHashAttribute()
+    {
+        return $this->receipt_image_hash;
+    }
+
     public function reimburser()
     {
         return $this->belongsTo(User::class, 'reimbursed_by', 'user_id');

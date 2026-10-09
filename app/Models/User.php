@@ -23,7 +23,12 @@ class User extends Authenticatable
         'activation_token',
         'bank_name',
         'bank_account_no',
-        'bank_account_holder'
+        'bank_account_holder',
+        'is_demo',
+    ];
+
+    protected $casts = [
+        'is_demo' => 'boolean',
     ];
 
     protected $hidden = [

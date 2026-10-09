@@ -20,22 +20,36 @@ class DisbursementController extends Controller
      */
     public function index(Request $request)
     {
+        $isDemo = (bool) (auth()->user()->is_demo ?? false);
         $tab = $request->input('tab', 'pending');
 
-        $pendingDisbursements = Claim::with(['user.activeCashAdvance', 'items'])
-            ->where('status', 'Approved')
-            ->orderBy('updated_at', 'desc')
+        $pendingQuery = Claim::with(['user.activeCashAdvance', 'items'])
+            ->where('status', 'Approved');
+        $settledQuery = Claim::with(['user.activeCashAdvance', 'items'])
+            ->where('status', 'Reimbursed');
+
+        if ($isDemo) {
+            $pendingQuery->where('is_demo', true);
+            $settledQuery->where('is_demo', true);
+        } else {
+            $pendingQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+            $settledQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+        }
+
+        $pendingDisbursements = $pendingQuery->orderBy('updated_at', 'desc')
             ->paginate(10, ['*'], 'pending_page')
             ->withQueryString();
 
-        $settledDisbursements = Claim::with(['user.activeCashAdvance', 'items'])
-            ->where('status', 'Reimbursed')
-            ->orderBy('paid_at', 'desc')
+        $settledDisbursements = $settledQuery->orderBy('paid_at', 'desc')
             ->paginate(10, ['*'], 'settled_page')
             ->withQueryString();
 
-        $totalPendingAmount = Claim::where('status', 'Approved')->sum('amount');
-        $totalSettledAmount = Claim::where('status', 'Reimbursed')->sum('amount');
+        $totalPendingAmount = (clone $pendingQuery)->sum('amount');
+        $totalSettledAmount = (clone $settledQuery)->sum('amount');
 
         return view('finance.disbursement', compact(
             'pendingDisbursements',

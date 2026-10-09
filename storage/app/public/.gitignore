@@ -1,2 +1,5 @@
 *
 !.gitignore
+!receipts/
+!receipts/default.*
+!receipts/resit*

@@ -15,17 +15,36 @@ class ManagerDashboardController extends Controller
      */
     public function managerIndex()
     {
-        $preApprovedCount = Claim::where('status', 'Pre-Approved')->count();
-        $approvedCount = Claim::where('status', 'Approved')->count();
-        $rejectedCount = Claim::where('status', 'Rejected')->count();
-        $totalReviewCount = Claim::count();
+        $isDemo = (bool) (auth()->user()->is_demo ?? false);
+        $countQuery = Claim::query();
+        if ($isDemo) {
+            $countQuery->where('is_demo', true);
+        } else {
+            $countQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+        }
+
+        $preApprovedCount = (clone $countQuery)->where('status', 'Pre-Approved')->count();
+        $approvedCount = (clone $countQuery)->where('status', 'Approved')->count();
+        $rejectedCount = (clone $countQuery)->where('status', 'Rejected')->count();
+        $totalReviewCount = (clone $countQuery)->count();
 
         $monthlyExpenditures = array_fill(1, 12, 0);
 
-        $realClaimsData = Claim::where('status', 'Approved')
+        $realClaimsQuery = Claim::where('status', 'Approved')
             ->whereYear('transaction_date', date('Y'))
-            ->selectRaw('MONTH(transaction_date) as month, SUM(amount) as total_amount')
-            ->groupBy('month')
+            ->selectRaw('MONTH(transaction_date) as month, SUM(amount) as total_amount');
+
+        if ($isDemo) {
+            $realClaimsQuery->where('is_demo', true);
+        } else {
+            $realClaimsQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+        }
+
+        $realClaimsData = $realClaimsQuery->groupBy('month')
             ->pluck('total_amount', 'month')
             ->toArray();
 

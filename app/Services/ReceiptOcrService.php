@@ -57,6 +57,34 @@ class ReceiptOcrService
                 ];
             }
 
+            // Demo Mode Bypass: Avoid consuming live Google Vision API quota
+            if (auth()->check() && (bool) (auth()->user()->is_demo ?? false)) {
+                if (file_exists($fullImagePath)) {
+                    unlink($fullImagePath);
+                }
+                return [
+                    'success' => true,
+                    'receipt_image_hash' => $imageHash,
+                    'merchant_name' => 'Kedai Runcit Mulia Sejati Baru',
+                    'location_address' => 'Lot 6061 Jalan Imam, Kg Sg Ramal Dalam, 43000 Kajang, Selangor',
+                    'receipt_invoice_no' => 'INV-DEMO-' . rand(1000, 9999),
+                    'transaction_date' => now()->toDateString(),
+                    'amount' => 100.20,
+                    'tax_amount' => 0.00,
+                    'payment_method' => 'Cash',
+                    'predicted_category' => 'Office Pantry & Amenities (Groceries, Supplies)',
+                    'items' => [
+                        ['item_name' => 'AYAM SEGAR', 'quantity' => 1, 'unit_price' => 61.70, 'subtotal' => 61.70],
+                        ['item_name' => 'BARANG DAPUR (KECIL)', 'quantity' => 3, 'unit_price' => 3.00, 'subtotal' => 9.00],
+                        ['item_name' => 'SABUN PENCUCI', 'quantity' => 1, 'unit_price' => 5.30, 'subtotal' => 5.30],
+                        ['item_name' => 'TISU DAPUR GULUNG', 'quantity' => 1, 'unit_price' => 4.90, 'subtotal' => 4.90],
+                        ['item_name' => 'MINYAK MASAK 2KG', 'quantity' => 1, 'unit_price' => 8.80, 'subtotal' => 8.80],
+                        ['item_name' => 'SPONGE CUCI PINGGAN', 'quantity' => 3, 'unit_price' => 3.50, 'subtotal' => 10.50],
+                    ],
+                    'raw_text' => "KEDAI RUNCIT MULIA SEJATI BARU\nLOT 6061 JALAN IMAM, KAJANG\nTOTAL CASH: RM 100.20\nTERIMA KASIH"
+                ];
+            }
+
             // Call Google Cloud Vision API
             $apiKey = config('services.google_vision.api_key');
             if (!empty($apiKey)) {
@@ -130,6 +158,21 @@ class ReceiptOcrService
             $fullImagePath = storage_path('app/private/' . $imagePath);
             $fileData = file_get_contents($fullImagePath);
             $extractedText = '';
+
+            // Demo Mode Bypass
+            if (auth()->check() && (bool) (auth()->user()->is_demo ?? false)) {
+                if (file_exists($fullImagePath)) {
+                    unlink($fullImagePath);
+                }
+                return [
+                    'success' => true,
+                    'reference_number' => 'DEMO-EFT-' . rand(10000, 99999),
+                    'transfer_date' => now()->toDateString(),
+                    'recipient_account' => '114012345678',
+                    'amount' => 100.20,
+                    'raw_text' => "MAYBANK ISLAMIC BANKING\nTRANSFER SUCCESSFUL\nAMOUNT: RM 100.20\nREF: DEMO-EFT-99201"
+                ];
+            }
 
             $apiKey = config('services.google_vision.api_key');
 

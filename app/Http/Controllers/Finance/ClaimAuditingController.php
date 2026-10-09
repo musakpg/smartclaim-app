@@ -15,7 +15,16 @@ class ClaimAuditingController extends Controller
      */
     public function index(Request $request)
     {
+        $isDemo = (bool) (auth()->user()->is_demo ?? false);
         $claimsQuery = Claim::with(['items', 'user', 'auditLogs.user'])->orderBy('created_at', 'desc');
+
+        if ($isDemo) {
+            $claimsQuery->where('is_demo', true);
+        } else {
+            $claimsQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+        }
 
         if ($request->wantsJson() || $request->ajax()) {
             $claims = $claimsQuery->get()->map(function ($c) {
@@ -62,11 +71,20 @@ class ClaimAuditingController extends Controller
             return $c;
         });
 
-        $pendingCount = Claim::where('status', 'Pending')->count();
-        $approvedCount = Claim::where('status', 'Approved')->count();
-        $rejectedCount = Claim::where('status', 'Rejected')->count();
-        $preApprovedCount = Claim::where('status', 'Pre-Approved')->count();
-        $reimbursedCount = Claim::where('status', 'Reimbursed')->count();
+        $countQuery = Claim::query();
+        if ($isDemo) {
+            $countQuery->where('is_demo', true);
+        } else {
+            $countQuery->where(function ($q) {
+                $q->where('is_demo', false)->orWhereNull('is_demo');
+            });
+        }
+
+        $pendingCount = (clone $countQuery)->where('status', 'Pending')->count();
+        $approvedCount = (clone $countQuery)->where('status', 'Approved')->count();
+        $rejectedCount = (clone $countQuery)->where('status', 'Rejected')->count();
+        $preApprovedCount = (clone $countQuery)->where('status', 'Pre-Approved')->count();
+        $reimbursedCount = (clone $countQuery)->where('status', 'Reimbursed')->count();
 
         $revisionReasons = ClaimAuditReason::revisions()->get();
         $rejectionReasons = ClaimAuditReason::rejections()->get();
