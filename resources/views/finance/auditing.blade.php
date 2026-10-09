@@ -107,7 +107,7 @@
 
                                             <td class="py-3.5 px-5 text-center whitespace-nowrap">
                                                 <button type="button"
-                                                    @click="openReviewModal({{ json_encode($claim) }}, '{{ addslashes($claim->user_name) }}', '{{ $claim->formatted_time }}')"
+                                                    @click="openReviewModal({{ $claim->claim_id }}, '{{ addslashes($claim->user_name) }}', '{{ $claim->formatted_time }}')"
                                                     class="px-3 py-1.5 bg-[#0f172a] hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 mx-auto cursor-pointer uppercase tracking-wider">
                                                     <i class="fa-solid fa-magnifying-glass text-[10px]"></i> Review
                                                 </button>
@@ -136,13 +136,14 @@
                         </div>
                     </div>
 
-                </div>
-
-    <!-- Review Modal -->
-    <div x-show="isModalOpen" x-cloak
-        class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs transition-all duration-300">
-        <div class="relative bg-white rounded-3xl p-4 md:p-6 max-w-5xl w-full shadow-2xl flex flex-col md:flex-row gap-5 max-h-[90vh] overflow-hidden border border-slate-100"
-            @click.away="if (!isMapModalOpen && !isHistoryModalOpen) isModalOpen = false">
+    <!-- Review Modal Teleport -->
+    <template x-teleport="body">
+        <div x-show="isModalOpen || isReviewOpen || isOpen" x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 sm:p-6"
+            style="display: none;"
+            @keydown.escape.window="if (!isMapModalOpen && !isHistoryModalOpen && !isRevisionModalOpen && !isRejectModalOpen) closeModal()">
+            <div class="relative bg-white rounded-3xl p-4 md:p-6 max-w-5xl w-full shadow-2xl flex flex-col md:flex-row gap-5 max-h-[90vh] overflow-hidden border border-slate-100"
+                @click.away="if (!isMapModalOpen && !isHistoryModalOpen && !isRevisionModalOpen && !isRejectModalOpen) closeModal()">
 
             <div class="flex-1 flex flex-col overflow-y-auto space-y-4 pr-1 min-h-0">
                 <div class="border-b border-slate-100 pb-3 flex flex-col gap-1">
@@ -403,7 +404,7 @@
                             </form>
                         </div>
                     </template>
-                    <button type="button" @click="isModalOpen = false"
+                    <button type="button" @click="closeModal()"
                         class="text-xs text-slate-400 font-bold hover:underline text-center cursor-pointer">
                         Close Screen
                     </button>
@@ -412,26 +413,31 @@
 
             <!-- Attached Image/Asset Panel -->
             <div class="w-full md:w-[380px] lg:w-[420px] bg-slate-50 rounded-2xl border border-slate-100 flex flex-col p-2 shrink-0 max-h-[40vh] md:max-h-full"
-                x-show="activeClaim.receipt_image_path">
+                x-show="getReceiptUrl(activeClaim)">
                 <span class="text-[9px] font-bold uppercase text-slate-400 tracking-wider px-2 mb-1.5">
                     <i class="fa-solid fa-image mr-1"></i>
                     <span x-text="activeClaim.claim_type === 'Mileage' ? 'Attached Proof of Travel Asset' : 'Attached Audit Receipt Resource'"></span>
                 </span>
                 <div class="flex-1 bg-slate-900/5 rounded-xl overflow-hidden relative flex items-center justify-center min-h-[220px] md:min-h-0">
-                    <img x-show="activeClaim && activeClaim.receipt_image_path"
-                        :src="activeClaim.receipt_image_path ? '/files/' + activeClaim.receipt_image_path : ''"
-                        @click="modalPreviewSrc = '/files/' + activeClaim.receipt_image_path; isHistoryModalOpen = true"
-                        class="max-w-full max-h-full object-contain rounded-lg shadow-xs cursor-zoom-in">
+                    <template x-if="getReceiptUrl(activeClaim) && !imageFailed">
+                        <img :src="getReceiptUrl(activeClaim)"
+                            x-on:error="imageFailed = true"
+                            @click="modalPreviewSrc = getReceiptUrl(activeClaim); isHistoryModalOpen = true"
+                            class="max-w-full max-h-full object-contain rounded-lg shadow-xs cursor-zoom-in">
+                    </template>
 
-                    <button type="button" x-show="activeClaim && activeClaim.receipt_image_path"
-                        @click="modalPreviewSrc = '/files/' + activeClaim.receipt_image_path; isHistoryModalOpen = true"
-                        class="absolute inset-0 bg-slate-900/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-all duration-200 text-white font-bold text-xs gap-1.5 backdrop-blur-xs cursor-zoom-in">
-                        <i class="fa-solid fa-magnifying-glass-plus"></i> View Raw Asset Image
-                    </button>
+                    <template x-if="getReceiptUrl(activeClaim) && !imageFailed">
+                        <button type="button"
+                            @click="modalPreviewSrc = getReceiptUrl(activeClaim); isHistoryModalOpen = true"
+                            class="absolute inset-0 bg-slate-900/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-all duration-200 text-white font-bold text-xs gap-1.5 backdrop-blur-xs cursor-zoom-in">
+                            <i class="fa-solid fa-magnifying-glass-plus"></i> View Raw Asset Image
+                        </button>
+                    </template>
 
-                    <div x-show="!activeClaim || !activeClaim.receipt_image_path"
-                        class="text-slate-400 text-xs font-semibold italic p-4">
-                        <i class="fa-solid fa-ban block text-center text-lg mb-1 text-slate-300"></i> No Image Asset Attached
+                    <div x-show="!getReceiptUrl(activeClaim) || imageFailed"
+                        class="text-slate-400 text-xs font-semibold italic p-4 text-center">
+                        <i class="fa-solid fa-file-image block text-center text-2xl mb-1 text-slate-300"></i>
+                        <span>Receipt preview not available</span>
                     </div>
                 </div>
                 <div class="pt-2" x-show="activeClaim.claim_type === 'Mileage'">
@@ -444,137 +450,153 @@
 
         </div>
     </div>
+    </template>
 
     <!-- Route Preview Lightbox Modal -->
-    <div x-show="isMapModalOpen" x-cloak
-        class="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs transition-all duration-300">
-        <div class="relative bg-white rounded-3xl p-3 max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col h-[80vh]"
-            @click.away="isMapModalOpen = false" x-transition:enter="transition ease-out duration-300 transform"
-            x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+    <template x-teleport="body">
+        <div x-show="isMapModalOpen" x-cloak
+            class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs transition-all duration-300"
+            style="display: none;">
+            <div class="relative bg-white rounded-3xl p-3 max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col h-[80vh]"
+                @click.away="isMapModalOpen = false" x-transition:enter="transition ease-out duration-300 transform"
+                x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
 
-            <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                    <i class="fa-solid fa-map-location-dot mr-1 text-emerald-600"></i> Interactive Route Verification
-                </span>
-                <button type="button" @click="isMapModalOpen = false"
-                    class="text-slate-400 hover:text-rose-600 transition-all text-lg cursor-pointer p-1">
-                    <i class="fa-solid fa-circle-xmark"></i>
-                </button>
-            </div>
-
-            <div class="p-0 bg-slate-50 rounded-2xl overflow-hidden flex-1 flex justify-center items-center min-h-0 mt-2">
-                <template x-if="isMapModalOpen && (activeClaim.start_location || activeClaim.starting_point || activeClaim.origin || activeClaim.origin_address) && (activeClaim.destination_location || activeClaim.destination_point || activeClaim.destination || activeClaim.end_location || activeClaim.destination_address || activeClaim.ending_point)">
-                    <iframe
-                        class="w-full h-full border-0"
-                        :src="'https://www.google.com/maps/embed/v1/directions?key={{ config('services.google.maps_api_key') }}&origin=' + encodeURIComponent(activeClaim.start_location || activeClaim.starting_point || activeClaim.origin || activeClaim.origin_address) + '&destination=' + encodeURIComponent(activeClaim.destination_location || activeClaim.destination_point || activeClaim.destination || activeClaim.end_location || activeClaim.destination_address || activeClaim.ending_point) + '&mode=driving'"
-                        allowfullscreen>
-                    </iframe>
-                </template>
-            </div>
-        </div>
-    </div>
-
-    <!-- Lightbox Fullscreen Modal -->
-    <div x-show="isHistoryModalOpen" x-cloak
-        class="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs transition-all duration-300">
-        <div class="relative bg-white rounded-3xl p-3 max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            @click.away="isHistoryModalOpen = false" 
-            x-transition:enter="transition ease-out duration-300 transform"
-            x-transition:enter-start="opacity-0 scale-95" 
-            x-transition:enter-end="opacity-100 scale-100">
-
-            <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                    <i class="fa-solid fa-receipt mr-1 text-blue-600"></i> Full View Review Asset
-                </span>
-                <button type="button" @click="isHistoryModalOpen = false"
-                    class="text-slate-400 hover:text-rose-600 transition-all text-lg cursor-pointer p-1">
-                    <i class="fa-solid fa-circle-xmark"></i>
-                </button>
-            </div>
-
-            <div class="p-2 bg-slate-50 rounded-2xl overflow-y-auto flex-1 flex justify-center items-center min-h-0">
-                <img :src="modalPreviewSrc" alt="Receipt Full Modal View"
-                    class="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xs">
-            </div>
-        </div>
-    </div>
-    <!-- Request Revision Modal -->
-    <div x-show="isRevisionModalOpen" x-cloak
-        class="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm transition-all duration-300">
-        <div class="relative bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl overflow-hidden flex flex-col"
-            @click.away="isRevisionModalOpen = false" 
-            x-transition:enter="transition ease-out duration-300 transform"
-            x-transition:enter-start="opacity-0 scale-95 translate-y-4" 
-            x-transition:enter-end="opacity-100 scale-100 translate-y-0">
-
-            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-                <span class="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
-                    <i class="fa-solid fa-rotate-left text-amber-500"></i> Request Revision
-                </span>
-                <button type="button" @click="isRevisionModalOpen = false"
-                    class="text-slate-400 hover:text-rose-600 transition-all text-lg cursor-pointer p-1">
-                    <i class="fa-solid fa-circle-xmark"></i>
-                </button>
-            </div>
-
-            <form :action="'/finance/claims/' + activeClaim.claim_id + '/status'" method="POST" class="space-y-4"
-                x-data="{ loading: false, selectedReason: '', requiresRemarks: false, remarks: '' }"
-                @submit="loading = true">
-                @csrf
-                <input type="hidden" name="status" value="REVISION_REQUIRED">
-                
-                <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">
-                        Audit Clarification Reason <span class="text-amber-500">*</span>
-                    </label>
-                    <select name="revision_reason" x-model="selectedReason" required
-                        @change="const opt = $event.target.selectedOptions[0]; requiresRemarks = opt.dataset.requiresRemarks === '1' || opt.value.includes('Other');"
-                        class="w-full text-xs bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-amber-500/50 outline-none transition-all font-medium">
-                        <option value="">-- Select Audit Exception Code --</option>
-                        @foreach($revisionReasons ?? [] as $reason)
-                            <option value="{{ $reason->title }}" data-requires-remarks="{{ $reason->requires_remarks ? '1' : '0' }}">
-                                {{ $reason->title }} {{ $reason->requires_remarks ? '(Remarks Required)' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="space-y-1.5">
-                    <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">
-                        Specific Feedback / Instructions <span x-show="requiresRemarks" class="text-amber-500">*</span>
-                    </label>
-                    <textarea name="remarks" x-model="remarks" :required="requiresRemarks" rows="3"
-                        :placeholder="requiresRemarks ? 'Detail required corrections or missing documents (Mandatory)...' : 'Optional instructions for employee...'"
-                        class="w-full text-xs bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-amber-500/50 outline-none transition-all font-medium"></textarea>
-                    <p class="text-[10px] text-slate-400">
-                        <span x-show="requiresRemarks" class="text-amber-600 font-semibold">Remarks are required for this audit code.</span>
-                        <span x-show="!requiresRemarks">Feedback will be recorded and notified to employee.</span>
-                    </p>
-                </div>
-
-                <div class="pt-2">
-                    <button type="submit" :disabled="loading || !selectedReason || (requiresRemarks && !remarks.trim())"
-                        class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20">
-                        <template x-if="loading"><i class="fa-solid fa-spinner fa-spin"></i></template>
-                        <span x-text="loading ? 'Sending Request...' : 'Send Revision Request'"></span>
+                <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                        <i class="fa-solid fa-map-location-dot mr-1 text-emerald-600"></i> Interactive Route Verification
+                    </span>
+                    <button type="button" @click="isMapModalOpen = false"
+                        class="text-slate-400 hover:text-rose-600 transition-all text-lg cursor-pointer p-1">
+                        <i class="fa-solid fa-circle-xmark"></i>
                     </button>
                 </div>
-            </form>
+
+                <div class="p-0 bg-slate-50 rounded-2xl overflow-hidden flex-1 flex justify-center items-center min-h-0 mt-2">
+                    <template x-if="isMapModalOpen && (activeClaim.start_location || activeClaim.starting_point || activeClaim.origin || activeClaim.origin_address) && (activeClaim.destination_location || activeClaim.destination_point || activeClaim.destination || activeClaim.end_location || activeClaim.destination_address || activeClaim.ending_point)">
+                        <iframe
+                            class="w-full h-full border-0"
+                            :src="'https://www.google.com/maps/embed/v1/directions?key={{ config('services.google.maps_api_key') }}&origin=' + encodeURIComponent(activeClaim.start_location || activeClaim.starting_point || activeClaim.origin || activeClaim.origin_address) + '&destination=' + encodeURIComponent(activeClaim.destination_location || activeClaim.destination_point || activeClaim.destination || activeClaim.end_location || activeClaim.destination_address || activeClaim.ending_point) + '&mode=driving'"
+                            allowfullscreen>
+                        </iframe>
+                    </template>
+                </div>
+            </div>
         </div>
-    </div>
+    </template>
+
+    <!-- Lightbox Fullscreen Modal -->
+    <template x-teleport="body">
+        <div x-show="isHistoryModalOpen" x-cloak
+            class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs transition-all duration-300"
+            style="display: none;">
+            <div class="relative bg-white rounded-3xl p-3 max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                @click.away="isHistoryModalOpen = false" 
+                x-transition:enter="transition ease-out duration-300 transform"
+                x-transition:enter-start="opacity-0 scale-95" 
+                x-transition:enter-end="opacity-100 scale-100">
+
+                <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                        <i class="fa-solid fa-receipt mr-1 text-blue-600"></i> Full View Review Asset
+                    </span>
+                    <button type="button" @click="isHistoryModalOpen = false"
+                        class="text-slate-400 hover:text-rose-600 transition-all text-lg cursor-pointer p-1">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="p-2 bg-slate-50 rounded-2xl overflow-y-auto flex-1 flex justify-center items-center min-h-0">
+                    <img :src="modalPreviewSrc" alt="Receipt Full Modal View"
+                        class="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xs">
+                </div>
+            </div>
+        </div>
+    </template>
+    <!-- Request Revision Modal Teleport -->
+    <template x-teleport="body">
+        <div x-show="isRevisionModalOpen" x-cloak
+            class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm transition-all duration-300"
+            style="display: none;">
+            <div class="relative bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl overflow-hidden flex flex-col"
+                @click.away="isRevisionModalOpen = false" 
+                x-transition:enter="transition ease-out duration-300 transform"
+                x-transition:enter-start="opacity-0 scale-95 translate-y-4" 
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0">
+
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                    <span class="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-left text-amber-500"></i> Request Revision
+                    </span>
+                    <button type="button" @click="isRevisionModalOpen = false"
+                        class="text-slate-400 hover:text-rose-600 transition-all text-lg cursor-pointer p-1">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </button>
+                </div>
+
+                <form :action="'/finance/claims/' + activeClaim.claim_id + '/status'" method="POST" class="space-y-4"
+                    x-data="{ loading: false, selectedReason: '', requiresRemarks: false, remarks: '' }"
+                    @submit="loading = true">
+                    @csrf
+                    <input type="hidden" name="status" value="REVISION_REQUIRED">
+                    
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">
+                            Audit Clarification Reason <span class="text-amber-500">*</span>
+                        </label>
+                        <select name="revision_reason" x-model="selectedReason" required
+                            @change="const opt = $event.target.selectedOptions[0]; requiresRemarks = opt.dataset.requiresRemarks === '1' || opt.value.includes('Other');"
+                            class="w-full text-xs bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-amber-500/50 outline-none transition-all font-medium">
+                            <option value="">-- Select Audit Exception Code --</option>
+                            @foreach($revisionReasons ?? [] as $reason)
+                                <option value="{{ $reason->title }}" data-requires-remarks="{{ $reason->requires_remarks ? '1' : '0' }}">
+                                    {{ $reason->title }} {{ $reason->requires_remarks ? '(Remarks Required)' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider">
+                            Specific Feedback / Instructions <span x-show="requiresRemarks" class="text-amber-500">*</span>
+                        </label>
+                        <textarea name="remarks" x-model="remarks" :required="requiresRemarks" rows="3"
+                            :placeholder="requiresRemarks ? 'Detail required corrections or missing documents (Mandatory)...' : 'Optional instructions for employee...'"
+                            class="w-full text-xs bg-slate-50 border border-slate-200 text-slate-700 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-amber-500/50 outline-none transition-all font-medium"></textarea>
+                        <p class="text-[10px] text-slate-400">
+                            <span x-show="requiresRemarks" class="text-amber-600 font-semibold">Remarks are required for this audit code.</span>
+                            <span x-show="!requiresRemarks">Feedback will be recorded and notified to employee.</span>
+                        </p>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" :disabled="loading || !selectedReason || (requiresRemarks && !remarks.trim())"
+                            class="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider rounded-xl cursor-pointer transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20">
+                            <template x-if="loading"><i class="fa-solid fa-spinner fa-spin"></i></template>
+                            <span x-text="loading ? 'Sending Request...' : 'Send Revision Request'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </template>
     <x-route-modal />
 
 </div>
 
 @push('scripts')
     <script>
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('financeWorkspace', () => ({
+        const claimsAuditData = @json($claims->keyBy('claim_id'));
+
+        function financeWorkspace() {
+            return {
+                claimsById: claimsAuditData,
                 isMobileSidebarOpen: false, 
                 activeTab: 'Receipt', 
                 statusTab: (new URLSearchParams(window.location.search)).get('status') || 'Pending', 
                 isModalOpen: false, 
+                isReviewOpen: false,
+                isOpen: false,
+                imageFailed: false,
                 isMapModalOpen: false,
                 activeClaim: {}, 
                 activeUser: '', 
@@ -589,6 +611,16 @@
                 init() {
                     this.loadGoogleMapsScript();
                 },
+
+                getReceiptUrl(claim) {
+                    if (!claim) return '';
+                    const path = claim.receipt_path || claim.receipt_image_path || claim.receipt_url;
+                    if (!path) return '';
+                    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+                    const clean = path.replace(/^\/+/, '');
+                    if (clean.startsWith('files/')) return '/' + clean;
+                    return '/files/' + clean;
+                },
                 
                 loadGoogleMapsScript() {
                     if (document.getElementById('google-maps-script')) return;
@@ -602,17 +634,34 @@
                     document.head.appendChild(script);
                 },
                 
-                openReviewModal(claim, username, rawFormattedTime) {
-                    this.activeClaim = claim; 
-                    this.activeUser = username; 
-                    this.formattedSubmissionTime = rawFormattedTime; 
+                openReviewModal(claimOrId, username = '', rawFormattedTime = '') {
+                    let claim = claimOrId;
+                    if (typeof claimOrId === 'number' || typeof claimOrId === 'string') {
+                        claim = this.claimsById[claimOrId] || { claim_id: claimOrId };
+                    }
+                    this.activeClaim = claim || {}; 
+                    this.activeUser = username || (this.activeClaim ? this.activeClaim.user_name : ''); 
+                    this.formattedSubmissionTime = rawFormattedTime || (this.activeClaim ? this.activeClaim.formatted_time : ''); 
+                    this.imageFailed = false;
                     this.isModalOpen = true;
+                    this.isReviewOpen = true;
+                    this.isOpen = true;
                     this.googleDistanceKm = null;
                     this.googleVariancePct = null;
                     
-                    if (claim.claim_type === 'Mileage') {
+                    if (this.activeClaim && this.activeClaim.claim_type === 'Mileage') {
                         setTimeout(() => this.renderGoogleRoute(), 350);
                     }
+                },
+
+                openModal(claimOrId, username, rawFormattedTime) {
+                    this.openReviewModal(claimOrId, username, rawFormattedTime);
+                },
+
+                closeModal() {
+                    this.isModalOpen = false;
+                    this.isReviewOpen = false;
+                    this.isOpen = false;
                 },
                 
                 renderGoogleRoute() {
@@ -665,8 +714,17 @@
                         console.error('[Mileage Map] Fetch to Routes API failed:', err);
                     });
                 }
-            }));
-        });
+            };
+        }
+
+        window.financeWorkspace = financeWorkspace;
+        if (window.Alpine) {
+            window.Alpine.data('financeWorkspace', financeWorkspace);
+        } else {
+            document.addEventListener('alpine:init', () => {
+                window.Alpine.data('financeWorkspace', financeWorkspace);
+            });
+        }
     </script>
 @endpush
 @endsection

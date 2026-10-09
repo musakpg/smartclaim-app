@@ -33,12 +33,12 @@
     x-transition:leave="transition-opacity ease-linear duration-150" 
     x-transition:leave-start="opacity-100"
     x-transition:leave-end="opacity-0" 
-    class="fixed inset-0 bg-slate-900/80 z-[55] lg:hidden backdrop-blur-sm" 
+    class="fixed inset-0 bg-slate-900/80 z-30 lg:hidden backdrop-blur-sm" 
     @click="isMobileSidebarOpen = false"></div>
 
 <!-- Unified Persistent Sidebar (Mobile & Desktop) -->
 <aside x-cloak :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    class="fixed inset-y-0 left-0 z-[60] w-64 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 font-sans select-none -translate-x-full lg:translate-x-0 lg:static lg:h-screen lg:sticky lg:top-0"
+    class="fixed inset-y-0 left-0 z-40 lg:z-30 w-64 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 font-sans select-none -translate-x-full lg:translate-x-0 lg:static lg:h-screen lg:sticky lg:top-0"
     x-data="{ isClaimsOpen: {{ request()->routeIs('claims.*') ? 'true' : 'false' }} }">
     
     <div>

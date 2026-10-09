@@ -21,11 +21,11 @@
     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
     x-transition:leave="transition-opacity ease-linear duration-150" x-transition:leave-start="opacity-100"
     x-transition:leave-end="opacity-0" @click="isMobileSidebarOpen = false"
-    class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[55] lg:hidden">
+    class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-30 lg:hidden">
 </div>
 
 <aside x-cloak :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    class="fixed inset-y-0 left-0 z-[60] w-64 bg-[#0d1527] border-r border-slate-800 text-slate-300 flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 font-sans select-none -translate-x-full lg:translate-x-0 lg:static lg:h-screen lg:sticky lg:top-0"
+    class="fixed inset-y-0 left-0 z-40 lg:z-30 w-64 bg-[#0d1527] border-r border-slate-800 text-slate-300 flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 font-sans select-none -translate-x-full lg:translate-x-0 lg:static lg:h-screen lg:sticky lg:top-0"
     x-data="{ 
         activeDropdown: '{{ request()->routeIs('finance.auditing*') ? 'auditing' : '' }}',
         toggle(menu) {

@@ -118,7 +118,7 @@
                                         <i class="fa-solid fa-file-pdf text-rose-600"></i> PDF
                                     </a>
 
-                                    <button type="button" @click="openDetailModal({{ json_encode($claim) }})"
+                                    <button type="button" @click="openDetailModal({{ $claim->claim_id }})"
                                         class="inline-flex items-center gap-1.5 bg-[#1e293b] hover:bg-slate-800 text-white font-bold py-2 px-3.5 rounded-xl text-xs tracking-wide transition shadow-3xs cursor-pointer">
                                         <i class="fa-solid fa-circle-info text-xs"></i> Detail
                                     </button>
@@ -143,44 +143,22 @@
                     <!-- Pagination Navigation -->
                     <div class="px-6 py-4 border-t border-slate-100 bg-white rounded-b-2xl mt-auto">
                         {{ $claims->links() }}
-                    </div>
                 </div>
-            </div>
-        </main>
-    </div>
 
-    <!-- Mobile Bottom Navigation -->
-    <nav
-        class="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#e2e8f0] h-16 flex items-center justify-around z-40 px-2 shadow-md">
-        <a href="{{ route('dashboard') }}"
-            class="flex flex-col items-center justify-center flex-1 h-full py-2 text-slate-400">
-            <i class="fa-solid fa-chart-pie text-xl block mb-0.5"></i><span
-                class="text-[10px] font-bold">Dashboard</span>
-        </a>
-        <a href="{{ route('claims.create') }}?type=Receipt"
-            class="flex flex-col items-center justify-center flex-1 h-full py-2 text-slate-400">
-            <i class="fa-solid fa-file-circle-plus text-xl block mb-0.5"></i><span class="text-[10px] font-bold">New
-                Claim</span>
-        </a>
-        <a href="{{ route('claims.history') }}"
-            class="flex flex-col items-center justify-center flex-1 h-full py-2 text-[#3b82f6]">
-            <i class="fa-solid fa-clock-rotate-left text-xl block mb-0.5"></i><span
-                class="text-[10px] font-bold">History</span>
-        </a>
-    </nav>
+    <!-- Modal Detail Claim (Teleported to root body) -->
+    <template x-teleport="body">
+        <div x-show="isModalOpen || isDetailOpen || isOpen" x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 sm:p-6"
+            style="display: none;"
+            @keydown.escape.window="closeModal()">
+            <div class="relative bg-white rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 shadow-2xl"
+                @click.away="closeModal()">
 
-    <!-- Modal Detail Claim -->
-    <div x-show="isModalOpen" x-cloak
-        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-        @keydown.escape.window="isModalOpen = false">
-        <div class="bg-white rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 shadow-2xl relative"
-            @click.away="isModalOpen = false">
-
-            <!-- Close Button Top Right -->
-            <button type="button" @click="isModalOpen = false"
-                class="absolute top-5 right-5 md:top-6 md:right-6 text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition cursor-pointer z-20">
-                <i class="fa-solid fa-xmark text-sm"></i>
-            </button>
+                <!-- Close Button Top Right -->
+                <button type="button" @click="closeModal()"
+                    class="absolute top-5 right-5 md:top-6 md:right-6 text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition cursor-pointer z-20">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
 
             <!-- Modal Header -->
             <div class="border-b border-slate-100 pb-5 space-y-4">
@@ -476,25 +454,22 @@
                             <i class="fa-solid fa-image mr-1"></i> IMBASAN RESIT FIZIKAL
                         </span>
                         <div class="flex-1 bg-slate-900/5 rounded-xl overflow-hidden relative group flex items-center justify-center min-h-[220px]">
-                            <template x-if="!activeClaim.receipt_image_path">
-                                <div class="flex flex-col items-center justify-center text-slate-400 p-6 text-center">
-                                    <i class="fa-solid fa-receipt text-4xl mb-3 opacity-30"></i>
-                                    <span class="text-xs font-bold uppercase tracking-wider block mb-1">No Physical Receipt Uploaded</span>
-                                    <span class="text-[10px]">(Demo Record)</span>
-                                </div>
-                            </template>
-                            <template x-if="activeClaim.receipt_image_path">
-                                <div class="w-full h-full relative flex items-center justify-center group p-2">
-                                    <img :src="'/files/' + activeClaim.receipt_image_path"
-                                        @click="modalPreviewSrc = '/files/' + activeClaim.receipt_image_path; isHistoryModalOpen = true"
-                                        class="max-w-full max-h-[350px] object-contain rounded-lg shadow-xs cursor-zoom-in">
-                                    <button type="button"
-                                        @click="modalPreviewSrc = '/files/' + activeClaim.receipt_image_path; isHistoryModalOpen = true"
-                                        class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-200 text-white font-bold text-xs gap-1.5 backdrop-blur-xs cursor-zoom-in">
-                                        <i class="fa-solid fa-magnifying-glass-plus"></i> View Raw Asset Image
-                                    </button>
-                                </div>
-                            </template>
+                            <div x-show="!getReceiptUrl(activeClaim) || imageFailed" class="flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+                                <i class="fa-solid fa-receipt text-4xl mb-3 opacity-30"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider block mb-1">No Physical Receipt Available</span>
+                                <span class="text-[10px] text-slate-400">Preview asset not found or not required</span>
+                            </div>
+                            <div x-show="getReceiptUrl(activeClaim) && !imageFailed" class="w-full h-full relative flex items-center justify-center group p-2">
+                                <img :src="getReceiptUrl(activeClaim)"
+                                    x-on:error="imageFailed = true"
+                                    @click="modalPreviewSrc = getReceiptUrl(activeClaim); isHistoryModalOpen = true"
+                                    class="max-w-full max-h-[350px] object-contain rounded-lg shadow-xs cursor-zoom-in">
+                                <button type="button"
+                                    @click="modalPreviewSrc = getReceiptUrl(activeClaim); isHistoryModalOpen = true"
+                                    class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-200 text-white font-bold text-xs gap-1.5 backdrop-blur-xs cursor-zoom-in">
+                                    <i class="fa-solid fa-magnifying-glass-plus"></i> View Raw Asset Image
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -532,7 +507,7 @@
                         class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold rounded-xl text-xs tracking-wide transition flex items-center gap-1.5">
                         <i class="fa-solid fa-file-pdf text-rose-600"></i> Download PDF
                     </a>
-                    <button type="button" @click="isModalOpen = false"
+                    <button type="button" @click="closeModal()"
                         class="px-5 py-2 bg-slate-900 text-white font-bold rounded-xl text-xs tracking-wide hover:bg-slate-800 transition-all cursor-pointer">
                         Close Window
                     </button>
@@ -541,45 +516,105 @@
 
         </div>
     </div>
-    <!-- Zoom Preview Modal -->
-    <div x-show="isHistoryModalOpen" x-cloak
-        class="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs transition-all duration-300">
-        <div class="relative bg-white rounded-3xl p-3 max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            @click.away="isHistoryModalOpen = false">
-            <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
-                <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                    <i class="fa-solid fa-receipt mr-1 text-blue-600"></i> Full View Receipt Asset
-                </span>
-                <button type="button" @click="isHistoryModalOpen = false"
-                    class="text-slate-400 hover:text-rose-600 transition-all text-lg cursor-pointer p-1">
-                    <i class="fa-solid fa-circle-xmark"></i>
-                </button>
-            </div>
-            <div class="p-2 bg-slate-50 rounded-2xl overflow-y-auto flex-1 flex justify-center items-center min-h-0">
-                <img :src="modalPreviewSrc" alt="Receipt Full Modal View"
-                    class="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xs">
+    </template>
+
+    <!-- Zoom Preview Modal (Teleported to root body) -->
+    <template x-teleport="body">
+        <div x-show="isHistoryModalOpen" x-cloak
+            class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs transition-all duration-300"
+            style="display: none;">
+            <div class="relative bg-white rounded-3xl p-3 max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                @click.away="isHistoryModalOpen = false">
+                <div class="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                        <i class="fa-solid fa-receipt mr-1 text-blue-600"></i> Full View Receipt Asset
+                    </span>
+                    <button type="button" @click="isHistoryModalOpen = false"
+                        class="text-slate-400 hover:text-rose-600 transition-all text-lg cursor-pointer p-1">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </button>
+                </div>
+                <div class="p-2 bg-slate-50 rounded-2xl overflow-y-auto flex-1 flex justify-center items-center min-h-0">
+                    <img :src="modalPreviewSrc" alt="Receipt Full Modal View"
+                        class="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xs">
+                </div>
             </div>
         </div>
-    </div>
+    </template>
 </div>
 
 @push('scripts')
     <script>
-        function historyManager() {
-            return {
-                avgManagerTat: {{ $avgManagerTat ?? 48 }},
-                avgFinanceTat: {{ $avgFinanceTat ?? 72 }},
-                isMobileSidebarOpen: false,
-                isModalOpen: false,
-                activeClaim: {},
-                isHistoryModalOpen: false,
-                modalPreviewSrc: '',
-                openDetailModal(claimData) {
-                    this.activeClaim = claimData;
-                    this.isModalOpen = true;
+        (function() {
+            const initHistoryManager = () => {
+                const historyManagerData = () => ({
+                    claimsById: @json($claims->keyBy('claim_id')),
+                    avgManagerTat: {{ $avgManagerTat ?? 48 }},
+                    avgFinanceTat: {{ $avgFinanceTat ?? 72 }},
+                    isMobileSidebarOpen: false,
+                    isModalOpen: false,
+                    isDetailOpen: false,
+                    isOpen: false,
+                    imageFailed: false,
+                    activeClaim: {},
+                    isHistoryModalOpen: false,
+                    modalPreviewSrc: '',
+                    getReceiptUrl(claim) {
+                        if (!claim) return '';
+                        let p = claim.receipt_image_path || claim.receipt_path || '';
+                        if (!p) return '';
+                        if (p.startsWith('http://') || p.startsWith('https://')) return p;
+                        p = p.replace(/^\/+/, '');
+                        if (p.startsWith('storage/')) {
+                            return '/' + p;
+                        }
+                        return '/files/' + p;
+                    },
+                    openDetailModal(claimOrId) {
+                        let claim = (typeof claimOrId === 'object' && claimOrId !== null)
+                            ? claimOrId
+                            : (this.claimsById[claimOrId] || {});
+
+                        if (typeof claim.fraud_flags === 'string') {
+                            try {
+                                claim.fraud_flags = JSON.parse(claim.fraud_flags);
+                            } catch (e) {
+                                claim.fraud_flags = [];
+                            }
+                        }
+                        if (!Array.isArray(claim.fraud_flags)) {
+                            claim.fraud_flags = [];
+                        }
+
+                        this.imageFailed = false;
+                        this.activeClaim = claim;
+                        this.isModalOpen = true;
+                        this.isDetailOpen = true;
+                        this.isOpen = true;
+                    },
+                    openModal(claimOrId) {
+                        this.openDetailModal(claimOrId);
+                    },
+                    closeModal() {
+                        this.isModalOpen = false;
+                        this.isDetailOpen = false;
+                        this.isOpen = false;
+                    }
+                });
+
+                window.historyManager = historyManagerData;
+
+                if (window.Alpine) {
+                    Alpine.data('historyManager', historyManagerData);
+                } else {
+                    document.addEventListener('alpine:init', () => {
+                        Alpine.data('historyManager', historyManagerData);
+                    });
                 }
-            }
-        }
+            };
+
+            initHistoryManager();
+        })();
     </script>
 @endpush
 @endsection

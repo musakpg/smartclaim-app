@@ -75,6 +75,21 @@ class FileAccessController extends Controller
             return response()->file(Storage::disk('public')->path($path));
         }
 
+        // Check alternate image extensions (.jpg <-> .png <-> .jpeg)
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $altExts = ['png', 'jpg', 'jpeg'];
+        $basePathWithoutExt = preg_replace('/\.[^.]+$/', '', $path);
+        foreach ($altExts as $alt) {
+            if ($alt === $ext) continue;
+            $altCandidate = $basePathWithoutExt . '.' . $alt;
+            if (Storage::disk('private')->exists($altCandidate)) {
+                return response()->file(Storage::disk('private')->path($altCandidate));
+            }
+            if (Storage::disk('public')->exists($altCandidate)) {
+                return response()->file(Storage::disk('public')->path($altCandidate));
+            }
+        }
+
         abort(404, 'File not found on storage disk.');
     }
 }

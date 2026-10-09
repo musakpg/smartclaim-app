@@ -22,12 +22,12 @@
     x-transition:leave="transition-opacity ease-linear duration-150" 
     x-transition:leave-start="opacity-100"
     x-transition:leave-end="opacity-0" 
-    class="fixed inset-0 bg-slate-900/80 z-[55] lg:hidden backdrop-blur-sm" 
+    class="fixed inset-0 bg-slate-900/80 z-30 lg:hidden backdrop-blur-sm" 
     @click="isMobileSidebarOpen = false"></div>
 
 <!-- Manager Sidebar Navigation -->
 <aside x-cloak
-    class="w-64 bg-[#0d1527] text-slate-300 min-h-screen flex flex-col border-r border-slate-800 shrink-0 font-sans select-none fixed lg:static top-0 bottom-0 left-0 z-[60] transform transition-transform duration-200 ease-in-out -translate-x-full lg:translate-x-0"
+    class="w-64 bg-[#0d1527] text-slate-300 min-h-screen flex flex-col border-r border-slate-800 shrink-0 font-sans select-none fixed lg:static top-0 bottom-0 left-0 z-40 lg:z-30 transform transition-transform duration-200 ease-in-out -translate-x-full lg:translate-x-0"
     :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
 
     <!-- Brand Header -->
