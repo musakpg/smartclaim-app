@@ -52,12 +52,12 @@ class AuthController extends Controller
         ]);
 
         // Official Laravel authentication mechanism integrated with Bcrypt hashing
-        if (Auth::attempt($credentials)) {
+        if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $user = Auth::user();
 
             // Check if user account is deactivated
             if (isset($user->is_active) && !$user->is_active) {
-                Auth::logout();
+                Auth::guard('web')->logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
@@ -388,7 +388,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         // Clear corporate user state from authentication guard memory context
-        Auth::logout();
+        Auth::guard('web')->logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

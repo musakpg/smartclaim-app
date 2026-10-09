@@ -54,6 +54,13 @@
             </div>
         @endif
 
+        @if(session('warning'))
+            <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-semibold flex items-center gap-2.5 shadow-sm">
+                <i class="fa-solid fa-triangle-exclamation text-amber-600 text-base flex-shrink-0"></i>
+                <span>{{ session('warning') }}</span>
+            </div>
+        @endif
+
         <form action="/login/process" method="POST" class="space-y-5">
             
             @csrf

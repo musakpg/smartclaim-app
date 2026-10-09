@@ -26,5 +26,45 @@ class Handler extends ExceptionHandler
         $this->reportable(function (Throwable $e) {
             //
         });
+
+        $this->renderable(function (\Illuminate\Session\TokenMismatchException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Your session expired. Please log in again.',
+                ], 419);
+            }
+
+            return redirect()->route('login')->with('warning', 'Your session expired. Please log in again.');
+        });
+
+        $this->renderable(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, $request) {
+            if ($e->getStatusCode() === 419 || $e->getPrevious() instanceof \Illuminate\Session\TokenMismatchException) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'message' => 'Your session expired. Please log in again.',
+                    ], 419);
+                }
+
+                return redirect()->route('login')->with('warning', 'Your session expired. Please log in again.');
+            }
+        });
+    }
+
+    /**
+     * Render an exception into an HTTP response.
+     */
+    public function render($request, Throwable $e)
+    {
+        if ($e instanceof \Illuminate\Session\TokenMismatchException || ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException && $e->getStatusCode() === 419)) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Your session expired. Please log in again.',
+                ], 419);
+            }
+
+            return redirect()->route('login')->with('warning', 'Your session expired. Please log in again.');
+        }
+
+        return parent::render($request, $e);
     }
 }
