@@ -3,7 +3,43 @@
 **Project:** SmartClaim Enterprise Expense & Mileage Claim Management System  
 **Platform:** Laravel 10 / PHP 8.1 / MySQL / TailwindCSS / Alpine.js  
 **Scope:** Full-System Autonomous Architecture, Audit Exception Engine, SLA Analytics, Staff Resubmission & Cancellation Lifecycle, and Automated Regression Test Suite  
-**Last Updated:** October 7, 2026  
+**Last Updated:** October 10, 2026  
+
+---
+
+## [Unreleased] - 2026-10-10
+
+### Added
+- Isolated Read-Only Demo Environment:
+  * Schema migration adding indexed `is_demo` flag to `users` and `claims` tables.
+  * `RestrictDemoMode` middleware intercepting mutating HTTP requests (`POST`, `PUT`, `PATCH`, `DELETE`) with session flash warnings and JSON 403 API responses.
+  * Standardized simulated OCR payload bypass in `ReceiptOcrService` to conserve Google Cloud Vision API quotas.
+- Realistic Demo Seed Data:
+  * Bundled real physical receipt samples (`resit_1.jpeg`, `resit_2.jpeg`, `resit_8.jpeg`) in `storage/app/public/receipts/`.
+  * Pre-configured demo accounts (`demo-staff`, `demo-finance`, `demo-manager` with password `demo1234`).
+  * Registered and verified active demo vehicle (`Proton X50 1.5 TGDi`, Plate: `VCE 2024`) in `DemoSeeder` for immediate testing of Mileage Allowance and Google Distance Matrix calculations.
+- AI Continuous Learning & Evaluation Pipeline:
+  * Created `ai_feedback` table and `AiFeedback` model to automatically record discrepancies when staff adjust AI OCR predictions.
+  * Dynamic model evaluation logic in `ModelEvaluationController` computing accuracy, precision, recall, macro F1, and multi-class confusion matrices.
+  * Retraining dataset export endpoints (`/manager/model-evaluation/export`) supporting CSV and JSON downloads.
+- Sandbox UI Polishing:
+  * Universal demo top banner (`resources/views/layouts/partials/demo-banner.blade.php`) integrated across all layout wrappers and administrative portals.
+  * Informational sandbox notice in the receipt submission view clarifying mock OCR extraction.
+  * Evaluation metadata footer (`SmartClaim v1.0.0-rc`) and technical support channel (`smartclaim.aeroart@gmail.com`) on the login screen.
+
+### Fixed
+- Recurring HTTP 419 "Page Expired" on Login & Logout:
+  * Enforced strict session invalidation (`invalidate()`) and token regeneration (`regenerateToken()`) during logout, with explicit `Auth::guard('web')->logout()`.
+  * Ensured immediate session regeneration (`$request->session()->regenerate()`) upon successful authentication in `AuthController::processLogin()`.
+  * Verified native POST forms with active `@csrf` directives on all portal sidebars (`staff-sidebar`, `manager-sidebar`, `finance-sidebar`).
+  * Global interception of `\Illuminate\Session\TokenMismatchException` and HTTP 419 in `app/Exceptions/Handler.php`, seamlessly redirecting expired web sessions to `route('login')` with an informational warning notification.
+- Resolved claim review and detail audit modal null reference crashes by implementing defensive accessors (`receipt_path`, `receipt_hash`) in the `Claim` model and ensuring receipt assets resolve with valid HTTP 200 URLs.
+- Resolved HTTP 500 error (`View [manager.model-evaluation] not found`) resulting from Linux ext4 case-sensitivity (`Model-evaluation.blade.php` -> `model-evaluation.blade.php`).
+- Corrected missing demo warning banners across manager expense policies, category settings, and report dashboards.
+
+### Verification
+- Added automated feature tests in `DemoModeTest`, `ModelEvaluationTest`, and `AuthenticationAndRbacTest`.
+- Entire test suite verified: 55 passing tests (236 assertions) with 100% pass rate.
 
 ---
 
