@@ -55,4 +55,7 @@
         @endif
     @endforeach
 </nav>
+
+{{-- SmartClaim AI Conversational Chatbot Widget --}}
+<x-chatbot-widget />
 @endauth

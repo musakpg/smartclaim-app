@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 // Authentication & Core Gateways
+use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FileAccessController;
@@ -217,6 +218,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/notifications/latest', [NotificationController::class, 'fetchLatest'])->name('notifications.latest');
     Route::post('/api/notifications/mark-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark_read');
     Route::post('/push-subscriptions', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
+
+    // AI Conversational Chatbot Assistant
+    Route::post('/chatbot/message', [ChatbotController::class, 'sendMessage'])->name('chatbot.message');
+    Route::post('/chatbot/reset', [ChatbotController::class, 'resetSession'])->name('chatbot.reset');
 });
 
 
