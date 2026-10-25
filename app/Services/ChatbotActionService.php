@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Claim;
 use App\Models\User;
+use App\Models\Vehicle;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -96,8 +97,42 @@ class ChatbotActionService
             $imageHash = hash('sha256', ($user->user_id ?? $user->id) . '|' . $merchantName . '|' . $amount . '|' . microtime(true));
         }
 
-        // Policy & Budget Cap Verification
+        // Fuel / Automotive Vehicle Compliance Handling
         $currentUserId = (int) ($user->user_id ?? $user->id);
+        $vehiclePlate = trim($args['vehicle_plate'] ?? $args['vehicle_plate_number'] ?? '');
+        $vehicleId = !empty($args['vehicle_id']) ? (int) $args['vehicle_id'] : null;
+
+        $isFuelOrAutomotive = in_array(strtolower($categoryName), ['fuel / automotive', 'fuel', 'automotive', 'petrol', 'fuel & fleet logistics (corporate fleet / petrol)'])
+            || str_contains(strtolower($categoryName), 'fuel')
+            || str_contains(strtolower($categoryName), 'petrol');
+
+        if (!empty($vehiclePlate) && !$vehicleId) {
+            $cleanPlate = str_replace(' ', '', strtoupper($vehiclePlate));
+            $matchedVehicle = Vehicle::whereRaw("REPLACE(UPPER(plate_number), ' ', '') = ?", [$cleanPlate])->first();
+            if ($matchedVehicle) {
+                $vehicleId = $matchedVehicle->vehicle_id;
+                $vehiclePlate = $matchedVehicle->plate_number;
+            }
+        } elseif ($vehicleId && empty($vehiclePlate)) {
+            $matchedVehicle = Vehicle::find($vehicleId);
+            if ($matchedVehicle) {
+                $vehiclePlate = $matchedVehicle->plate_number;
+            }
+        }
+
+        // If fuel claim and vehicle plate is missing, enforce compliance if user has registered vehicles
+        if ($isFuelOrAutomotive && empty($vehiclePlate) && empty($vehicleId)) {
+            $userVehicles = Vehicle::where('user_id', $currentUserId)->where('status', 'Active')->get();
+            if ($userVehicles->isNotEmpty()) {
+                $platesList = $userVehicles->pluck('plate_number')->implode(', ');
+                return [
+                    'status' => 'error',
+                    'message' => "Vehicle Compliance Required: Fuel claims must specify which registered vehicle plate was used ({$platesList}).",
+                ];
+            }
+        }
+
+        // Policy & Budget Cap Verification
         $policyCheck = BudgetEnforcementService::checkPolicy(
             $currentUserId,
             $categoryName,
@@ -105,9 +140,11 @@ class ChatbotActionService
         );
 
         // Atomic Database Transaction for Claim Persistence
-        $claim = DB::transaction(function () use ($user, $currentUserId, $merchantName, $targetDate, $amount, $categoryName, $categoryId, $description, $imagePath, $imageHash, $policyCheck) {
+        $claim = DB::transaction(function () use ($user, $currentUserId, $merchantName, $targetDate, $amount, $categoryName, $categoryId, $description, $imagePath, $imageHash, $policyCheck, $vehicleId, $vehiclePlate) {
             $claim = Claim::create([
                 'user_id' => $currentUserId,
+                'vehicle_id' => $vehicleId,
+                'vehicle_plate_number' => $vehiclePlate ?: null,
                 'claim_type' => 'Receipt',
                 'title' => 'Claim at ' . $merchantName,
                 'merchant_name' => $merchantName,
@@ -140,6 +177,7 @@ class ChatbotActionService
                     'type' => 'Receipt',
                     'amount' => $amount,
                     'merchant' => $merchantName,
+                    'vehicle_plate' => $vehiclePlate ?: null,
                     'submission_mode' => 'AI Chatbot Assistant',
                     'is_violation' => $policyCheck['is_violation'],
                 ],
@@ -166,11 +204,13 @@ class ChatbotActionService
             'amount' => (float) $claim->amount,
             'category' => $claim->predicted_category,
             'transaction_date' => $claim->transaction_date ? $claim->transaction_date->format('Y-m-d') : $targetDate,
+            'vehicle_plate' => $claim->vehicle_plate_number,
+            'vehicle_id' => $claim->vehicle_id,
             'is_policy_violation' => (bool) $claim->is_policy_violation,
             'policy_reason' => $claim->policy_violation_reason,
             'receipt_path' => $claim->receipt_image_path,
             'receipt_preview' => !empty($sessionReceipt['base64_data']) ? "data:{$sessionReceipt['mime_type']};base64,{$sessionReceipt['base64_data']}" : null,
-            'message' => "Claim voucher #CLM-{$claim->claim_id} for RM " . number_format($amount, 2) . " at {$merchantName} has been successfully created and submitted for audit.",
+            'message' => "Claim voucher #CLM-{$claim->claim_id} for RM " . number_format($amount, 2) . " at {$merchantName}" . ($claim->vehicle_plate_number ? " (Vehicle: {$claim->vehicle_plate_number})" : "") . " has been successfully created and submitted for audit.",
         ];
     }
 

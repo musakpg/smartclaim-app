@@ -81,6 +81,16 @@ class ChatbotController extends Controller
 
         $history = session('chatbot_history', []);
         $sessionReceipt = session('chatbot_last_receipt');
+        $uiMessages = session('chatbot_ui_messages', []);
+
+        $userUiMessage = [
+            'id' => (int) (microtime(true) * 1000),
+            'sender' => 'user',
+            'text' => $userMessage ?? 'Uploaded receipt image',
+            'timestamp' => now()->format('h:i A'),
+            'image_preview' => $receiptAttachment ? "data:{$receiptAttachment['mime_type']};base64,{$receiptAttachment['base64_data']}" : null,
+            'action' => null,
+        ];
 
         try {
             $result = $this->geminiService->chat(
@@ -93,6 +103,19 @@ class ChatbotController extends Controller
             // Retain sanitized conversation history in session
             session(['chatbot_history' => $result['history']]);
 
+            $botUiMessage = [
+                'id' => (int) (microtime(true) * 1000) + 1,
+                'sender' => 'bot',
+                'text' => $result['reply'],
+                'timestamp' => now()->format('h:i A'),
+                'action' => $result['action_executed'],
+                'is_error' => false,
+            ];
+
+            $uiMessages[] = $userUiMessage;
+            $uiMessages[] = $botUiMessage;
+            session(['chatbot_ui_messages' => $uiMessages]);
+
             return response()->json([
                 'status' => 'success',
                 'reply' => $result['reply'],
@@ -103,6 +126,19 @@ class ChatbotController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
+            $botUiMessage = [
+                'id' => (int) (microtime(true) * 1000) + 1,
+                'sender' => 'bot',
+                'text' => 'I encountered an error connecting to the Gemini AI service (' . $e->getMessage() . '). Please try again in a moment.',
+                'timestamp' => now()->format('h:i A'),
+                'action' => null,
+                'is_error' => true,
+            ];
+
+            $uiMessages[] = $userUiMessage;
+            $uiMessages[] = $botUiMessage;
+            session(['chatbot_ui_messages' => $uiMessages]);
+
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage(),
@@ -111,11 +147,30 @@ class ChatbotController extends Controller
     }
 
     /**
+     * Retrieve the current session's UI conversation turns and active receipt thumbnail.
+     */
+    public function getHistory(Request $request): JsonResponse
+    {
+        $uiMessages = session('chatbot_ui_messages', []);
+        $sessionReceipt = session('chatbot_last_receipt');
+        $receiptPreview = !empty($sessionReceipt['base64_data']) && !empty($sessionReceipt['mime_type'])
+            ? "data:{$sessionReceipt['mime_type']};base64,{$sessionReceipt['base64_data']}"
+            : null;
+
+        return response()->json([
+            'status' => 'success',
+            'messages' => $uiMessages,
+            'has_active_receipt' => !empty($sessionReceipt),
+            'session_receipt_preview' => $receiptPreview,
+        ]);
+    }
+
+    /**
      * Clear and reset the conversation history for the current session.
      */
     public function resetSession(Request $request): JsonResponse
     {
-        $request->session()->forget(['chatbot_history', 'chatbot_last_receipt']);
+        $request->session()->forget(['chatbot_history', 'chatbot_last_receipt', 'chatbot_ui_messages']);
 
         return response()->json([
             'status' => 'success',

@@ -220,6 +220,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/push-subscriptions', [PushSubscriptionController::class, 'store'])->name('push.subscribe');
 
     // AI Conversational Chatbot Assistant
+    Route::get('/chatbot/history', [ChatbotController::class, 'getHistory'])->name('chatbot.history');
     Route::post('/chatbot/message', [ChatbotController::class, 'sendMessage'])->name('chatbot.message');
     Route::post('/chatbot/reset', [ChatbotController::class, 'resetSession'])->name('chatbot.reset');
 });

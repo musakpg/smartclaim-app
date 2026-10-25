@@ -559,6 +559,32 @@
                     activeClaim: {},
                     isHistoryModalOpen: false,
                     modalPreviewSrc: '',
+                    init() {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const targetClaimId = urlParams.get('claim_id');
+                        if (targetClaimId) {
+                            if (this.claimsById && this.claimsById[targetClaimId]) {
+                                this.$nextTick(() => {
+                                    this.openDetailModal(targetClaimId);
+                                });
+                            } else {
+                                fetch('{{ route("claims.history") }}', {
+                                    headers: { 'Accept': 'application/json' }
+                                })
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (Array.isArray(data)) {
+                                        const found = data.find(c => String(c.claim_id) === String(targetClaimId));
+                                        if (found) {
+                                            this.claimsById[targetClaimId] = found;
+                                            this.openDetailModal(found);
+                                        }
+                                    }
+                                })
+                                .catch(() => {});
+                            }
+                        }
+                    },
                     getReceiptUrl(claim) {
                         if (!claim) return '';
                         let p = claim.receipt_image_path || claim.receipt_path || '';

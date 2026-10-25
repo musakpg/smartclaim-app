@@ -19,6 +19,7 @@
         roleBadge: '{{ $roleBadge }}',
         csrfToken: '{{ csrf_token() }}',
         messageUrl: '{{ route('chatbot.message') }}',
+        historyUrl: '{{ route('chatbot.history') }}',
         resetUrl: '{{ route('chatbot.reset') }}'
     })"
     class="relative z-50 font-sans"
@@ -102,7 +103,7 @@
         x-transition:leave="transition ease-in duration-150 transform"
         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
         x-transition:leave-end="opacity-0 translate-y-4 scale-98"
-        @keydown.escape.window="isOpen = false"
+        @keydown.escape.window="closeChat()"
         class="fixed bottom-20 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-22 z-50 w-auto sm:w-[420px] max-h-[82vh] h-[580px] flex flex-col bg-white dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
     >
         <!-- Clean Slate Header Bar -->
@@ -142,7 +143,7 @@
                 <!-- Close Modal -->
                 <button 
                     type="button" 
-                    @click="isOpen = false" 
+                    @click="closeChat()" 
                     title="Close"
                     class="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none"
                     aria-label="Close Chat"
@@ -246,7 +247,7 @@
                                             <div class="pt-1.5 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80">
                                                 <span class="text-[10px] text-slate-400">Submitted for Finance audit</span>
                                                 <a 
-                                                    href="{{ route('claims.history') }}" 
+                                                    :href="'{{ route('claims.history') }}?claim_id=' + (msg.action.data.claim_id || '')" 
                                                     class="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition"
                                                 >
                                                     <span>View Claims History</span>
@@ -417,12 +418,56 @@ function chatbotWidget(config) {
         roleBadge: config.roleBadge || 'Assistant',
         csrfToken: config.csrfToken,
         messageUrl: config.messageUrl,
+        historyUrl: config.historyUrl,
         resetUrl: config.resetUrl,
         quickChips: [],
 
         init() {
-            this.setupInitialGreeting();
             this.setupQuickChips();
+
+            const savedIsOpen = sessionStorage.getItem('smartclaim_chatbot_open');
+            if (savedIsOpen === 'true') {
+                this.isOpen = true;
+            }
+
+            const savedUnread = parseInt(sessionStorage.getItem('smartclaim_chatbot_unread') || '0', 10);
+            this.unreadCount = isNaN(savedUnread) ? 0 : savedUnread;
+
+            this.loadHistory();
+        },
+
+        async loadHistory() {
+            try {
+                if (!this.historyUrl) {
+                    this.setupInitialGreeting();
+                    return;
+                }
+
+                const res = await fetch(this.historyUrl, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!res.ok) {
+                    this.setupInitialGreeting();
+                    return;
+                }
+
+                const data = await res.json();
+                if (data && data.status === 'success' && Array.isArray(data.messages) && data.messages.length > 0) {
+                    this.messages = data.messages;
+                    if (data.session_receipt_preview) {
+                        this.sessionReceiptPreview = data.session_receipt_preview;
+                    }
+                    this.scrollToBottom();
+                } else {
+                    this.setupInitialGreeting();
+                }
+            } catch (e) {
+                this.setupInitialGreeting();
+            }
         },
 
         setupInitialGreeting() {
@@ -467,8 +512,10 @@ function chatbotWidget(config) {
 
         toggleOpen() {
             this.isOpen = !this.isOpen;
+            sessionStorage.setItem('smartclaim_chatbot_open', this.isOpen ? 'true' : 'false');
             if (this.isOpen) {
                 this.unreadCount = 0;
+                sessionStorage.setItem('smartclaim_chatbot_unread', '0');
                 this.$nextTick(() => {
                     this.scrollToBottom();
                     if (this.$refs.messageInput) {
@@ -476,6 +523,11 @@ function chatbotWidget(config) {
                     }
                 });
             }
+        },
+
+        closeChat() {
+            this.isOpen = false;
+            sessionStorage.setItem('smartclaim_chatbot_open', 'false');
         },
 
         onFileSelected(event) {
@@ -581,6 +633,7 @@ function chatbotWidget(config) {
 
                 if (!this.isOpen) {
                     this.unreadCount++;
+                    sessionStorage.setItem('smartclaim_chatbot_unread', String(this.unreadCount));
                 }
 
             } catch (err) {
@@ -615,6 +668,8 @@ function chatbotWidget(config) {
                 // Ignore failure on reset
             }
 
+            sessionStorage.removeItem('smartclaim_chatbot_open');
+            sessionStorage.removeItem('smartclaim_chatbot_unread');
             this.setupInitialGreeting();
             this.removeSelectedFile();
             this.sessionReceiptPreview = null;
@@ -677,7 +732,7 @@ function chatbotWidget(config) {
                         formatted.push('</ul>');
                     }
                     if (trimmed.length > 0) {
-                        if (/^(Merchant|Date|Amount|Category|Purpose|Peniaga|Tarikh|Jumlah|Kategori|Tujuan):/i.test(trimmed)) {
+                        if (/^(Merchant|Date|Amount|Category|Purpose|Vehicle Plate|Peniaga|Tarikh|Jumlah|Kategori|Tujuan|Plat Kenderaan):/i.test(trimmed)) {
                             formatted.push('<p class="font-mono text-[11px] leading-tight py-0.5 text-slate-700 dark:text-slate-300 font-medium">' + trimmed + '</p>');
                         } else {
                             formatted.push('<p class="mb-1 last:mb-0 leading-normal">' + trimmed + '</p>');
@@ -758,11 +813,11 @@ function chatbotWidget(config) {
         },
 
         editDetails(text) {
-            const lines = String(text).split('\n').filter(l => /^(Merchant|Date|Amount|Category|Purpose|Peniaga|Tarikh|Jumlah|Kategori|Tujuan):/i.test(l.trim()));
+            const lines = String(text).split('\n').filter(l => /^(Merchant|Date|Amount|Category|Purpose|Vehicle Plate|Peniaga|Tarikh|Jumlah|Kategori|Tujuan|Plat Kenderaan):/i.test(l.trim()));
             if (lines.length > 0) {
-                this.userInput = 'Please submit this claim with the following details:\n' + lines.map(l => l.trim()).join('\n');
+                this.userInput = 'Here are my updated claim details for review:\n' + lines.map(l => l.trim()).join('\n');
             } else {
-                this.userInput = text;
+                this.userInput = 'Here are my updated claim details for review:\n' + text;
             }
             this.$nextTick(() => {
                 if (this.$refs.messageInput) {

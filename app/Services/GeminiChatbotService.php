@@ -378,6 +378,14 @@ class GeminiChatbotService
                                     'type' => 'string',
                                     'description' => 'Business purpose or justification for the expenditure.',
                                 ],
+                                'vehicle_plate' => [
+                                    'type' => 'string',
+                                    'description' => 'Vehicle registration plate number for Fuel / Automotive / Mileage expenses (e.g., "JKE 1234" or "VCE 2024"). Required for fuel and fleet claims.',
+                                ],
+                                'vehicle_id' => [
+                                    'type' => 'integer',
+                                    'description' => 'Optional numeric ID of the registered vehicle.',
+                                ],
                             ],
                             'required' => ['category', 'amount', 'merchant_name', 'description'],
                         ],
@@ -444,6 +452,19 @@ class GeminiChatbotService
         $userName = $user ? $user->name : 'Valued Employee';
         $userRole = $user ? strtolower(trim($user->role ?? 'staff')) : 'staff';
 
+        $registeredVehicles = collect();
+        if ($user && method_exists($user, 'vehicles')) {
+            $registeredVehicles = $user->vehicles()->where('status', 'Active')->get();
+        }
+
+        if ($registeredVehicles->isNotEmpty()) {
+            $vehiclesSummary = $registeredVehicles->map(function ($v) {
+                return "- Plate: {$v->plate_number} ({$v->brand_model}, Status: {$v->approval_status})";
+            })->implode("\n");
+        } else {
+            $vehiclesSummary = "- No registered active vehicles found for this user.";
+        }
+
         $roleSpecificGuidance = match ($userRole) {
             'manager' => "- Assisting Executive Manager ({$userName}). They have authority to execute `final_approve_claim` and view all claims with `check_claim_status`. Prioritize financial summaries and approval actions.",
             'finance', 'fin' => "- Assisting Finance Officer ({$userName}). They have authority to execute `pre_approve_claim` on pending claims and inspect all records with `check_claim_status`.",
@@ -470,12 +491,33 @@ Amount: RM [0.00]
 Category: [Recommended Category]
 Purpose: [Suggested Business Purpose]
 
+(If category is Fuel / Automotive, also include:
+Vehicle Plate: [Plate number or Unspecified])
+
 Then ask the user to verify these details before submission.
 3. If the user confirms (e.g. "Yes", "Proceed", "Submit this claim", or clicks Proceed & Submit), invoke `submit_claim` with the verified parameters.
 4. If a Finance officer requests to audit or pre-approve a claim, invoke `pre_approve_claim`.
 5. If a Manager requests to approve a claim, invoke `final_approve_claim`.
 6. If the user asks about claim status, invoke `check_claim_status`.
 7. Never fabricate claim IDs. Explain any policy constraints cleanly.
+
+Vehicle Compliance for Fuel / Automotive Claims:
+- Current User Registered Vehicles:
+{$vehiclesSummary}
+- When the claim category is 'Fuel / Automotive' (or related to petrol, fleet, fuel, mileage, or vehicle repairs):
+  1. Fuel compliance strictly requires linking a valid registered vehicle plate number.
+  2. If the user provides a receipt for fuel/petrol or asks for a fuel claim, and NO vehicle plate number is detected in their message or on the receipt:
+     - DO NOT invoke `submit_claim` yet.
+     - In your response text, output the structured details with 'Vehicle Plate: [Unspecified]', and explicitly ask the staff member which of their registered vehicles was used for this expenditure (e.g. 'Which registered vehicle did you use for this fuel expenditure? Your registered vehicles: ...').
+     - Output Action chips for their registered plate(s) (e.g. '⚡ Action: I used vehicle JKE 1234').
+  3. Once the staff specifies or confirms the vehicle plate, include `vehicle_plate` (e.g. 'JKE 1234') when calling `submit_claim`.
+
+Safe Edit-Review Confirmation Cycle:
+- When a user provides updated or edited claim details (e.g. starting with 'Here are my updated claim details for review:' or providing modified fields):
+  1. NEVER immediately invoke `submit_claim`.
+  2. Output the updated structured review summary with all details.
+  3. Ask the user for their final confirmation (e.g. 'Please confirm if these updated details look correct, or click Proceed & Submit Claim.').
+  4. Only call `submit_claim` when the user explicitly clicks 'Proceed & Submit Claim' or says 'Confirm and submit' or 'Yes, proceed'.
 
 Follow-up Questions & User Action Chips:
 - At the end of your response, you may naturally ask 1 helpful follow-up question directly in your text (e.g., "Would you like me to guide you through submitting a new receipt?" or "Adakah anda ingin saya semak baki had bajet bulanan anda?").
@@ -580,7 +622,7 @@ TEXT;
         $voucher = $result['voucher_no'] ?? (!empty($result['claim_id']) ? "CLM-{$result['claim_id']}" : '');
 
         return match ($toolName) {
-            'submit_claim' => ($voucher ? "{$voucher} " : "") . "submitted for audit",
+            'submit_claim' => ($voucher ? "{$voucher} " : "") . "submitted for audit" . (!empty($result['vehicle_plate']) ? " ({$result['vehicle_plate']})" : ""),
             'check_claim_status' => "Claim status verified",
             'pre_approve_claim' => ($voucher ? "{$voucher} " : "") . "pre-approved by Finance",
             'final_approve_claim' => ($voucher ? "{$voucher} " : "") . "approved by Management",
