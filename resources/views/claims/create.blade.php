@@ -524,9 +524,6 @@
                         </div>
                     </form>
                 </div>
-            </div>
-        </main>
-    </div>
 
     <!-- Image Full Modal Preview -->
     <div x-show="isModalOpen" x-cloak
@@ -720,48 +717,8 @@
                         });
                     }
 
-                    this.('date', value => {
-                        if (this.receiptPicker && value) {
-                            this.receiptPicker.setDate(value, false);
-                        }
-                    });
-
-                    this.initFlatpickrDatePickers();
-
                     // Always call init logic; the loader handles async map loading
                     this.initGoogleMapsDependentLogic();
-                },
-
-                initFlatpickrDatePickers() {
-                    if (typeof flatpickr !== 'undefined') {
-                        const receiptDateEl = document.getElementById('receipt_transaction_date');
-                        if (receiptDateEl) {
-                            this.receiptPicker = flatpickr(receiptDateEl, {
-                                dateFormat: "Y-m-d",
-                                altInput: true,
-                                altFormat: "d/m/Y",
-                                maxDate: "today",
-                                static: true, // Anchors the calendar popup directly below the input wrapper
-                                disableMobile: true, // Prevents OS picker interference if using styled Flatpickr
-                                onChange: (selectedDates, dateStr) => {
-                                    this.date = dateStr;
-                                    this.(() => { this.checkDuplicateAndPopup(); });
-                                }
-                            });
-                        }
-
-                        const mileageDateEl = document.getElementById('mileage_transaction_date');
-                        if (mileageDateEl) {
-                            this.mileagePicker = flatpickr(mileageDateEl, {
-                                dateFormat: "Y-m-d",
-                                altInput: true,
-                                altFormat: "d/m/Y",
-                                maxDate: "today",
-                                static: true, // Anchors the calendar popup directly below the input wrapper
-                                disableMobile: true,
-                            });
-                        }
-                    }
                 },
 
                 initGoogleMapsDependentLogic() {

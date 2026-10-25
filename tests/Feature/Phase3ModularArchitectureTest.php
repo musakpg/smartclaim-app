@@ -183,4 +183,40 @@ class Phase3ModularArchitectureTest extends TestCase
         $response2 = $this->actingAs($staff)->get(route('claims.download_pdf', ['id' => $claim->claim_id]));
         $response2->assertStatus(200);
     }
+
+    public function test_claims_create_page_renders_receipt_and_mileage_forms_completely(): void
+    {
+        $staff = User::factory()->create(['role' => 'Staff']);
+
+        // 1. Receipt form inspection
+        $responseReceipt = $this->actingAs($staff)->get(route('claims.create', ['type' => 'Receipt']));
+        $responseReceipt->assertStatus(200);
+        $responseReceipt->assertSee('name="receipt"', false);
+        $responseReceipt->assertSee('name="merchant_name"', false);
+        $responseReceipt->assertSee('name="receipt_invoice_no"', false);
+        $responseReceipt->assertSee('name="location_address"', false);
+        $responseReceipt->assertSee('name="transaction_date"', false);
+        $responseReceipt->assertSee('id="receipt_transaction_date"', false);
+        $responseReceipt->assertSee('id="amount_input"', false);
+        $responseReceipt->assertSee('name="category"', false);
+        $responseReceipt->assertSee('name="business_purpose"', false);
+        $responseReceipt->assertSee('Submit Claim');
+
+        // 2. Mileage form inspection
+        $responseMileage = $this->actingAs($staff)->get(route('claims.create', ['type' => 'Mileage']));
+        $responseMileage->assertStatus(200);
+        $responseMileage->assertSee('name="vehicle_id"', false);
+        $responseMileage->assertSee('id="mileage_vehicle_id"', false);
+        $responseMileage->assertSee('name="title"', false);
+        $responseMileage->assertSee('name="start_location"', false);
+        $responseMileage->assertSee('id="origin"', false);
+        $responseMileage->assertSee('name="destination_location"', false);
+        $responseMileage->assertSee('id="destination"', false);
+        $responseMileage->assertSee('name="mileage_km"', false);
+        $responseMileage->assertSee('id="distance"', false);
+        $responseMileage->assertSee('id="mileage_transaction_date"', false);
+        $responseMileage->assertSee('name="mileage_document"', false);
+        $responseMileage->assertSee('id="mileage_document"', false);
+        $responseMileage->assertSee('Submit Claim');
+    }
 }

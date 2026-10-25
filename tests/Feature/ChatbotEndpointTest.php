@@ -926,19 +926,21 @@ class ChatbotEndpointTest extends TestCase
         $view->assertSee(':max="new Date().toISOString().split(\'T\')[0]"', false);
     }
 
-    public function test_flatpickr_calendar_is_anchored_with_static_and_mobile_disabled(): void
+    public function test_native_datepickers_and_clean_layout_pac_container(): void
     {
         $layout = file_get_contents(resource_path('views/layouts/app.blade.php'));
+        $createView = file_get_contents(resource_path('views/claims/create.blade.php'));
 
-        // Global default options configured
-        $this->assertStringContainsString('static: true', $layout);
-        $this->assertStringContainsString('disableMobile: true', $layout);
-        $this->assertStringContainsString('dateFormat: "d/m/Y"', $layout);
-        $this->assertStringContainsString('altFormat: "d/m/Y"', $layout);
+        // External fragile Flatpickr CDN links removed
+        $this->assertStringNotContainsString('cdn.jsdelivr.net/npm/flatpickr', $layout);
+        $this->assertStringNotContainsString('initFlatpickrDatePickers', $createView);
 
-        // CSS static anchoring & Google Places container rules
-        $this->assertStringContainsString('.flatpickr-calendar.static', $layout);
-        $this->assertStringContainsString('.flatpickr-wrapper', $layout);
+        // Native HTML5 datepickers with max limit configured
+        $this->assertStringContainsString('id="receipt_transaction_date"', $createView);
+        $this->assertStringContainsString('id="mileage_transaction_date"', $createView);
+        $this->assertStringContainsString('max="' . "{{ date('Y-m-d') }}" . '"', $createView);
+
+        // Google Places container rules retained
         $this->assertStringContainsString('.pac-container', $layout);
         $this->assertStringContainsString('z-index: 99999 !important', $layout);
     }
