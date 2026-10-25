@@ -189,10 +189,11 @@
                                 <div class="space-y-1.5">
                                     <label class="block text-xs font-bold text-slate-700 tracking-wide">Transaction
                                         Date</label>
-                                    <input type="date" name="transaction_date" x-model="date"
+                                    <input type="date" name="transaction_date" id="receipt_transaction_date" x-model="date"
                                         @change="checkDuplicateAndPopup()" :required="activeForm === 'Receipt'"
                                         :disabled="activeForm !== 'Receipt'"
-                                        class="w-full px-4 py-2.5 md:py-3 bg-white border border-slate-200 rounded-xl outline-none text-xs md:text-sm shadow-2xs">
+                                        max="{{ date('Y-m-d') }}"
+                                        class="w-full px-4 py-2.5 md:py-3 bg-white border border-slate-200 rounded-xl outline-none text-xs md:text-sm shadow-2xs font-mono">
                                 </div>
 
                                 <div class="space-y-1.5">
@@ -435,8 +436,9 @@
                                 <div class="space-y-1.5">
                                     <label class="block text-xs font-bold text-slate-700 tracking-wide">Date of
                                         Journey</label>
-                                    <input type="date" name="transaction_date" :required="activeForm === 'Mileage'"
+                                    <input type="date" name="transaction_date" id="mileage_transaction_date" :required="activeForm === 'Mileage'"
                                         :disabled="activeForm !== 'Mileage'"
+                                        max="{{ date('Y-m-d') }}"
                                         class="w-full px-4 py-2.5 md:py-3 bg-white border border-slate-200 rounded-xl outline-none font-mono font-bold text-xs md:text-sm shadow-2xs"
                                         value="{{ date('Y-m-d') }}">
                                 </div>
@@ -718,8 +720,48 @@
                         });
                     }
 
+                    this.('date', value => {
+                        if (this.receiptPicker && value) {
+                            this.receiptPicker.setDate(value, false);
+                        }
+                    });
+
+                    this.initFlatpickrDatePickers();
+
                     // Always call init logic; the loader handles async map loading
                     this.initGoogleMapsDependentLogic();
+                },
+
+                initFlatpickrDatePickers() {
+                    if (typeof flatpickr !== 'undefined') {
+                        const receiptDateEl = document.getElementById('receipt_transaction_date');
+                        if (receiptDateEl) {
+                            this.receiptPicker = flatpickr(receiptDateEl, {
+                                dateFormat: "Y-m-d",
+                                altInput: true,
+                                altFormat: "d/m/Y",
+                                maxDate: "today",
+                                static: true, // Anchors the calendar popup directly below the input wrapper
+                                disableMobile: true, // Prevents OS picker interference if using styled Flatpickr
+                                onChange: (selectedDates, dateStr) => {
+                                    this.date = dateStr;
+                                    this.(() => { this.checkDuplicateAndPopup(); });
+                                }
+                            });
+                        }
+
+                        const mileageDateEl = document.getElementById('mileage_transaction_date');
+                        if (mileageDateEl) {
+                            this.mileagePicker = flatpickr(mileageDateEl, {
+                                dateFormat: "Y-m-d",
+                                altInput: true,
+                                altFormat: "d/m/Y",
+                                maxDate: "today",
+                                static: true, // Anchors the calendar popup directly below the input wrapper
+                                disableMobile: true,
+                            });
+                        }
+                    }
                 },
 
                 initGoogleMapsDependentLogic() {

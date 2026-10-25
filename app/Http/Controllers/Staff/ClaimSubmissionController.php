@@ -76,6 +76,19 @@ class ClaimSubmissionController extends Controller
         $vehicleType = null;
         $imagePath = null;
 
+        // Normalize transaction_date if submitted in d/m/Y format (from Flatpickr)
+        if ($request->filled('transaction_date')) {
+            $rawDate = $request->input('transaction_date');
+            if (is_string($rawDate) && preg_match('#^\d{1,2}/\d{1,2}/\d{4}$#', $rawDate)) {
+                try {
+                    $normalizedDate = Carbon::createFromFormat('d/m/Y', $rawDate)->format('Y-m-d');
+                    $request->merge(['transaction_date' => $normalizedDate]);
+                } catch (\Throwable $e) {
+                    // Fallback to raw value
+                }
+            }
+        }
+
         if ($isMileage) {
             $request->validate([
                 'title' => 'required|string|max:255',
@@ -535,6 +548,19 @@ class ClaimSubmissionController extends Controller
         }
 
         $isMileage = $claim->claim_type === 'Mileage';
+
+        // Normalize transaction_date if submitted in d/m/Y format (from Flatpickr)
+        if ($request->filled('transaction_date')) {
+            $rawDate = $request->input('transaction_date');
+            if (is_string($rawDate) && preg_match('#^\d{1,2}/\d{1,2}/\d{4}$#', $rawDate)) {
+                try {
+                    $normalizedDate = Carbon::createFromFormat('d/m/Y', $rawDate)->format('Y-m-d');
+                    $request->merge(['transaction_date' => $normalizedDate]);
+                } catch (\Throwable $e) {
+                    // Fallback to raw value
+                }
+            }
+        }
 
         if ($isMileage) {
             $request->validate([

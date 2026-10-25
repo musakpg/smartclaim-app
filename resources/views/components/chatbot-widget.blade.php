@@ -106,7 +106,9 @@
 
         /* Google Places Autocomplete dropdown z-index elevation above modal */
         .pac-container {
+            position: absolute !important;
             z-index: 99999 !important;
+            max-width: calc(100vw - 2rem) !important;
             border-radius: 0.75rem;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
             border: 1px solid rgba(226, 232, 240, 0.8);
@@ -624,9 +626,9 @@
                                     type="number" 
                                     step="0.1" 
                                     x-model="draftClaim.distance_km" 
-                                    @input="updateMileagePayout()"
-                                    placeholder="e.g. 48.5"
-                                    class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    readonly
+                                    placeholder="Auto-calculated via Places..."
+                                    class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-600 dark:text-slate-400 focus:outline-none cursor-not-allowed font-medium"
                                 >
                             </div>
                             <div>
@@ -655,9 +657,9 @@
                             <div>
                                 <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Date of Journey</label>
                                 <input 
-                                    type="text" 
+                                    type="date" 
                                     x-model="draftClaim.date" 
-                                    placeholder="YYYY-MM-DD"
+                                    :max="new Date().toISOString().split('T')[0]"
                                     class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                 >
                             </div>
@@ -1417,6 +1419,19 @@ function chatbotWidget(config) {
                     matchedVehicle = this.personalVehicles[0].plate_number;
                 }
 
+                let normalizedDate = new Date().toISOString().split('T')[0];
+                if (journeyDate) {
+                    const ymdMatch = journeyDate.match(/\b([0-9]{4}-[0-9]{2}-[0-9]{2})\b/);
+                    if (ymdMatch) {
+                        normalizedDate = ymdMatch[1];
+                    } else {
+                        const parsed = new Date(journeyDate);
+                        if (!isNaN(parsed.getTime())) {
+                            normalizedDate = parsed.toISOString().split('T')[0];
+                        }
+                    }
+                }
+
                 this.draftClaim = {
                     is_mileage: true,
                     origin: origin,
@@ -1424,7 +1439,7 @@ function chatbotWidget(config) {
                     distance_km: distance,
                     amount: payout,
                     merchant_name: origin && destination ? `Aero Art Mileage: ${origin} to ${destination}` : 'Aero Art Mileage',
-                    date: journeyDate || new Date().toISOString().split('T')[0],
+                    date: normalizedDate,
                     category: 'Travel & Lodging',
                     vehicle_plate: matchedVehicle,
                     description: purpose || (origin && destination ? `Official travel from ${origin} to ${destination}` : 'Mileage Allowance'),
@@ -1487,13 +1502,26 @@ function chatbotWidget(config) {
                 }
             }
 
+            let normalizedReceiptDate = new Date().toISOString().split('T')[0];
+            if (date) {
+                const ymdMatch = date.match(/\b([0-9]{4}-[0-9]{2}-[0-9]{2})\b/);
+                if (ymdMatch) {
+                    normalizedReceiptDate = ymdMatch[1];
+                } else {
+                    const parsed = new Date(date);
+                    if (!isNaN(parsed.getTime())) {
+                        normalizedReceiptDate = parsed.toISOString().split('T')[0];
+                    }
+                }
+            }
+
             this.draftClaim = {
                 is_mileage: false,
                 origin: '',
                 destination: '',
                 distance_km: '',
                 merchant_name: merchant,
-                date: date || new Date().toISOString().split('T')[0],
+                date: normalizedReceiptDate,
                 amount: amount,
                 category: matchedCat,
                 vehicle_plate: matchedFleetPlate,

@@ -906,4 +906,64 @@ class ChatbotEndpointTest extends TestCase
         $expectedPayout = number_format($distanceKm * $rate, 2, '.', '');
         $this->assertEquals('29.10', $expectedPayout);
     }
+
+    public function test_chatbot_mileage_modal_distance_is_readonly_and_journey_date_is_date_picker(): void
+    {
+        $user = User::factory()->create(['role' => 'Staff']);
+        $this->actingAs($user);
+
+        $view = $this->blade('<x-chatbot-widget />');
+
+        // Distance input in modal is readonly with non-editable styling
+        $view->assertSee('x-model="draftClaim.distance_km"', false);
+        $view->assertSee('readonly', false);
+        $view->assertSee('cursor-not-allowed', false);
+        $view->assertSee('Auto-calculated via Places...', false);
+
+        // Date of Journey input in modal is interactive type="date" with max today
+        $view->assertSee('type="date"', false);
+        $view->assertSee('x-model="draftClaim.date"', false);
+        $view->assertSee(':max="new Date().toISOString().split(\'T\')[0]"', false);
+    }
+
+    public function test_flatpickr_calendar_is_anchored_with_static_and_mobile_disabled(): void
+    {
+        $layout = file_get_contents(resource_path('views/layouts/app.blade.php'));
+
+        // Global default options configured
+        $this->assertStringContainsString('static: true', $layout);
+        $this->assertStringContainsString('disableMobile: true', $layout);
+        $this->assertStringContainsString('dateFormat: "d/m/Y"', $layout);
+        $this->assertStringContainsString('altFormat: "d/m/Y"', $layout);
+
+        // CSS static anchoring & Google Places container rules
+        $this->assertStringContainsString('.flatpickr-calendar.static', $layout);
+        $this->assertStringContainsString('.flatpickr-wrapper', $layout);
+        $this->assertStringContainsString('.pac-container', $layout);
+        $this->assertStringContainsString('z-index: 99999 !important', $layout);
+    }
+
+    public function test_claim_submission_controller_normalizes_flatpickr_dmy_dates(): void
+    {
+        $staff = User::factory()->create(['role' => 'Staff']);
+        $file = \Illuminate\Http\UploadedFile::fake()->image('receipt.jpg');
+
+        $response = $this->actingAs($staff)->postJson('/claims/store', [
+            'claim_type' => 'Receipt',
+            'title' => 'Office Supplies',
+            'amount' => 150.50,
+            'merchant_name' => 'DIY Store',
+            'category' => 'Office Supplies',
+            'receipt' => $file,
+            'payment_method' => 'Cash',
+            'transaction_date' => '25/10/2026',
+            'business_purpose' => 'Purchasing office stationery',
+        ]);
+
+        $response->assertStatus(302);
+
+        $claim = \App\Models\Claim::where('merchant_name', 'DIY Store')->first();
+        $this->assertNotNull($claim);
+        $this->assertEquals('2026-10-25', \Carbon\Carbon::parse($claim->transaction_date)->format('Y-m-d'));
+    }
 }

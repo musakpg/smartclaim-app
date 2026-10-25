@@ -182,7 +182,8 @@
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-700 mb-1">Transaction Date *</label>
                                     <input type="date" name="transaction_date" value="{{ old('transaction_date', $claim->transaction_date ? \Carbon\Carbon::parse($claim->transaction_date)->format('Y-m-d') : '') }}" required
-                                        class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition">
+                                        max="{{ date('Y-m-d') }}"
+                                        class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition font-mono">
                                 </div>
 
                                 <div>

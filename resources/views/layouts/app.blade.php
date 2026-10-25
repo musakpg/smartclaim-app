@@ -12,10 +12,54 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+    <!-- Flatpickr Date Picker CDN & Global Static Defaults -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        if (typeof flatpickr !== 'undefined') {
+            flatpickr.setDefaults({
+                dateFormat: "d/m/Y",
+                altInput: true,
+                altFormat: "d/m/Y",
+                maxDate: "today",
+                static: true, // Anchors the calendar popup directly below the input wrapper
+                disableMobile: true, // Prevents OS picker interference if using styled Flatpickr
+            });
+        }
+    </script>
+
     <style>
         [x-cloak] { display: none !important; }
         @media (min-width: 1024px) {
             aside[x-cloak] { display: flex !important; }
+        }
+
+        /* Flatpickr Static Anchoring & Alignment Fixes */
+        .flatpickr-wrapper {
+            position: relative !important;
+            display: block !important;
+            width: 100% !important;
+        }
+
+        .flatpickr-calendar.static {
+            position: absolute !important;
+            top: calc(100% + 4px) !important;
+            left: 0 !important;
+            z-index: 99999 !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+            border-radius: 0.75rem !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+
+        /* Google Places Autocomplete Hardening & Responsive Containment */
+        .pac-container {
+            position: absolute !important;
+            z-index: 99999 !important;
+            max-width: calc(100vw - 2rem) !important;
+            border-radius: 0.75rem !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+            border: 1px solid #e2e8f0 !important;
+            font-family: inherit !important;
         }
     </style>
     @stack('styles')
