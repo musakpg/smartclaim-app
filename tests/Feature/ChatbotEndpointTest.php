@@ -681,4 +681,128 @@ class ChatbotEndpointTest extends TestCase
         $this->assertStringContainsString('Vehicle Compliance Required', $result['message']);
         $this->assertStringContainsString('FLEET-999', $result['message']);
     }
+
+    public function test_mileage_flow_outputs_draft_confirmation_card_first_without_executing_submit_claim(): void
+    {
+        config(['services.gemini.api_key' => 'test-api-key']);
+        $user = User::factory()->create(['role' => 'Staff']);
+        $this->actingAs($user);
+
+        \App\Models\Vehicle::create([
+            'user_id' => $user->user_id ?? $user->id,
+            'plate_number' => 'JKE 1234',
+            'brand_model' => 'Perodua Myvi',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'personal',
+            'status' => 'Active',
+            'approval_status' => 'Approved',
+        ]);
+
+        $service = app(GeminiChatbotService::class);
+        $reflection = new \ReflectionClass($service);
+        $method = $reflection->getMethod('buildSystemInstruction');
+        $method->setAccessible(true);
+
+        $instruction = $method->invoke($service, $user, 'I want to claim mileage allowance for my trip from UTHM Pagoh to UiTM Machang (482 KM)');
+        $this->assertStringContainsString('MANDATORY 2-STAGE VERIFICATION WORKFLOW (Drafting + Proof of Travel Upload)', $instruction);
+        $this->assertStringContainsString('Mileage Claim Draft:', $instruction);
+        $this->assertStringContainsString('Proof of Travel', $instruction);
+        $this->assertStringContainsString('[Unspecified / Missing]', $instruction);
+        $this->assertStringContainsString('Proof of Travel (route screenshot / Maps photo) is required to proceed', $instruction);
+
+        // Simulated chatbot request returning the stage 1 draft card
+        \Illuminate\Support\Facades\Http::fake([
+            '*' => \Illuminate\Support\Facades\Http::response([
+                'candidates' => [
+                    [
+                        'content' => [
+                            'parts' => [
+                                ['text' => "📍 I have prepared a draft of your **Mileage Allowance** claim. Please verify the journey details and provide the required **Proof of Travel (Route Screenshot)** to proceed.\n\n**Mileage Claim Draft:**\n- **Origin**: UTHM Pagoh (Pendidikan)\n- **Destination**: UiTM Machang\n- **Estimated Distance**: 482 KM\n- **Calculated Payout**: RM 289.20\n- **Vehicle**: JKE 1234 (Perodua Myvi)\n- **Date of Journey**: 2026-10-26\n- **Purpose**: Official travel to UiTM Machang\n- **Proof of Travel**: [Unspecified / Missing]\n\n⚠️ To submit this claim, you must upload the required Proof of Travel (e.g., screenshot of Google Maps route or mileage log).\n\n⚡ Action: I want to cancel this mileage claim\n⚡ Action: I will upload proof of travel"],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $response = $this->post(route('chatbot.message'), [
+            'message' => 'I traveled from UTHM Pagoh to UiTM Machang for 482 KM using my Myvi JKE 1234',
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(200);
+        $response->assertJson(['status' => 'success']);
+        $this->assertStringContainsString('Mileage Claim Draft:', $response->json('reply'));
+        $this->assertStringContainsString('**Proof of Travel**: [Unspecified / Missing]', $response->json('reply'));
+        $this->assertNull($response->json('action_executed'));
+
+        // No claim should be persisted to database during stage 1 drafting
+        $this->assertEquals(0, \App\Models\Claim::where('start_location', 'UTHM Pagoh (Pendidikan)')->count());
+    }
+
+    public function test_mileage_claim_submission_requires_proof_of_travel_evidence(): void
+    {
+        $user = User::factory()->create(['role' => 'Staff']);
+        $this->actingAs($user);
+
+        $vehicle = \App\Models\Vehicle::create([
+            'user_id' => $user->user_id ?? $user->id,
+            'plate_number' => 'JKE 1234',
+            'brand_model' => 'Perodua Myvi',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'personal',
+            'status' => 'Active',
+            'approval_status' => 'Approved',
+        ]);
+
+        $actionService = app(ChatbotActionService::class);
+
+        // 1. Submit claim without proof of travel (missing session receipt & missing attachment)
+        $result = $actionService->executeAction('submit_claim', [
+            'category' => 'Travel & Lodging',
+            'amount' => 289.20,
+            'merchant_name' => 'Aero Art Mileage: UTHM Pagoh to UiTM Machang',
+            'description' => 'Official travel mileage allowance',
+            'origin' => 'UTHM Pagoh',
+            'destination' => 'UiTM Machang',
+            'mileage_km' => 482,
+            'vehicle_plate' => 'JKE 1234',
+        ], null);
+
+        $this->assertEquals('error', $result['status']);
+        $this->assertEquals('Evidence Missing: Mileage claims require uploading a Route Screenshot or Proof of Travel (Google Maps/Waze) before they can be finalized.', $result['message']);
+        $this->assertEquals(0, \App\Models\Claim::where('mileage_km', 482)->count());
+
+        // 2. Submit claim WITH proof of travel session attachment
+        $fakeProof = [
+            'mime_type' => 'image/png',
+            'base64_data' => base64_encode('fake-maps-screenshot'),
+            'path' => 'receipts/test_maps_proof.png',
+            'hash' => hash('sha256', 'fake-maps-screenshot'),
+            'original_name' => 'google_maps_route.png',
+        ];
+
+        $successResult = $actionService->executeAction('submit_claim', [
+            'category' => 'Travel & Lodging',
+            'amount' => 289.20,
+            'merchant_name' => 'Aero Art Mileage: UTHM Pagoh to UiTM Machang',
+            'description' => 'Official travel mileage allowance',
+            'origin' => 'UTHM Pagoh',
+            'destination' => 'UiTM Machang',
+            'mileage_km' => 482,
+            'vehicle_plate' => 'JKE 1234',
+        ], $fakeProof);
+
+        $this->assertEquals('success', $successResult['status']);
+        $this->assertEquals('Mileage', $successResult['claim_type']);
+        $this->assertEquals(482, $successResult['mileage_km']);
+        $this->assertDatabaseHas('claims', [
+            'claim_type' => 'Mileage',
+            'start_location' => 'UTHM Pagoh',
+            'destination_location' => 'UiTM Machang',
+            'mileage_km' => 482.00,
+            'vehicle_plate_number' => 'JKE 1234',
+            'receipt_image_path' => 'receipts/test_maps_proof.png',
+            'amount' => 289.20,
+        ]);
+    }
 }

@@ -544,6 +544,26 @@ class GeminiChatbotService
                                     'type' => 'number',
                                     'description' => 'Optional numeric ID of the registered vehicle.',
                                 ],
+                                'claim_type' => [
+                                    'type' => 'string',
+                                    'description' => 'Type of claim: "Receipt" or "Mileage".',
+                                ],
+                                'origin' => [
+                                    'type' => 'string',
+                                    'description' => 'Start location or origin address for mileage travel allowance claims.',
+                                ],
+                                'destination' => [
+                                    'type' => 'string',
+                                    'description' => 'End location or destination address for mileage travel allowance claims.',
+                                ],
+                                'mileage_km' => [
+                                    'type' => 'number',
+                                    'description' => 'Driving distance in kilometers for mileage allowance claims.',
+                                ],
+                                'proof_of_travel' => [
+                                    'type' => 'string',
+                                    'description' => 'Path or reference to uploaded route screenshot proof of travel.',
+                                ],
                             ],
                             'required' => ['category', 'amount', 'merchant_name', 'description'],
                         ],
@@ -768,13 +788,69 @@ Vehicle Plate: [Selected Company Fleet Plate or Unspecified]
   - Once the user confirms the vehicle plate, include `vehicle_plate` when calling `submit_claim`.
 
 D. Mileage Allowance Claims:
-- When the user selects "Saya mahu buat tuntutan elaun perjalanan (mileage)" or "I want to claim mileage allowance":
-  - Explain that mileage claims do not require receipt images, as they are calculated based on official travel distance and approved personal vehicles.
-  - Prompt them to provide travel details:
-    1. Origin (Lokasi Berlepas)
-    2. Destination (Lokasi Destinasi)
-    3. Estimated Distance in KM (Anggaran Jarak KM)
-    4. Registered Personal Vehicle (Kenderaan Peribadi) — list their registered personal plate(s) (e.g. {$personalVehiclesSummary}).
+- When the user selects "Saya mahu buat tuntutan elaun perjalanan (mileage)" or "I want to claim mileage allowance", or provides journey details (Origin, Destination, KM, travel purpose):
+  - MANDATORY 2-STAGE VERIFICATION WORKFLOW (Drafting + Proof of Travel Upload):
+    * Stage 1: Mileage Claim Drafting & Calculation
+      - Extract and validate: Origin (Start Location), Destination (End Location), Estimated Distance in KM, and the user's approved personal vehicle plate from their registered list ({$personalVehiclesSummary}).
+      - Calculate the estimated payout based on the personal car rate: RM 0.60 per KM (Total Payout = Distance in KM * RM 0.60).
+      - STRICT GUARDRAIL: Do NOT invoke `submit_claim` at this stage. You MUST prepare and return a "Mileage Claim Draft" first.
+      - Present the structured drafting template matching this exact layout:
+        In English:
+📍 I have prepared a draft of your **Mileage Allowance** claim. Please verify the journey details and provide the required **Proof of Travel (Route Screenshot)** to proceed.
+
+**Mileage Claim Draft:**
+- **Origin**: [Start Location]
+- **Destination**: [End Location]
+- **Estimated Distance**: [X] KM
+- **Calculated Payout**: RM [Y.YY]
+- **Vehicle**: [Personal Plate] ([Model])
+- **Date of Journey**: [Date]
+- **Purpose**: [Corporate Purpose]
+- **Proof of Travel**: [Unspecified / Missing]
+
+⚠️ To submit this claim, you must upload the required Proof of Travel (e.g., screenshot of Google Maps route or mileage log).
+
+        Output Action Chips:
+        ⚡ Action: I want to cancel this mileage claim
+        ⚡ Action: I will upload proof of travel
+
+        In Bahasa Melayu:
+📍 Saya telah menyediakan draf bagi tuntutan **Elaun Perjalanan (Mileage)** anda. Sila sahkan butiran perjalanan dan kemukakan **Bukti Perjalanan (Tangkapan Skrin Laluan)** yang diperlukan untuk meneruskan.
+
+**Mileage Claim Draft:**
+- **Origin**: [Lokasi Berlepas]
+- **Destination**: [Lokasi Destinasi]
+- **Estimated Distance**: [X] KM
+- **Calculated Payout**: RM [Y.YY]
+- **Vehicle**: [No Plat Peribadi] ([Model])
+- **Date of Journey**: [Tarikh Perjalanan]
+- **Purpose**: [Tujuan Rasmi]
+- **Proof of Travel**: [Unspecified / Missing]
+
+⚠️ Untuk menghantar tuntutan ini, anda wajib memuat naik Bukti Perjalanan yang diperlukan (cth: tangkapan skrin laluan Google Maps atau log perbatuan).
+
+        Output Action Chips:
+        ⚡ Tindakan: Saya mahu batalkan tuntutan mileage ini
+        ⚡ Tindakan: Saya akan muat naik bukti perjalanan
+
+    * Stage 2: Proof Requirement & Enforcement
+      - Proof of Travel (route screenshot / Google Maps photo / Waze route / mileage log) is MANDATORY before final submission.
+      - State clearly: "Proof of Travel (route screenshot / Maps photo) is required to proceed. Please upload or drag & drop your map route screenshot now."
+      - The UI will keep Proceed locked and highlight Upload Proof until this evidence image is attached.
+
+    * Stage 3: Final Verification & Submission (AFTER Proof of Travel Attached)
+      - ONLY AFTER an image / route screenshot has been uploaded and cached in session (or provided with the turn):
+        - Call `submit_claim` with:
+          * `category`: 'Travel & Lodging'
+          * `claim_type`: 'Mileage'
+          * `amount`: [Calculated Payout]
+          * `merchant_name`: 'Aero Art Mileage: [Origin] to [Destination]'
+          * `description`: [Purpose]
+          * `origin`: [Origin]
+          * `destination`: [Destination]
+          * `mileage_km`: [Estimated Distance]
+          * `vehicle_plate`: [Personal Vehicle Plate]
+          * `receipt_date`: [Date]
 
 E. Authorization & Approvals:
 - If a Finance officer requests to audit or pre-approve a claim, invoke `pre_approve_claim`.

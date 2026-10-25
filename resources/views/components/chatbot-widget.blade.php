@@ -238,8 +238,8 @@
                                 >
                                     <div class="leading-normal" x-html="formatMarkdown(msg.text)"></div>
 
-                                    <!-- Interactive Review: Shortcut Confirmation & Edit Details Buttons -->
-                                    <template x-if="hasStructuredDetails(msg.text) && (!msg.action || msg.action.status !== 'success')">
+                                    <!-- Interactive Review: Shortcut Confirmation & Edit Details Buttons for General Claims -->
+                                    <template x-if="hasStructuredDetails(msg.text) && !isMileageDraft(msg.text) && (!msg.action || msg.action.status !== 'success')">
                                         <div class="mt-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 flex flex-wrap items-center gap-1.5">
                                             <!-- Fuel & Fleet Compliance Lock: When plate is missing or unspecified, hide Proceed and show Select Vehicle / Edit Details -->
                                             <template x-if="isFuelMissingPlate(msg.text)">
@@ -277,6 +277,84 @@
                                                     <span>Edit Details</span>
                                                 </button>
                                             </template>
+                                        </div>
+                                    </template>
+
+                                    <!-- Interactive Mileage Draft Compliance & Review UI Card -->
+                                    <template x-if="isMileageDraft(msg.text) && (!msg.action || msg.action.status !== 'success')">
+                                        <div class="mt-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 space-y-2 w-full">
+                                            <!-- Dashed Proof of Travel Upload Box -->
+                                            <div class="p-1 rounded-xl border border-dashed border-blue-400/80 dark:border-blue-500/60 bg-blue-50/20 dark:bg-blue-950/20">
+                                                <!-- No file selected -->
+                                                <template x-if="!selectedFile && !sessionReceiptPreview">
+                                                    <button 
+                                                        type="button" 
+                                                        @click="$refs.fileInput.click()" 
+                                                        class="w-full py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition"
+                                                    >
+                                                        <i class="fa-solid fa-paperclip text-[11px]"></i>
+                                                        <span>Upload Proof of Travel (No file selected)</span>
+                                                    </button>
+                                                </template>
+
+                                                <!-- File attached -->
+                                                <template x-if="selectedFile || sessionReceiptPreview">
+                                                    <div class="flex items-center justify-between py-1.5 px-3 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-medium">
+                                                        <div class="flex items-center gap-1.5 truncate">
+                                                            <i class="fa-solid fa-paperclip text-emerald-600 dark:text-emerald-400"></i>
+                                                            <span class="truncate">Proof of Travel Attached: <strong class="font-semibold" x-text="selectedFile ? selectedFile.name : 'Route Screenshot Attached'"></strong></span>
+                                                        </div>
+                                                        <button 
+                                                            type="button" 
+                                                            @click="removeSelectedFile()" 
+                                                            class="text-slate-400 hover:text-rose-500 ml-2 text-sm transition cursor-pointer"
+                                                            title="Remove attached proof"
+                                                        >
+                                                            &times;
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                            </div>
+
+                                            <!-- Proceed / Lock Button -->
+                                            <div>
+                                                <!-- Locked / Disabled when missing proof -->
+                                                <template x-if="isMileageMissingEvidence(msg.text)">
+                                                    <button 
+                                                        type="button" 
+                                                        disabled 
+                                                        class="w-full py-2 px-3 rounded-lg bg-emerald-900/40 text-emerald-300/60 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-not-allowed border border-emerald-800/40 opacity-75"
+                                                    >
+                                                        <i class="fa-solid fa-lock text-[11px]"></i>
+                                                        <span>Upload proof to proceed</span>
+                                                    </button>
+                                                </template>
+
+                                                <!-- Enabled Proceed & Submit Claim button when proof is attached -->
+                                                <template x-if="!isMileageMissingEvidence(msg.text)">
+                                                    <button 
+                                                        type="button" 
+                                                        @click="sendQuickPrompt('Here is my proof of travel route screenshot. Please proceed and submit this mileage claim.')" 
+                                                        :disabled="isLoading" 
+                                                        class="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition disabled:opacity-40"
+                                                    >
+                                                        <i class="fa-solid fa-check text-[11px]"></i>
+                                                        <span>Proceed & Submit Claim</span>
+                                                    </button>
+                                                </template>
+                                            </div>
+
+                                            <!-- Edit Journey Details Button -->
+                                            <div>
+                                                <button 
+                                                    type="button" 
+                                                    @click="openEditModal(msg.text)" 
+                                                    class="w-full py-1.5 px-3 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-slate-200 text-xs font-medium border border-slate-700/80 flex items-center justify-center gap-1.5 cursor-pointer transition shadow-2xs"
+                                                >
+                                                    <i class="fa-solid fa-pen text-[10px]"></i>
+                                                    <span>Edit Journey Details</span>
+                                                </button>
+                                            </div>
                                         </div>
                                     </template>
 
@@ -487,7 +565,7 @@
                         <span class="w-6 h-6 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </span>
-                        <h4 class="text-xs font-semibold text-slate-900 dark:text-white">Edit Claim Details</h4>
+                        <h4 class="text-xs font-semibold text-slate-900 dark:text-white" x-text="draftClaim.is_mileage ? 'Edit Journey Details' : 'Edit Claim Details'">Edit Claim Details</h4>
                     </div>
                     <button 
                         type="button" 
@@ -500,94 +578,186 @@
 
                 <!-- Modal Form Body -->
                 <div class="p-3.5 space-y-2.5 overflow-y-auto smartclaim-chat-scroll text-xs">
-                    <!-- Merchant -->
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Merchant / Peniaga</label>
-                        <input 
-                            type="text" 
-                            x-model="draftClaim.merchant_name" 
-                            placeholder="e.g. Petronas, McDonald's"
-                            class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                        >
-                    </div>
-
-                    <!-- Date & Amount (Row) -->
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Date / Tarikh</label>
-                            <input 
-                                type="date" 
-                                x-model="draftClaim.date" 
-                                class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                            >
+                    <!-- Journey Details Form (when is_mileage) -->
+                    <template x-if="draftClaim.is_mileage">
+                        <div class="space-y-2.5">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Origin / Lokasi Berlepas</label>
+                                <input 
+                                    type="text" 
+                                    x-model="draftClaim.origin" 
+                                    placeholder="e.g. UTHM Pagoh (Pendidikan)"
+                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Destination / Lokasi Destinasi</label>
+                                <input 
+                                    type="text" 
+                                    x-model="draftClaim.destination" 
+                                    placeholder="e.g. UiTM Machang"
+                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                >
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Distance / Jarak (KM)</label>
+                                    <input 
+                                        type="number" 
+                                        step="0.1" 
+                                        x-model="draftClaim.distance_km" 
+                                        @input="if (draftClaim.distance_km) draftClaim.amount = (parseFloat(draftClaim.distance_km) * 0.60).toFixed(2)"
+                                        placeholder="e.g. 482"
+                                        class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Calculated Payout (RM)</label>
+                                    <input 
+                                        type="text" 
+                                        :value="'RM ' + (parseFloat(draftClaim.amount || 0).toFixed(2))" 
+                                        readonly
+                                        class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 text-xs focus:outline-none cursor-not-allowed font-semibold"
+                                    >
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Personal Vehicle Plate</label>
+                                    <select 
+                                        x-model="draftClaim.vehicle_plate"
+                                        class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                    >
+                                        <option value="">-- Select Personal Vehicle --</option>
+                                        <template x-for="v in personalVehicles" :key="'pveh-' + v.plate_number">
+                                            <option :value="v.plate_number" x-text="v.plate_number + ' (' + (v.brand_model || v.vehicle_type) + ')'"></option>
+                                        </template>
+                                        <option value="__custom__">Other / Custom plate</option>
+                                    </select>
+                                    <div x-show="draftClaim.vehicle_plate === '__custom__'" x-cloak class="pt-1">
+                                        <input 
+                                            type="text" 
+                                            x-model="draftClaim.custom_plate" 
+                                            placeholder="Enter plate number (e.g. JKE 1234)"
+                                            class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs uppercase"
+                                        >
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Date of Journey</label>
+                                    <input 
+                                        type="text" 
+                                        x-model="draftClaim.date" 
+                                        placeholder="e.g. 26/10/2026"
+                                        class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                    >
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Corporate Purpose / Tujuan</label>
+                                <textarea 
+                                    x-model="draftClaim.description" 
+                                    rows="2"
+                                    placeholder="Brief description of official journey..."
+                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none"
+                                ></textarea>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Amount (RM)</label>
-                            <input 
-                                type="number" 
-                                step="0.01" 
-                                x-model="draftClaim.amount" 
-                                placeholder="0.00"
-                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                            >
-                        </div>
-                    </div>
+                    </template>
 
-                    <!-- Expense Category (Dropdown) -->
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Expense Category</label>
-                        <select 
-                            x-model="draftClaim.category"
-                            class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                        >
-                            <template x-for="cat in categories" :key="cat">
-                                <option :value="cat" x-text="cat" :selected="draftClaim.category === cat"></option>
-                            </template>
-                        </select>
-                    </div>
+                    <!-- Standard Receipt Claim Form (when not is_mileage) -->
+                    <template x-if="!draftClaim.is_mileage">
+                        <div class="space-y-2.5">
+                            <!-- Merchant -->
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Merchant / Peniaga</label>
+                                <input 
+                                    type="text" 
+                                    x-model="draftClaim.merchant_name" 
+                                    placeholder="e.g. Petronas, McDonald's"
+                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                >
+                            </div>
 
-                    <!-- Vehicle Plate (Conditional on Fuel Category) -->
-                    <div x-show="isFuelCategory(draftClaim.category)" x-cloak class="space-y-1.5 p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60">
-                        <div class="flex items-center justify-between">
-                            <label class="block text-[11px] font-semibold text-amber-900 dark:text-amber-300">
-                                <i class="fa-solid fa-gas-pump mr-1"></i> Company Fleet Vehicle <span class="text-rose-500">*</span>
-                            </label>
-                            <span class="text-[9px] uppercase tracking-wider text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.2 rounded">Required</span>
-                        </div>
-                        <select 
-                            x-model="draftClaim.vehicle_plate"
-                            class="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
-                        >
-                            <option value="">-- Select Company Fleet Vehicle --</option>
-                            <template x-for="v in companyFleet" :key="v.plate_number">
-                                <option :value="v.plate_number" x-text="v.plate_number + ' - ' + v.brand_model"></option>
-                            </template>
-                            <template x-for="v in personalVehicles" :key="'pers-' + v.plate_number">
-                                <option :value="v.plate_number" x-text="'Personal: ' + v.plate_number + ' - ' + v.brand_model"></option>
-                            </template>
-                            <option value="__custom__">Other / Specify manual plate</option>
-                        </select>
-                        
-                        <div x-show="draftClaim.vehicle_plate === '__custom__'" x-cloak class="pt-1">
-                            <input 
-                                type="text" 
-                                x-model="draftClaim.custom_plate" 
-                                placeholder="Enter plate number (e.g. JKE 1234)"
-                                class="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs uppercase"
-                            >
-                        </div>
-                    </div>
+                            <!-- Date & Amount (Row) -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Date / Tarikh</label>
+                                    <input 
+                                        type="date" 
+                                        x-model="draftClaim.date" 
+                                        class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Amount (RM)</label>
+                                    <input 
+                                        type="number" 
+                                        step="0.01" 
+                                        x-model="draftClaim.amount" 
+                                        placeholder="0.00"
+                                        class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                    >
+                                </div>
+                            </div>
 
-                    <!-- Purpose -->
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Business Purpose / Description</label>
-                        <textarea 
-                            x-model="draftClaim.description" 
-                            rows="2"
-                            placeholder="Brief reason for expense..."
-                            class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none"
-                        ></textarea>
-                    </div>
+                            <!-- Expense Category (Dropdown) -->
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Expense Category</label>
+                                <select 
+                                    x-model="draftClaim.category"
+                                    class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                >
+                                    <template x-for="cat in categories" :key="cat">
+                                        <option :value="cat" x-text="cat" :selected="draftClaim.category === cat"></option>
+                                    </template>
+                                </select>
+                            </div>
+
+                            <!-- Vehicle Plate (Conditional on Fuel Category) -->
+                            <div x-show="isFuelCategory(draftClaim.category)" x-cloak class="space-y-1.5 p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-[11px] font-semibold text-amber-900 dark:text-amber-300">
+                                        <i class="fa-solid fa-gas-pump mr-1"></i> Company Fleet Vehicle <span class="text-rose-500">*</span>
+                                    </label>
+                                    <span class="text-[9px] uppercase tracking-wider text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.2 rounded">Required</span>
+                                </div>
+                                <select 
+                                    x-model="draftClaim.vehicle_plate"
+                                    class="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                                >
+                                    <option value="">-- Select Company Fleet Vehicle --</option>
+                                    <template x-for="v in companyFleet" :key="v.plate_number">
+                                        <option :value="v.plate_number" x-text="v.plate_number + ' - ' + v.brand_model"></option>
+                                    </template>
+                                    <template x-for="v in personalVehicles" :key="'pers-' + v.plate_number">
+                                        <option :value="v.plate_number" x-text="'Personal: ' + v.plate_number + ' - ' + v.brand_model"></option>
+                                    </template>
+                                    <option value="__custom__">Other / Specify manual plate</option>
+                                </select>
+                                
+                                <div x-show="draftClaim.vehicle_plate === '__custom__'" x-cloak class="pt-1">
+                                    <input 
+                                        type="text" 
+                                        x-model="draftClaim.custom_plate" 
+                                        placeholder="Enter plate number (e.g. JKE 1234)"
+                                        class="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs uppercase"
+                                    >
+                                </div>
+                            </div>
+
+                            <!-- Purpose -->
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Business Purpose / Description</label>
+                                <textarea 
+                                    x-model="draftClaim.description" 
+                                    rows="2"
+                                    placeholder="Brief reason for expense..."
+                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none"
+                                ></textarea>
+                            </div>
+                        </div>
+                    </template>
                 </div>
 
                 <!-- Modal Footer -->
@@ -637,6 +807,10 @@ function chatbotWidget(config) {
         personalVehicles: config.personalVehicles || [],
         editModalOpen: false,
         draftClaim: {
+            is_mileage: false,
+            origin: '',
+            destination: '',
+            distance_km: '',
             merchant_name: '',
             date: '',
             amount: '',
@@ -1077,6 +1251,22 @@ function chatbotWidget(config) {
                    /(?:Amount|Jumlah):\s*RM\s*[\d\.]+/i.test(text);
         },
 
+        isMileageDraft(text) {
+            if (!text) return false;
+            return /Mileage Claim Draft/i.test(text) || /Draf Tuntutan Mileage/i.test(text);
+        },
+
+        isMileageMissingEvidence(text) {
+            if (!this.isMileageDraft(text)) return false;
+            if (this.selectedFile || this.sessionReceiptPreview) return false;
+            const proofMatch = text.match(/(?:Proof of Travel|Bukti Perjalanan):\s*([^\n\r]+)/i);
+            if (proofMatch) {
+                const val = proofMatch[1].replace(/^\*\*|\*\*$/g, '').trim().toLowerCase();
+                return val === 'unspecified' || val === 'missing' || val === 'tiada' || val === '-' || val.includes('unspecified') || val.includes('missing');
+            }
+            return true;
+        },
+
         isFuelCategory(cat) {
             return /fuel|petrol/i.test(cat || '');
         },
@@ -1092,6 +1282,76 @@ function chatbotWidget(config) {
         },
 
         openEditModal(text) {
+            if (this.isMileageDraft(text)) {
+                let origin = '';
+                let destination = '';
+                let distance = '';
+                let payout = '';
+                let vehicle = '';
+                let journeyDate = '';
+                let purpose = '';
+
+                const lines = String(text).split('\n');
+                for (const line of lines) {
+                    const mOrigin = line.match(/(?:Origin|Lokasi Berlepas):\s*([^\n\r]+)/i);
+                    if (mOrigin) origin = mOrigin[1].replace(/^\*\*|\*\*$/g, '').trim();
+
+                    const mDest = line.match(/(?:Destination|Lokasi Destinasi):\s*([^\n\r]+)/i);
+                    if (mDest) destination = mDest[1].replace(/^\*\*|\*\*$/g, '').trim();
+
+                    const mDist = line.match(/(?:Estimated Distance|Anggaran Jarak):\s*([0-9]+(?:\.[0-9]+)?)/i);
+                    if (mDist) distance = mDist[1].trim();
+
+                    const mPayout = line.match(/(?:Calculated Payout|Pengiraan Bayaran):\s*(?:RM\s*)?([0-9]+(?:\.[0-9]+)?)/i);
+                    if (mPayout) payout = mPayout[1].trim();
+
+                    const mVeh = line.match(/(?:Vehicle|Kenderaan):\s*([^\n\r]+)/i);
+                    if (mVeh) {
+                        const rawVeh = mVeh[1].replace(/^\*\*|\*\*$/g, '').trim();
+                        const plateOnly = rawVeh.split('(')[0].trim();
+                        vehicle = plateOnly;
+                    }
+
+                    const mDate = line.match(/(?:Date of Journey|Tarikh Perjalanan|Date|Tarikh):\s*([^\n\r]+)/i);
+                    if (mDate) journeyDate = mDate[1].replace(/^\*\*|\*\*$/g, '').trim();
+
+                    const mPurp = line.match(/(?:Purpose|Tujuan):\s*([^\n\r]+)/i);
+                    if (mPurp) purpose = mPurp[1].replace(/^\*\*|\*\*$/g, '').trim();
+                }
+
+                if (!payout && distance) {
+                    payout = (parseFloat(distance) * 0.60).toFixed(2);
+                }
+
+                let customPlate = '';
+                if (vehicle) {
+                    const inPersonal = this.personalVehicles.some(v => v.plate_number.toUpperCase() === vehicle.toUpperCase());
+                    if (!inPersonal) {
+                        customPlate = vehicle;
+                        vehicle = '__custom__';
+                    }
+                } else if (this.personalVehicles.length > 0) {
+                    vehicle = this.personalVehicles[0].plate_number;
+                }
+
+                this.draftClaim = {
+                    is_mileage: true,
+                    origin: origin,
+                    destination: destination,
+                    distance_km: distance,
+                    amount: payout,
+                    merchant_name: origin && destination ? `Aero Art Mileage: ${origin} to ${destination}` : 'Aero Art Mileage',
+                    date: journeyDate || new Date().toISOString().split('T')[0],
+                    category: 'Travel & Lodging',
+                    vehicle_plate: vehicle,
+                    custom_plate: customPlate,
+                    description: purpose || (origin && destination ? `Official travel from ${origin} to ${destination}` : 'Mileage Allowance'),
+                };
+
+                this.editModalOpen = true;
+                return;
+            }
+
             let merchant = '';
             let date = '';
             let amount = '';
@@ -1149,6 +1409,10 @@ function chatbotWidget(config) {
             }
 
             this.draftClaim = {
+                is_mileage: false,
+                origin: '',
+                destination: '',
+                distance_km: '',
                 merchant_name: merchant,
                 date: date || new Date().toISOString().split('T')[0],
                 amount: amount,
@@ -1171,6 +1435,23 @@ function chatbotWidget(config) {
             if (plate === '__custom__') {
                 plate = (this.draftClaim.custom_plate || '').trim();
             }
+
+            if (this.draftClaim.is_mileage) {
+                const dist = parseFloat(this.draftClaim.distance_km || 0);
+                const payout = (dist * 0.60).toFixed(2);
+                let message = `Here are my updated journey details for review:\n` +
+                    `Origin: ${this.draftClaim.origin || ''}\n` +
+                    `Destination: ${this.draftClaim.destination || ''}\n` +
+                    `Estimated Distance: ${dist} KM\n` +
+                    `Calculated Payout: RM ${payout}\n` +
+                    `Vehicle: ${plate || 'Personal Vehicle'}\n` +
+                    `Date of Journey: ${this.draftClaim.date || ''}\n` +
+                    `Purpose: ${this.draftClaim.description || 'Official travel'}`;
+                this.userInput = message;
+                this.sendMessage();
+                return;
+            }
+
             let message = `Here are my updated claim details for review:\n` +
                 `Merchant: ${this.draftClaim.merchant_name || 'Merchant'}\n` +
                 `Date: ${this.draftClaim.date || ''}\n` +

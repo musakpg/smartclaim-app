@@ -77,13 +77,43 @@ class ChatbotActionService
 
         $description = trim($args['description'] ?? 'Expense submitted via SmartClaim AI Assistant');
 
+        // Check if this is a Mileage Allowance Claim
+        $isMileage = (isset($args['claim_type']) && strtolower($args['claim_type']) === 'mileage')
+            || !empty($args['mileage_km'])
+            || !empty($args['distance_km'])
+            || str_contains(strtolower($categoryName), 'mileage')
+            || (str_contains(strtolower($categoryName), 'travel') && (
+                str_contains(strtolower($description), 'mileage')
+                || str_contains(strtolower($description), 'travel allowance')
+                || str_contains(strtolower($description), 'elaun perjalanan')
+                || str_contains(strtolower($merchantName), 'mileage')
+                || str_contains(strtolower($merchantName), 'travel allowance')
+            ))
+            || str_contains(strtolower($description), 'mileage')
+            || str_contains(strtolower($description), 'travel allowance')
+            || str_contains(strtolower($merchantName), 'mileage');
+
+        $activeReceipt = $sessionReceipt ?? session('chatbot_last_receipt');
+        $hasProofOfTravel = (!empty($activeReceipt['path']) && !empty($activeReceipt['hash']))
+            || !empty($args['proof_of_travel'])
+            || !empty($args['receipt_image'])
+            || !empty($args['receipt_image_path']);
+
+        // Mandatory Proof of Travel Compliance Lock for Mileage
+        if ($isMileage && !$hasProofOfTravel) {
+            return [
+                'status' => 'error',
+                'message' => 'Evidence Missing: Mileage claims require uploading a Route Screenshot or Proof of Travel (Google Maps/Waze) before they can be finalized.',
+            ];
+        }
+
         // Manage receipt image attachment and SHA-256 binary hash validation
         $imagePath = 'receipts/default.png';
         $imageHash = null;
 
-        if (!empty($sessionReceipt['path']) && !empty($sessionReceipt['hash'])) {
-            $imagePath = $sessionReceipt['path'];
-            $imageHash = $sessionReceipt['hash'];
+        if (!empty($activeReceipt['path']) && !empty($activeReceipt['hash'])) {
+            $imagePath = $activeReceipt['path'];
+            $imageHash = $activeReceipt['hash'];
 
             // Physical Image Hash Duplicate Check against historical database entries
             $duplicateClaim = Claim::where('receipt_image_hash', $imageHash)->first();
@@ -94,14 +124,55 @@ class ChatbotActionService
                     'duplicate_claim_id' => $duplicateClaim->claim_id,
                 ];
             }
+        } elseif (!empty($args['proof_of_travel']) && is_string($args['proof_of_travel'])) {
+            $imagePath = $args['proof_of_travel'];
+            $imageHash = hash('sha256', $imagePath . '|' . microtime(true));
+        } elseif (!empty($args['receipt_image']) && is_string($args['receipt_image'])) {
+            $imagePath = $args['receipt_image'];
+            $imageHash = hash('sha256', $imagePath . '|' . microtime(true));
+        } elseif (!empty($args['receipt_image_path']) && is_string($args['receipt_image_path'])) {
+            $imagePath = $args['receipt_image_path'];
+            $imageHash = hash('sha256', $imagePath . '|' . microtime(true));
         } else {
             $imageHash = hash('sha256', ($user->user_id ?? $user->id) . '|' . $merchantName . '|' . $amount . '|' . microtime(true));
         }
 
-        // Fuel & Fleet Logistics Vehicle Compliance Handling
+        // Vehicle Compliance Handling
         $currentUserId = (int) ($user->user_id ?? $user->id);
         $vehiclePlate = trim($args['vehicle_plate'] ?? $args['vehicle_plate_number'] ?? '');
         $vehicleId = !empty($args['vehicle_id']) ? (int) $args['vehicle_id'] : null;
+        $vehicleType = 'Car';
+
+        if ($isMileage) {
+            if (empty($vehiclePlate) && empty($vehicleId)) {
+                $userPersonalVehicles = Vehicle::where('user_id', $currentUserId)
+                    ->where('ownership_type', 'personal')
+                    ->where('status', 'Active')
+                    ->get();
+                if ($userPersonalVehicles->isNotEmpty()) {
+                    $matched = $userPersonalVehicles->first();
+                    $vehicleId = $matched->vehicle_id;
+                    $vehiclePlate = $matched->plate_number;
+                    $vehicleType = ucfirst(strtolower($matched->vehicle_type ?? 'Car'));
+                }
+            } elseif (!empty($vehiclePlate) && !$vehicleId) {
+                $cleanPlate = str_replace(' ', '', strtoupper($vehiclePlate));
+                $matched = Vehicle::where('status', 'Active')
+                    ->whereRaw("REPLACE(UPPER(plate_number), ' ', '') = ?", [$cleanPlate])
+                    ->first();
+                if ($matched) {
+                    $vehicleId = $matched->vehicle_id;
+                    $vehiclePlate = $matched->plate_number;
+                    $vehicleType = ucfirst(strtolower($matched->vehicle_type ?? 'Car'));
+                }
+            }
+
+            if ($merchantName === 'Unknown Merchant' || empty($merchantName)) {
+                $origin = $args['origin'] ?? $args['start_location'] ?? '';
+                $dest = $args['destination'] ?? $args['destination_location'] ?? '';
+                $merchantName = ($origin && $dest) ? "Aero Art Mileage: {$origin} to {$dest}" : "Aero Art Mileage ({$vehicleType})";
+            }
+        }
 
         $isFuelOrAutomotive = in_array(strtolower($categoryName), [
             'fuel / automotive',
@@ -114,7 +185,7 @@ class ChatbotActionService
             || str_contains(strtolower($categoryName), 'fuel')
             || str_contains(strtolower($categoryName), 'petrol');
 
-        if (!empty($vehiclePlate) && !$vehicleId) {
+        if (!empty($vehiclePlate) && !$vehicleId && !$isMileage) {
             $cleanPlate = str_replace(' ', '', strtoupper($vehiclePlate));
 
             // Prefer company fleet vehicle match first
@@ -134,7 +205,7 @@ class ChatbotActionService
                 $vehicleId = $matchedVehicle->vehicle_id;
                 $vehiclePlate = $matchedVehicle->plate_number;
             }
-        } elseif ($vehicleId && empty($vehiclePlate)) {
+        } elseif ($vehicleId && empty($vehiclePlate) && !$isMileage) {
             $matchedVehicle = Vehicle::where('status', 'Active')->find($vehicleId);
             if ($matchedVehicle) {
                 $vehiclePlate = $matchedVehicle->plate_number;
@@ -168,20 +239,34 @@ class ChatbotActionService
             $amount
         );
 
+        $km = (float) ($args['mileage_km'] ?? $args['distance_km'] ?? $args['estimated_distance'] ?? ($isMileage && $amount > 0 ? round($amount / 0.60, 2) : 0));
+        $startLocation = $args['origin'] ?? $args['start_location'] ?? null;
+        $destLocation = $args['destination'] ?? $args['destination_location'] ?? null;
+
         // Atomic Database Transaction for Claim Persistence
-        $claim = DB::transaction(function () use ($user, $currentUserId, $merchantName, $targetDate, $amount, $categoryName, $categoryId, $description, $imagePath, $imageHash, $policyCheck, $vehicleId, $vehiclePlate) {
+        $claim = DB::transaction(function () use (
+            $user, $currentUserId, $merchantName, $targetDate, $amount, $categoryName, 
+            $categoryId, $description, $imagePath, $imageHash, $policyCheck, 
+            $vehicleId, $vehiclePlate, $isMileage, $km, $startLocation, $destLocation, $vehicleType, $args
+        ) {
             $claim = Claim::create([
                 'user_id' => $currentUserId,
                 'vehicle_id' => $vehicleId,
                 'vehicle_plate_number' => $vehiclePlate ?: null,
-                'claim_type' => 'Receipt',
-                'title' => 'Claim at ' . $merchantName,
+                'claim_type' => $isMileage ? 'Mileage' : 'Receipt',
+                'title' => $isMileage 
+                    ? ($args['title'] ?? ("Mileage Allowance: " . ($startLocation ?: 'Origin') . " to " . ($destLocation ?: 'Destination')))
+                    : ('Claim at ' . $merchantName),
                 'merchant_name' => $merchantName,
-                'location_address' => 'Captured via AI Assistant',
+                'location_address' => $isMileage ? ($startLocation ?: 'Captured via AI Assistant') : 'Captured via AI Assistant',
+                'start_location' => $isMileage ? $startLocation : null,
+                'destination_location' => $isMileage ? $destLocation : null,
+                'mileage_km' => $isMileage ? ($km > 0 ? $km : null) : null,
+                'vehicle_type' => $isMileage ? ($vehicleType ?? 'Car') : null,
                 'receipt_invoice_no' => 'AI-' . strtoupper(Str::random(6)),
                 'transaction_date' => $targetDate,
                 'amount' => $amount,
-                'payment_method' => 'Cash',
+                'payment_method' => $isMileage ? 'Allowance' : 'Cash',
                 'predicted_category' => $categoryName,
                 'category_id' => $categoryId,
                 'business_purpose' => $description,
@@ -203,10 +288,13 @@ class ChatbotActionService
                 $claim->claim_id,
                 null,
                 [
-                    'type' => 'Receipt',
+                    'type' => $isMileage ? 'Mileage' : 'Receipt',
                     'amount' => $amount,
                     'merchant' => $merchantName,
                     'vehicle_plate' => $vehiclePlate ?: null,
+                    'start_location' => $claim->start_location,
+                    'destination_location' => $claim->destination_location,
+                    'mileage_km' => $claim->mileage_km,
                     'submission_mode' => 'AI Chatbot Assistant',
                     'is_violation' => $policyCheck['is_violation'],
                 ],
@@ -216,7 +304,9 @@ class ChatbotActionService
             NotificationService::send(
                 $currentUserId,
                 'Claim Submitted via AI',
-                "Your claim voucher #CLM-{$claim->claim_id} for RM " . number_format($amount, 2) . " at {$merchantName} has been submitted for audit.",
+                $isMileage
+                    ? "Your mileage claim voucher #CLM-{$claim->claim_id} for RM " . number_format($amount, 2) . ($claim->mileage_km ? " ({$claim->mileage_km} KM)" : "") . " has been submitted for audit."
+                    : "Your claim voucher #CLM-{$claim->claim_id} for RM " . number_format($amount, 2) . " at {$merchantName} has been submitted for audit.",
                 'info',
                 route('claims.history')
             );
@@ -262,20 +352,23 @@ class ChatbotActionService
             'merchant_name' => $claim->merchant_name,
             'amount' => (float) $claim->amount,
             'category' => $claim->predicted_category,
+            'claim_type' => $claim->claim_type,
+            'start_location' => $claim->start_location,
+            'destination_location' => $claim->destination_location,
+            'mileage_km' => $claim->mileage_km,
             'transaction_date' => $claim->transaction_date ? $claim->transaction_date->format('Y-m-d') : $targetDate,
             'vehicle_plate' => $claim->vehicle_plate_number,
             'vehicle_id' => $claim->vehicle_id,
             'is_policy_violation' => (bool) $claim->is_policy_violation,
             'policy_reason' => $claim->policy_violation_reason,
             'receipt_path' => $claim->receipt_image_path,
-            'receipt_preview' => !empty($sessionReceipt['base64_data']) ? "data:{$sessionReceipt['mime_type']};base64,{$sessionReceipt['base64_data']}" : null,
-            'message' => "Claim voucher #CLM-{$claim->claim_id} for RM " . number_format($amount, 2) . " at {$merchantName}" . ($claim->vehicle_plate_number ? " (Vehicle: {$claim->vehicle_plate_number})" : "") . " has been successfully created and submitted for audit.",
+            'receipt_preview' => !empty($activeReceipt['base64_data']) ? "data:{$activeReceipt['mime_type']};base64,{$activeReceipt['base64_data']}" : null,
+            'message' => $isMileage
+                ? "Mileage claim voucher #CLM-{$claim->claim_id} for RM " . number_format($amount, 2) . ($claim->mileage_km ? " ({$claim->mileage_km} KM)" : "") . ($claim->vehicle_plate_number ? " (Vehicle: {$claim->vehicle_plate_number})" : "") . " has been successfully created and submitted for audit."
+                : "Claim voucher #CLM-{$claim->claim_id} for RM " . number_format($amount, 2) . " at {$merchantName}" . ($claim->vehicle_plate_number ? " (Vehicle: {$claim->vehicle_plate_number})" : "") . " has been successfully created and submitted for audit.",
         ];
     }
 
-    /**
-     * Check claim status with role-based scoping (Staff vs Finance vs Manager).
-     */
     protected function checkClaimStatus(array $args, User $user): array
     {
         $role = strtolower(trim($user->role ?? 'staff'));
