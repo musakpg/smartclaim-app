@@ -548,4 +548,137 @@ class ChatbotEndpointTest extends TestCase
         $this->assertFalse($service->isExplicitlyOutOfScope('Tarikh hari ini'));
         $this->assertFalse($service->isExplicitlyOutOfScope('Terima kasih'));
     }
+
+    public function test_receipt_upload_invokes_ocr_and_populates_session_baseline(): void
+    {
+        config(['services.gemini.api_key' => 'test-api-key']);
+        $user = User::factory()->create(['role' => 'Staff']);
+        $this->actingAs($user);
+
+        $ocrMock = $this->createMock(\App\Services\ReceiptOcrService::class);
+        $ocrMock->expects($this->once())
+            ->method('extractReceiptData')
+            ->willReturn([
+                'success' => true,
+                'category' => 'Office Supplies',
+                'suggested_category' => 'Office Supplies',
+                'merchant' => 'Kedai Runcit Mulia',
+                'amount' => 100.20,
+                'date' => '2026-10-25',
+                'raw_text' => "KEDAI RUNCIT MULIA\nTOTAL: RM 100.20\nTERIMA KASIH",
+                'confidence' => 88.50,
+            ]);
+        $this->app->instance(\App\Services\ReceiptOcrService::class, $ocrMock);
+
+        \Illuminate\Support\Facades\Http::fake([
+            '*' => \Illuminate\Support\Facades\Http::response([
+                'candidates' => [
+                    [
+                        'content' => [
+                            'parts' => [
+                                ['text' => "Merchant: Kedai Runcit Mulia\nDate: 2026-10-25\nAmount: RM 100.20\nCategory: Office Supplies\nPurpose: Supplies\n\n⚡ Action: Confirm and submit"],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $file = \Illuminate\Http\UploadedFile::fake()->image('test_receipt.jpg');
+
+        $response = $this->post(route('chatbot.message'), [
+            'receipt' => $file,
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(200);
+        $response->assertJson(['status' => 'success']);
+
+        $this->assertTrue(session()->has('chatbot_ocr_baseline'));
+        $baseline = session('chatbot_ocr_baseline');
+        $this->assertEquals('Office Supplies', $baseline['predicted_category']);
+        $this->assertStringContainsString('KEDAI RUNCIT MULIA', $baseline['raw_text']);
+        $this->assertEquals(100.20, $baseline['ocr_amount']);
+    }
+
+    public function test_changing_category_during_chatbot_submission_logs_ai_feedback_discrepancy_record(): void
+    {
+        $user = User::factory()->create(['role' => 'Staff']);
+        $this->actingAs($user);
+
+        session([
+            'chatbot_ocr_baseline' => [
+                'predicted_category' => 'Meals & Entertainment',
+                'raw_text' => 'Sample OCR raw text receipt content',
+                'ocr_merchant' => 'KFC Senai',
+                'ocr_amount' => 45.00,
+                'ocr_date' => '2026-10-25',
+                'confidence' => 88.50,
+            ],
+        ]);
+
+        $actionService = app(ChatbotActionService::class);
+        $result = $actionService->executeAction('submit_claim', [
+            'category' => 'Office Supplies & Stationery',
+            'amount' => 45.00,
+            'merchant_name' => 'KFC Senai',
+            'description' => 'Team stationery expenses',
+        ]);
+
+        $this->assertEquals('success', $result['status']);
+        $this->assertDatabaseHas('ai_feedback', [
+            'field_name' => 'category',
+            'predicted_value' => 'Meals & Entertainment',
+            'actual_value' => 'Office Supplies & Stationery',
+            'correction_status' => 'corrected_by_staff',
+        ]);
+
+        // Session baseline must be cleared after recording
+        $this->assertNull(session('chatbot_ocr_baseline'));
+    }
+
+    public function test_bilingual_response_mirroring_for_both_english_and_malay_queries(): void
+    {
+        $user = User::factory()->create(['role' => 'Staff']);
+        $service = app(GeminiChatbotService::class);
+        $reflection = new \ReflectionClass($service);
+        $method = $reflection->getMethod('buildSystemInstruction');
+        $method->setAccessible(true);
+
+        // 1. English query must inject English Active Language Directive
+        $instructionEn = $method->invoke($service, $user, 'What is the status of my recent claims?');
+        $this->assertStringContainsString('Current User Language: English (Default)', $instructionEn);
+        $this->assertStringContainsString('⚡ Action:', $instructionEn);
+
+        // 2. Malay query must inject Malay Active Language Directive
+        $instructionMs = $method->invoke($service, $user, '⚡ Tindakan: Semak status tuntutan saya');
+        $this->assertStringContainsString('Current User Language: Bahasa Melayu', $instructionMs);
+        $this->assertStringContainsString('⚡ Tindakan:', $instructionMs);
+    }
+
+    public function test_fuel_claims_without_plate_cannot_execute_submission(): void
+    {
+        $user = User::factory()->create(['role' => 'Staff']);
+        $this->actingAs($user);
+
+        \App\Models\Vehicle::create([
+            'plate_number' => 'FLEET-999',
+            'brand_model' => 'Toyota Hilux Fleet',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'company',
+            'status' => 'Active',
+            'approval_status' => 'Approved',
+        ]);
+
+        $actionService = app(ChatbotActionService::class);
+        $result = $actionService->executeAction('submit_claim', [
+            'category' => 'Fuel & Fleet Logistics (Corporate Fleet / Petrol)',
+            'amount' => 85.00,
+            'merchant_name' => 'Petronas Senai',
+            'description' => 'Fleet refuel',
+        ]);
+
+        $this->assertEquals('error', $result['status']);
+        $this->assertStringContainsString('Vehicle Compliance Required', $result['message']);
+        $this->assertStringContainsString('FLEET-999', $result['message']);
+    }
 }

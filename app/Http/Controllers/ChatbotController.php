@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Claim;
 use App\Services\GeminiChatbotService;
+use App\Services\ReceiptOcrService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -12,10 +13,12 @@ use Illuminate\Support\Facades\Validator;
 class ChatbotController extends Controller
 {
     protected GeminiChatbotService $geminiService;
+    protected ReceiptOcrService $ocrService;
 
-    public function __construct(GeminiChatbotService $geminiService)
+    public function __construct(GeminiChatbotService $geminiService, ReceiptOcrService $ocrService)
     {
         $this->geminiService = $geminiService;
+        $this->ocrService = $ocrService;
     }
 
     /**
@@ -67,6 +70,27 @@ class ChatbotController extends Controller
                     'hash' => $receiptHash,
                     'original_name' => $receiptFile->getClientOriginalName(),
                 ];
+
+                // Run Unified OCR & TF-IDF Prediction Pipeline via Google Cloud Vision
+                try {
+                    $ocrResult = $this->ocrService->extractReceiptData($receiptFile);
+                    if (!empty($ocrResult['success'])) {
+                        session([
+                            'chatbot_ocr_baseline' => [
+                                'predicted_category' => $ocrResult['category'] ?? $ocrResult['suggested_category'] ?? null,
+                                'raw_text' => $ocrResult['raw_text'] ?? null,
+                                'ocr_merchant' => $ocrResult['merchant'] ?? null,
+                                'ocr_amount' => $ocrResult['amount'] ?? null,
+                                'ocr_date' => $ocrResult['date'] ?? null,
+                                'confidence' => $ocrResult['confidence'] ?? 88.50,
+                            ]
+                        ]);
+                    }
+                } catch (\Throwable $ocrEx) {
+                    Log::warning('Chatbot ReceiptOcrService invocation warning: ' . $ocrEx->getMessage());
+                }
+
+                $receiptAttachment['ocr_baseline'] = session('chatbot_ocr_baseline');
 
                 // Cache in session so follow-up confirmations can utilize the uploaded receipt
                 session(['chatbot_last_receipt' => $receiptAttachment]);

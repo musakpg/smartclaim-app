@@ -10,6 +10,31 @@
         default => 'Staff Assistant',
     };
     $activeModel = config('services.gemini.model', 'gemini-3.8-flash');
+
+    $categories = \App\Models\Category::where('is_active', true)->orderBy('name')->pluck('name')->toArray();
+    if (empty($categories)) {
+        $categories = [
+            'Fuel & Fleet Logistics (Corporate Fleet / Petrol)',
+            'Staff Operational Meals',
+            'Office Pantry & Amenities',
+            'Office Supplies & Stationery',
+            'Site Tools & Hardware',
+            'Transportation & Toll',
+            'Travel & Lodging',
+        ];
+    }
+    $companyFleetVehicles = \App\Models\Vehicle::companyFleet()->get()->map(fn($v) => [
+        'vehicle_id' => $v->vehicle_id,
+        'plate_number' => $v->plate_number,
+        'brand_model' => $v->brand_model,
+    ])->toArray();
+    $personalVehicles = ($currentUser && method_exists($currentUser, 'vehicles'))
+        ? $currentUser->vehicles()->personal()->get()->map(fn($v) => [
+            'vehicle_id' => $v->vehicle_id,
+            'plate_number' => $v->plate_number,
+            'brand_model' => $v->brand_model,
+        ])->toArray()
+        : [];
 @endphp
 
 <div 
@@ -20,7 +45,10 @@
         csrfToken: '{{ csrf_token() }}',
         messageUrl: '{{ route('chatbot.message') }}',
         historyUrl: '{{ route('chatbot.history') }}',
-        resetUrl: '{{ route('chatbot.reset') }}'
+        resetUrl: '{{ route('chatbot.reset') }}',
+        categories: {{ \Illuminate\Support\Js::from($categories) }},
+        companyFleet: {{ \Illuminate\Support\Js::from($companyFleetVehicles) }},
+        personalVehicles: {{ \Illuminate\Support\Js::from($personalVehicles) }}
     })"
     class="relative z-50 font-sans"
     id="smartclaim-ai-chatbot-root"
@@ -213,25 +241,42 @@
                                     <!-- Interactive Review: Shortcut Confirmation & Edit Details Buttons -->
                                     <template x-if="hasStructuredDetails(msg.text) && (!msg.action || msg.action.status !== 'success')">
                                         <div class="mt-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 flex flex-wrap items-center gap-1.5">
-                                            <button 
-                                                type="button"
-                                                @click="sendQuickPrompt('Yes, proceed and submit this claim')"
-                                                :disabled="isLoading"
-                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold shadow-xs transition cursor-pointer disabled:opacity-40"
-                                            >
-                                                <i class="fa-solid fa-check text-[10px]"></i>
-                                                <span>Proceed & Submit Claim</span>
-                                            </button>
+                                            <!-- Fuel & Fleet Compliance Lock: When plate is missing or unspecified, hide Proceed and show Select Vehicle / Edit Details -->
+                                            <template x-if="isFuelMissingPlate(msg.text)">
+                                                <button 
+                                                    type="button"
+                                                    @click="openEditModal(msg.text)"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-semibold shadow-xs transition cursor-pointer"
+                                                >
+                                                    <i class="fa-solid fa-car text-[10px]"></i>
+                                                    <span>Select Vehicle / Edit Details</span>
+                                                </button>
+                                            </template>
 
-                                            <button 
-                                                type="button"
-                                                @click="editDetails(msg.text)"
-                                                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition cursor-pointer shadow-2xs"
-                                                title="Pre-fill details into input to edit"
-                                            >
-                                                <i class="fa-solid fa-pen-to-square text-[10px] text-slate-500"></i>
-                                                <span>Edit Details</span>
-                                            </button>
+                                            <!-- Proceed & Submit Claim (Only shown when not missing vehicle plate) -->
+                                            <template x-if="!isFuelMissingPlate(msg.text)">
+                                                <button 
+                                                    type="button"
+                                                    @click="sendQuickPrompt('Yes, proceed and submit this claim')"
+                                                    :disabled="isLoading"
+                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold shadow-xs transition cursor-pointer disabled:opacity-40"
+                                                >
+                                                    <i class="fa-solid fa-check text-[10px]"></i>
+                                                    <span>Proceed & Submit Claim</span>
+                                                </button>
+                                            </template>
+
+                                            <template x-if="!isFuelMissingPlate(msg.text)">
+                                                <button 
+                                                    type="button"
+                                                    @click="openEditModal(msg.text)"
+                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition cursor-pointer shadow-2xs"
+                                                    title="Edit claim details"
+                                                >
+                                                    <i class="fa-solid fa-pen-to-square text-[10px] text-slate-500"></i>
+                                                    <span>Edit Details</span>
+                                                </button>
+                                            </template>
                                         </div>
                                     </template>
 
@@ -399,7 +444,7 @@
                         @keydown.enter.prevent="if (!$event.shiftKey) { sendMessage(); resetInputHeight($el); }"
                         rows="1"
                         placeholder="Ask assistant or upload a receipt..."
-                        class="w-full resize-none overflow-y-auto max-h-[120px] py-2 px-3 text-xs sm:text-[13px] rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-slate-400 dark:focus:border-slate-600 focus:bg-white dark:focus:bg-slate-950 focus:outline-none transition-all placeholder-slate-400 dark:placeholder-slate-500 scrollbar-thin chatbot-input-scroll"
+                        class="w-full resize-none overflow-y-auto max-h-[130px] py-2 px-3 text-xs sm:text-[13px] rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-slate-400 dark:focus:border-slate-600 focus:bg-white dark:focus:bg-slate-950 focus:outline-none transition-all placeholder-slate-400 dark:placeholder-slate-500 scrollbar-thin chatbot-input-scroll"
                     ></textarea>
                 </div>
 
@@ -416,6 +461,153 @@
             <div class="mt-1 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 px-1 font-mono">
                 <span>Enter ↵ to send</span>
                 <span>{{ $activeModel }}</span>
+            </div>
+        </div>
+
+        <!-- Interactive Edit Details Modal (Option A: Clean Dual Dropdowns) -->
+        <div 
+            x-show="editModalOpen"
+            x-cloak
+            class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-3 sm:p-4"
+        >
+            <div 
+                x-show="editModalOpen"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-4"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 translate-y-4"
+                class="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[92%] overflow-hidden"
+                @click.away="editModalOpen = false"
+            >
+                <!-- Modal Header -->
+                <div class="px-3.5 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950 shrink-0">
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </span>
+                        <h4 class="text-xs font-semibold text-slate-900 dark:text-white">Edit Claim Details</h4>
+                    </div>
+                    <button 
+                        type="button" 
+                        @click="editModalOpen = false" 
+                        class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 cursor-pointer"
+                    >
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Form Body -->
+                <div class="p-3.5 space-y-2.5 overflow-y-auto smartclaim-chat-scroll text-xs">
+                    <!-- Merchant -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Merchant / Peniaga</label>
+                        <input 
+                            type="text" 
+                            x-model="draftClaim.merchant_name" 
+                            placeholder="e.g. Petronas, McDonald's"
+                            class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                        >
+                    </div>
+
+                    <!-- Date & Amount (Row) -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Date / Tarikh</label>
+                            <input 
+                                type="date" 
+                                x-model="draftClaim.date" 
+                                class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Amount (RM)</label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                x-model="draftClaim.amount" 
+                                placeholder="0.00"
+                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Expense Category (Dropdown) -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Expense Category</label>
+                        <select 
+                            x-model="draftClaim.category"
+                            class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                        >
+                            <template x-for="cat in categories" :key="cat">
+                                <option :value="cat" x-text="cat" :selected="draftClaim.category === cat"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- Vehicle Plate (Conditional on Fuel Category) -->
+                    <div x-show="isFuelCategory(draftClaim.category)" x-cloak class="space-y-1.5 p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[11px] font-semibold text-amber-900 dark:text-amber-300">
+                                <i class="fa-solid fa-gas-pump mr-1"></i> Company Fleet Vehicle <span class="text-rose-500">*</span>
+                            </label>
+                            <span class="text-[9px] uppercase tracking-wider text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.2 rounded">Required</span>
+                        </div>
+                        <select 
+                            x-model="draftClaim.vehicle_plate"
+                            class="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                        >
+                            <option value="">-- Select Company Fleet Vehicle --</option>
+                            <template x-for="v in companyFleet" :key="v.plate_number">
+                                <option :value="v.plate_number" x-text="v.plate_number + ' - ' + v.brand_model"></option>
+                            </template>
+                            <template x-for="v in personalVehicles" :key="'pers-' + v.plate_number">
+                                <option :value="v.plate_number" x-text="'Personal: ' + v.plate_number + ' - ' + v.brand_model"></option>
+                            </template>
+                            <option value="__custom__">Other / Specify manual plate</option>
+                        </select>
+                        
+                        <div x-show="draftClaim.vehicle_plate === '__custom__'" x-cloak class="pt-1">
+                            <input 
+                                type="text" 
+                                x-model="draftClaim.custom_plate" 
+                                placeholder="Enter plate number (e.g. JKE 1234)"
+                                class="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs uppercase"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Purpose -->
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Business Purpose / Description</label>
+                        <textarea 
+                            x-model="draftClaim.description" 
+                            rows="2"
+                            placeholder="Brief reason for expense..."
+                            class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="px-3.5 py-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 bg-slate-50 dark:bg-slate-950 shrink-0">
+                    <button 
+                        type="button" 
+                        @click="editModalOpen = false" 
+                        class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 text-xs font-medium transition cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="button" 
+                        @click="saveEditedDetails()" 
+                        class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                    >
+                        <i class="fa-solid fa-check text-[10px]"></i>
+                        <span>Save & Update Details</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -440,6 +632,19 @@ function chatbotWidget(config) {
         historyUrl: config.historyUrl,
         resetUrl: config.resetUrl,
         quickChips: [],
+        categories: config.categories || [],
+        companyFleet: config.companyFleet || [],
+        personalVehicles: config.personalVehicles || [],
+        editModalOpen: false,
+        draftClaim: {
+            merchant_name: '',
+            date: '',
+            amount: '',
+            category: '',
+            vehicle_plate: '',
+            custom_plate: '',
+            description: ''
+        },
 
         init() {
             this.setupQuickChips();
@@ -453,6 +658,12 @@ function chatbotWidget(config) {
             this.unreadCount = isNaN(savedUnread) ? 0 : savedUnread;
 
             this.loadHistory();
+
+            this.$watch('userInput', () => {
+                this.$nextTick(() => {
+                    this.autoResizeInput(this.$refs.messageInput);
+                });
+            });
         },
 
         async loadHistory() {
@@ -533,7 +744,7 @@ function chatbotWidget(config) {
         autoResizeInput(el) {
             if (!el) return;
             el.style.height = 'auto';
-            const maxHeight = 120; // Maximum height in pixels (~4 to 5 lines)
+            const maxHeight = 130; // Maximum height in pixels (~5 lines ceiling)
             el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px';
         },
 
@@ -866,18 +1077,111 @@ function chatbotWidget(config) {
                    /(?:Amount|Jumlah):\s*RM\s*[\d\.]+/i.test(text);
         },
 
-        editDetails(text) {
-            const lines = String(text).split('\n').filter(l => /^(Merchant|Date|Amount|Category|Purpose|Vehicle Plate|Peniaga|Tarikh|Jumlah|Kategori|Tujuan|Plat Kenderaan):/i.test(l.trim()));
-            if (lines.length > 0) {
-                this.userInput = 'Here are my updated claim details for review:\n' + lines.map(l => l.trim()).join('\n');
-            } else {
-                this.userInput = 'Here are my updated claim details for review:\n' + text;
+        isFuelCategory(cat) {
+            return /fuel|petrol/i.test(cat || '');
+        },
+
+        isFuelMissingPlate(text) {
+            if (!text) return false;
+            const isFuel = /Category:\s*Fuel/i.test(text) || /Kategori:\s*(?:Fuel|Petrol)/i.test(text);
+            if (!isFuel) return false;
+            const plateMatch = text.match(/(?:Vehicle Plate|Plat Kenderaan):\s*([^\n\r]+)/i);
+            if (!plateMatch) return true;
+            const plateVal = plateMatch[1].trim();
+            return plateVal.toLowerCase() === 'unspecified' || plateVal === '-' || plateVal === '';
+        },
+
+        openEditModal(text) {
+            let merchant = '';
+            let date = '';
+            let amount = '';
+            let category = '';
+            let description = '';
+            let vehiclePlate = '';
+
+            const lines = String(text).split('\n');
+            for (const line of lines) {
+                const mMerch = line.match(/^(?:Merchant|Peniaga):\s*(.+)$/i);
+                if (mMerch) merchant = mMerch[1].trim();
+
+                const mDate = line.match(/^(?:Date|Tarikh):\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i);
+                if (mDate) date = mDate[1].trim();
+
+                const mAmt = line.match(/^(?:Amount|Jumlah):\s*(?:RM\s*)?([0-9]+(?:\.[0-9]+)?)/i);
+                if (mAmt) amount = mAmt[1].trim();
+
+                const mCat = line.match(/^(?:Category|Kategori):\s*(.+)$/i);
+                if (mCat) category = mCat[1].trim();
+
+                const mDesc = line.match(/^(?:Purpose|Tujuan):\s*(.+)$/i);
+                if (mDesc) description = mDesc[1].trim();
+
+                const mPlate = line.match(/^(?:Vehicle Plate|Plat Kenderaan):\s*(.+)$/i);
+                if (mPlate) vehiclePlate = mPlate[1].trim();
             }
-            this.$nextTick(() => {
-                if (this.$refs.messageInput) {
-                    this.$refs.messageInput.focus();
+
+            let matchedCat = this.categories[0] || 'Staff Operational Meals';
+            if (category) {
+                const lowerCat = category.toLowerCase();
+                const found = this.categories.find(c => c.toLowerCase() === lowerCat || c.toLowerCase().includes(lowerCat) || lowerCat.includes(c.toLowerCase()));
+                if (found) matchedCat = found;
+                else if (lowerCat.includes('fuel') || lowerCat.includes('petrol')) matchedCat = 'Fuel & Fleet Logistics (Corporate Fleet / Petrol)';
+                else if (lowerCat.includes('meal') || lowerCat.includes('food')) matchedCat = 'Staff Operational Meals';
+                else if (lowerCat.includes('pantry') || lowerCat.includes('grocer')) matchedCat = 'Office Pantry & Amenities (Groceries, Supplies)';
+                else if (lowerCat.includes('supplies') || lowerCat.includes('stationery')) matchedCat = 'Office Supplies & Stationery';
+                else if (lowerCat.includes('hardware') || lowerCat.includes('tools')) matchedCat = 'Site Tools & Hardware (Mr. DIY, Tools, Repairs)';
+                else if (lowerCat.includes('transport') || lowerCat.includes('toll')) matchedCat = 'Transportation & Toll';
+                else if (lowerCat.includes('travel') || lowerCat.includes('lodging')) matchedCat = 'Travel & Lodging';
+            }
+
+            let isCustom = false;
+            let customPlate = '';
+            if (vehiclePlate && vehiclePlate.toLowerCase() !== 'unspecified' && vehiclePlate !== '-') {
+                const inFleet = this.companyFleet.some(v => v.plate_number.toUpperCase() === vehiclePlate.toUpperCase());
+                const inPersonal = this.personalVehicles.some(v => v.plate_number.toUpperCase() === vehiclePlate.toUpperCase());
+                if (!inFleet && !inPersonal) {
+                    isCustom = true;
+                    customPlate = vehiclePlate;
+                    vehiclePlate = '__custom__';
                 }
-            });
+            } else {
+                vehiclePlate = '';
+            }
+
+            this.draftClaim = {
+                merchant_name: merchant,
+                date: date || new Date().toISOString().split('T')[0],
+                amount: amount,
+                category: matchedCat,
+                vehicle_plate: vehiclePlate,
+                custom_plate: customPlate,
+                description: description || 'Expense submitted via SmartClaim AI Assistant',
+            };
+
+            this.editModalOpen = true;
+        },
+
+        editDetails(text) {
+            this.openEditModal(text);
+        },
+
+        saveEditedDetails() {
+            this.editModalOpen = false;
+            let plate = this.draftClaim.vehicle_plate;
+            if (plate === '__custom__') {
+                plate = (this.draftClaim.custom_plate || '').trim();
+            }
+            let message = `Here are my updated claim details for review:\n` +
+                `Merchant: ${this.draftClaim.merchant_name || 'Merchant'}\n` +
+                `Date: ${this.draftClaim.date || ''}\n` +
+                `Amount: RM ${parseFloat(this.draftClaim.amount || 0).toFixed(2)}\n` +
+                `Category: ${this.draftClaim.category || 'Office Supplies'}\n` +
+                `Purpose: ${this.draftClaim.description || 'Expense claim'}`;
+            if (this.isFuelCategory(this.draftClaim.category)) {
+                message += `\nVehicle Plate: ${plate || 'Unspecified'}`;
+            }
+            this.userInput = message;
+            this.sendMessage();
         }
     };
 }

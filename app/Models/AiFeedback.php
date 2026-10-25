@@ -21,7 +21,65 @@ class AiFeedback extends Model
         'correction_status',
         'confidence_score',
         'raw_text_sample',
+        'predicted_category',
+        'actual_category',
+        'extracted_text',
+        'is_discrepancy',
+        'source',
     ];
+
+    public function setPredictedCategoryAttribute($value): void
+    {
+        $this->attributes['predicted_value'] = $value;
+        if (empty($this->attributes['field_name'])) {
+            $this->attributes['field_name'] = 'category';
+        }
+    }
+
+    public function setActualCategoryAttribute($value): void
+    {
+        $this->attributes['actual_value'] = $value;
+        if (empty($this->attributes['field_name'])) {
+            $this->attributes['field_name'] = 'category';
+        }
+    }
+
+    public function setExtractedTextAttribute($value): void
+    {
+        $this->attributes['raw_text_sample'] = $value;
+    }
+
+    public function setIsDiscrepancyAttribute($value): void
+    {
+        $this->attributes['correction_status'] = $value ? 'corrected_by_staff' : 'accepted_by_staff';
+    }
+
+    public function setSourceAttribute($value): void
+    {
+        if (empty($this->attributes['receipt_reference'])) {
+            $this->attributes['receipt_reference'] = strtoupper((string) $value);
+        }
+    }
+
+    public function getPredictedCategoryAttribute(): ?string
+    {
+        return $this->predicted_value;
+    }
+
+    public function getActualCategoryAttribute(): ?string
+    {
+        return $this->actual_value;
+    }
+
+    public function getExtractedTextAttribute(): ?string
+    {
+        return $this->raw_text_sample;
+    }
+
+    public function getIsDiscrepancyAttribute(): bool
+    {
+        return $this->correction_status === 'corrected_by_staff';
+    }
 
     protected $casts = [
         'confidence_score' => 'float',

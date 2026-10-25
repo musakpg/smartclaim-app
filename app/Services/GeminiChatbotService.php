@@ -72,14 +72,27 @@ class GeminiChatbotService
             ];
         }
 
+        $ocrBaseline = $receiptAttachment['ocr_baseline'] ?? session('chatbot_ocr_baseline');
+        $ocrContext = '';
+        if (!empty($ocrBaseline) && !empty($ocrBaseline['raw_text'])) {
+            $rawSample = addslashes(substr($ocrBaseline['raw_text'], 0, 1500));
+            $ocrContext = "\n\n[Google Cloud Vision OCR Grounding Context]:\n"
+                . "- Detected OCR Raw Text:\n\"\"\"{$rawSample}\"\"\"\n"
+                . (!empty($ocrBaseline['ocr_merchant']) ? "- Extracted Merchant: {$ocrBaseline['ocr_merchant']}\n" : '')
+                . (!empty($ocrBaseline['ocr_amount']) ? "- Extracted Total: RM " . number_format((float) $ocrBaseline['ocr_amount'], 2) . "\n" : '')
+                . (!empty($ocrBaseline['ocr_date']) ? "- Extracted Date: {$ocrBaseline['ocr_date']}\n" : '')
+                . (!empty($ocrBaseline['predicted_category']) ? "- TF-IDF Baseline Category: {$ocrBaseline['predicted_category']}\n" : '')
+                . "- Grounding Directive: Use this OCR baseline to anchor your recognition of merchant, date, amount, and category accurately.";
+        }
+
         $promptText = trim((string) $userMessage);
         if ($promptText !== '') {
             $userParts[] = [
-                'text' => $promptText,
+                'text' => $promptText . $ocrContext,
             ];
         } elseif (!empty($receiptAttachment)) {
             $userParts[] = [
-                'text' => 'Please analyze this uploaded receipt image. Extract the merchant name, transaction date (YYYY-MM-DD), total amount (in RM / MYR), and recommended expense category (Meals & Entertainment, Office Supplies, Travel, Accommodations, Fuel / Automotive, Utilities). Summarize the findings concisely and ask if I would like to submit this claim.',
+                'text' => 'Please analyze this uploaded receipt image. Extract the merchant name, transaction date (YYYY-MM-DD), total amount (in RM / MYR), and recommended expense category. Summarize the findings concisely and ask if I would like to submit this claim.' . $ocrContext,
             ];
         }
 
@@ -111,7 +124,7 @@ class GeminiChatbotService
         // Format history for Gemini API: remove non-standard client metadata
         $sanitizedHistory = $this->sanitizeHistoryForApi($history);
 
-        $systemInstruction = $this->buildSystemInstruction($user);
+        $systemInstruction = $this->buildSystemInstruction($user, $userMessage);
         $tools = $this->getToolsDeclaration();
 
         $activeModel = $this->model;
@@ -545,6 +558,10 @@ class GeminiChatbotService
                                     'type' => 'string',
                                     'description' => 'Optional numeric ID of the claim voucher (e.g., 14 or CLM-14). If omitted, retrieves recent claims.',
                                 ],
+                                'language' => [
+                                    'type' => 'string',
+                                    'description' => 'Optional language code or name (e.g. "en" or "ms"). Defaults to caller language.',
+                                ],
                             ],
                         ],
                     ],
@@ -592,8 +609,28 @@ class GeminiChatbotService
     /**
      * Build contextual system instruction tailored to the authenticated user and role.
      */
-    protected function buildSystemInstruction(?User $user): string
+    protected function buildSystemInstruction(?User $user, ?string $userMessage = null): string
     {
+        $isMalay = false;
+        if (!empty($userMessage)) {
+            $trimmedUser = trim($userMessage);
+            $isMalay = str_starts_with($trimmedUser, '⚡ Tindakan:')
+                || (bool) preg_match('/(tindakan|tuntut|tuntutan|resit|semak|bantu|saya|nak|buat|baki|hari ini|esok|semalam|apa khabar|selamat pagi|selamat petang|terima kasih|kenderaan|kereta|syarikat|elaun|petrol|minyak)/i', $trimmedUser);
+        }
+
+        $activeLangDirective = $isMalay
+            ? "Active Language Directive (STRICT MIRRORING):
+- Current User Language: Bahasa Melayu.
+- You MUST formulate your entire response 100% in standard Bahasa Melayu.
+- Use standard Malay review labels ('Peniaga:', 'Tarikh:', 'Jumlah:', 'Kategori:', 'Tujuan:', 'Plat Kenderaan:').
+- Output action chips prefixed strictly with '⚡ Tindakan: '.
+- NEVER use Bahasa Indonesia."
+            : "Active Language Directive (STRICT MIRRORING):
+- Current User Language: English (Default).
+- You MUST formulate your entire response 100% in professional English.
+- Use English review labels ('Merchant:', 'Date:', 'Amount:', 'Category:', 'Purpose:', 'Vehicle Plate:').
+- Output action chips prefixed strictly with '⚡ Action: '.
+- Never mix languages.";
         $userName = $user ? $user->name : 'Valued Employee';
         $userRole = $user ? strtolower(trim($user->role ?? 'staff')) : 'staff';
 
@@ -650,8 +687,12 @@ Registered Vehicles Registry:
 {$companyFleetSummary}
 
 Language Policy (STRICT):
-- Strictly communicate ONLY in standard Bahasa Melayu (BM) or English. Match whichever language the user initiates with.
+- DEFAULT SYSTEM LANGUAGE: English. If the user initiates or communicates in English (or clicks an English action chip like "⚡ Action: ..."), you MUST respond 100% in professional English. Use English review templates ("Merchant:", "Date:", "Amount:", "Category:", "Purpose:", "Vehicle Plate:") and English action chips ("⚡ Action: ...").
+- If the user initiates or communicates in Bahasa Melayu (or clicks a Malay action chip like "⚡ Tindakan: ..."), respond fully in standard Bahasa Melayu. Use standard Malay review templates and Malay action chips ("⚡ Tindakan: ...").
+- NEVER mix languages within a single response.
 - ABSOLUTELY FORBIDDEN: NEVER use Bahasa Indonesia. Do NOT use Indonesian vocabulary or phrasing (e.g. NEVER say "Tentu, saya bisa membantu Anda...", "Toko", "Tanggal", "Bisa", "Anda", "Struk", "Unggah", "Kembali", "Gimana"). In Bahasa Melayu, use standard terms: "Tentu, saya boleh bantu", "Kedai/Peniaga", "Tarikh", "Boleh", "Resit", "Muat naik", "Awak/Tuan/Puan".
+
+{$activeLangDirective}
 
 Conversational Scope & 3-Zone Guardrails:
 
@@ -717,10 +758,13 @@ Amount: RM [0.00]
 Category: Fuel & Fleet Logistics (Corporate Fleet / Petrol)
 Purpose: [Suggested Business Purpose]
 Vehicle Plate: [Selected Company Fleet Plate or Unspecified]
-  - If no vehicle plate was detected in the receipt or user message:
-    - Set Vehicle Plate to Unspecified.
-    - Ask the user to select which company fleet vehicle was used for this refuel (or specify if their personal car was used).
-    - Output Action Chips for available company fleet plates (e.g. "⚡ Tindakan: Guna kenderaan syarikat WA 8888 A", "⚡ Tindakan: Guna kenderaan syarikat BKA 8821" or in English "⚡ Action: I used company fleet vehicle WA 8888 A").
+  - STRICT FUEL VEHICLE COMPLIANCE LOCK:
+    - When vehicle plate is 'Unspecified' or missing:
+      - NEVER display or prompt 'Proceed & Submit Claim' in your text response.
+      - NEVER execute `submit_claim` when the vehicle plate is unspecified.
+      - State clearly that company fuel claims require an active company fleet vehicle plate (e.g. WA 8888 A, BKA 8821) to be assigned for audit compliance.
+      - Instruct the user to click '[ 🚗 Select Vehicle / Edit Details ]' to assign their company fleet vehicle or reply with the plate number before submission can proceed.
+    - Output Action Chips for available company fleet plates (e.g. "⚡ Action: I used company fleet vehicle WA 8888 A", "⚡ Action: I used company fleet vehicle BKA 8821" or in BM "⚡ Tindakan: Guna kenderaan syarikat WA 8888 A").
   - Once the user confirms the vehicle plate, include `vehicle_plate` when calling `submit_claim`.
 
 D. Mileage Allowance Claims:

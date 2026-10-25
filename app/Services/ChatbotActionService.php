@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AiFeedback;
 use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Claim;
@@ -223,6 +224,36 @@ class ChatbotActionService
             return $claim;
         });
 
+        // Active Learning Feedback Ledger Integration:
+        $baseline = session('chatbot_ocr_baseline');
+        if ($baseline && !empty($baseline['predicted_category'])) {
+            $finalCategory = $claim->predicted_category;
+            $predictedCategory = $baseline['predicted_category'];
+            $isDiscrepancy = strcasecmp((string) $predictedCategory, (string) $finalCategory) !== 0;
+
+            if (class_exists(AiFeedback::class)) {
+                AiFeedback::create([
+                    'claim_id' => $claim->claim_id ?? $claim->id,
+                    'user_id' => $user->user_id ?? $user->id,
+                    'source' => 'chatbot',
+                    'extracted_text' => $baseline['raw_text'] ?? '',
+                    'predicted_category' => $predictedCategory,
+                    'actual_category' => $finalCategory,
+                    'is_discrepancy' => $isDiscrepancy,
+                    'field_name' => 'category',
+                    'predicted_value' => $predictedCategory,
+                    'actual_value' => $finalCategory,
+                    'correction_status' => $isDiscrepancy ? 'corrected_by_staff' : 'accepted_by_staff',
+                    'confidence_score' => $baseline['confidence'] ?? 88.50,
+                    'raw_text_sample' => $baseline['raw_text'] ?? '',
+                    'receipt_reference' => $claim->receipt_invoice_no ?? ('CHATBOT-' . ($claim->claim_id ?? time())),
+                    'created_at' => now(),
+                ]);
+            }
+
+            session()->forget('chatbot_ocr_baseline');
+        }
+
         return [
             'status' => 'success',
             'action' => 'submit_claim',
@@ -302,12 +333,19 @@ class ChatbotActionService
                 ])
                 ->toArray();
 
+            $lang = strtolower(trim($args['language'] ?? ''));
+            $isMalay = in_array($lang, ['ms', 'bm', 'malay']);
+
+            $msg = $isMalay
+                ? (count($claims) > 0 ? "Memaparkan " . count($claims) . " rekod tuntutan terkini anda." : "Anda belum mempunyai sebarang rekod tuntutan.")
+                : (count($claims) > 0 ? "Retrieved your " . count($claims) . " most recent claim submissions." : "You have not submitted any claims yet.");
+
             return [
                 'status' => 'success',
                 'action' => 'check_claim_status',
                 'total_found' => count($claims),
                 'claims' => $claims,
-                'message' => count($claims) > 0 ? "Retrieved your " . count($claims) . " most recent claim submissions." : "You have not submitted any claims yet.",
+                'message' => $msg,
             ];
         }
 
