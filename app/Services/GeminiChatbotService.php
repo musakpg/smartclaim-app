@@ -11,6 +11,7 @@ class GeminiChatbotService
 {
     protected ?string $apiKey;
     protected string $model;
+    protected string $fallbackModel;
     protected string $endpoint;
     protected ChatbotActionService $actionService;
 
@@ -18,7 +19,8 @@ class GeminiChatbotService
     {
         $this->actionService = $actionService;
         $this->apiKey = config('services.gemini.api_key');
-        $this->model = config('services.gemini.model', 'gemini-2.5-flash');
+        $this->model = config('services.gemini.model', 'gemini-3.8-flash');
+        $this->fallbackModel = config('services.gemini.fallback_model', 'gemini-3.1-flash-lite');
         $this->endpoint = rtrim(config('services.gemini.endpoint', 'https://generativelanguage.googleapis.com/v1beta/models'), '/');
     }
 
@@ -61,7 +63,7 @@ class GeminiChatbotService
             ];
         } elseif (!empty($receiptAttachment)) {
             $userParts[] = [
-                'text' => 'Please analyze this uploaded receipt. Extract the merchant name, transaction date, total amount (in RM / MYR), and recommended expense category (e.g. Meals & Entertainment, Office Supplies, Travel, Accommodations, Fuel / Automotive). Summarize the details and ask if I would like you to submit this claim voucher for audit.',
+                'text' => 'Please analyze this uploaded receipt image. Extract the merchant name, transaction date (YYYY-MM-DD), total amount (in RM / MYR), and recommended expense category (Meals & Entertainment, Office Supplies, Travel, Accommodations, Fuel / Automotive, Utilities). Summarize the findings concisely and ask if I would like to submit this claim.',
             ];
         }
 
@@ -79,13 +81,14 @@ class GeminiChatbotService
             'parts' => $userParts,
         ];
 
-        // Format history for Gemini API: remove local metadata like 'path' and 'hash' from inlineData if any
+        // Format history for Gemini API: remove non-standard client metadata
         $sanitizedHistory = $this->sanitizeHistoryForApi($history);
 
         $systemInstruction = $this->buildSystemInstruction($user);
         $tools = $this->getToolsDeclaration();
 
-        $url = "{$this->endpoint}/{$this->model}:generateContent?key={$this->apiKey}";
+        $activeModel = $this->model;
+        $url = "{$this->endpoint}/{$activeModel}:generateContent?key={$this->apiKey}";
 
         $payload = [
             'contents' => $sanitizedHistory,
@@ -103,14 +106,50 @@ class GeminiChatbotService
 
         try {
             $response = Http::timeout(60)
-                ->withHeaders(['Content-Type' => 'application/json'])
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                ])
+                ->withOptions([
+                    'curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]
+                ])
                 ->post($url, $payload);
 
+            // Resilient Fallback: If primary model hits 429 quota or 503 high-demand, attempt fallback model
+            if ($response->failed() && in_array($response->status(), [429, 503]) && !empty($this->fallbackModel) && $this->fallbackModel !== $activeModel) {
+                Log::warning("Gemini primary model '{$activeModel}' returned HTTP {$response->status()}. Attempting resilient fallback to '{$this->fallbackModel}'. Error: " . $response->body());
+                $activeModel = $this->fallbackModel;
+                $url = "{$this->endpoint}/{$activeModel}:generateContent?key={$this->apiKey}";
+                $response = Http::timeout(60)
+                    ->withHeaders([
+                        'Content-Type' => 'application/json',
+                        'Accept' => 'application/json',
+                    ])
+                    ->withOptions([
+                        'curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]
+                    ])
+                    ->post($url, $payload);
+            }
+
             if ($response->failed()) {
-                Log::error('Gemini API Error: ' . $response->body());
-                $errorData = $response->json('error.message') ?? 'Unknown API response error.';
+                $statusCode = $response->status();
+                $rawBody = $response->body();
+                Log::error("Gemini API Error [{$statusCode}]: {$rawBody}");
+
+                $errorData = $response->json();
+                $apiErrorMsg = $errorData['error']['message'] ?? null;
+
+                $userFriendlyReply = match ($statusCode) {
+                    400 => "Request format issue with Gemini AI: " . ($apiErrorMsg ?? 'Invalid schema parameters or bad request.'),
+                    403 => "Gemini API authorization failed. Please verify your GEMINI_API_KEY configuration.",
+                    404 => "The configured model '{$this->model}' was not found. " . ($apiErrorMsg ?? 'Please check GEMINI_MODEL in .env.'),
+                    429 => "Gemini API rate limit reached. Please wait a moment before trying again.",
+                    503 => "The Gemini AI service is temporarily experiencing high traffic. Please try again in a moment.",
+                    default => "Unable to communicate with Gemini AI (" . ($apiErrorMsg ?? "HTTP {$statusCode}") . "). Please try again later.",
+                };
+
                 return [
-                    'reply' => "I encountered an error connecting to Gemini AI: {$errorData}",
+                    'reply' => $userFriendlyReply,
                     'history' => $history,
                     'action_executed' => null,
                 ];
@@ -120,8 +159,9 @@ class GeminiChatbotService
             $candidate = $responseData['candidates'][0] ?? null;
 
             if (!$candidate || empty($candidate['content']['parts'])) {
+                Log::warning('Gemini API returned empty candidate content: ' . json_encode($responseData));
                 return [
-                    'reply' => "I did not receive a legible response from Gemini. Please try again.",
+                    'reply' => "I did not receive a readable response from Gemini. Please try again.",
                     'history' => $history,
                     'action_executed' => null,
                 ];
@@ -137,7 +177,7 @@ class GeminiChatbotService
                 }
             }
 
-            // If Gemini issued a Function Call tool invocation
+            // If Gemini executed a Function Call tool invocation
             if ($functionCallPart) {
                 $toolName = $functionCallPart['name'];
                 $toolArgs = $functionCallPart['args'] ?? [];
@@ -146,40 +186,46 @@ class GeminiChatbotService
                 $activeReceipt = $receiptAttachment ?? $sessionReceipt;
                 $actionResult = $this->actionService->executeAction($toolName, $toolArgs, $activeReceipt);
 
-                // Append model's tool call turn to history
+                // Append model's tool call turn to history (preserving thoughts and thoughtSignature for Gemini 3)
+                $normalizedModelParts = [];
+                foreach ($candidate['content']['parts'] as $candidatePart) {
+                    if (isset($candidatePart['functionCall']) && is_array($candidatePart['functionCall']['args'] ?? null) && empty($candidatePart['functionCall']['args'])) {
+                        $candidatePart['functionCall']['args'] = (object) [];
+                    }
+                    $normalizedModelParts[] = $candidatePart;
+                }
+
                 $modelTurn = [
                     'role' => 'model',
-                    'parts' => [
-                        [
-                            'functionCall' => [
-                                'name' => $toolName,
-                                'args' => (object) $toolArgs,
-                            ],
-                        ],
-                    ],
+                    'parts' => $normalizedModelParts,
                 ];
                 $history[] = $modelTurn;
                 $sanitizedHistory[] = $modelTurn;
 
                 // Append user's tool response turn to history
+                $functionResponsePayload = [
+                    'name' => $toolName,
+                    'response' => [
+                        'name' => $toolName,
+                        'content' => $actionResult,
+                    ],
+                ];
+                if (!empty($functionCallPart['id'])) {
+                    $functionResponsePayload['id'] = $functionCallPart['id'];
+                }
+
                 $functionResponseTurn = [
                     'role' => 'user',
                     'parts' => [
                         [
-                            'functionResponse' => [
-                                'name' => $toolName,
-                                'response' => [
-                                    'name' => $toolName,
-                                    'content' => $actionResult,
-                                ],
-                            ],
+                            'functionResponse' => $functionResponsePayload,
                         ],
                     ],
                 ];
                 $history[] = $functionResponseTurn;
                 $sanitizedHistory[] = $functionResponseTurn;
 
-                // Call Gemini again with function output so the model can generate a conversational response
+                // Call Gemini again with function output for final conversational response
                 $secondPayload = [
                     'contents' => $sanitizedHistory,
                     'systemInstruction' => [
@@ -195,10 +241,16 @@ class GeminiChatbotService
                 ];
 
                 $secondResponse = Http::timeout(60)
-                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->withHeaders([
+                        'Content-Type' => 'application/json',
+                        'Accept' => 'application/json',
+                    ])
+                    ->withOptions([
+                        'curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]
+                    ])
                     ->post($url, $secondPayload);
 
-                $conversationalReply = "I have executed the requested action: {$toolName}.";
+                $conversationalReply = "I have processed the requested action: {$toolName}.";
 
                 if ($secondResponse->successful()) {
                     $secondCandidate = $secondResponse->json('candidates.0');
@@ -213,6 +265,11 @@ class GeminiChatbotService
                             $conversationalReply = implode("\n\n", $replyTexts);
                         }
                     }
+                } else {
+                    Log::error("Gemini Second Turn Error [{$secondResponse->status()}]: " . $secondResponse->body());
+                    if (!empty($actionResult['message'])) {
+                        $conversationalReply = $actionResult['message'];
+                    }
                 }
 
                 // Add model's final conversational reply to history
@@ -225,7 +282,7 @@ class GeminiChatbotService
 
                 $actionBadge = [
                     'tool' => $toolName,
-                    'status' => $actionResult['status'] ?? 'unknown',
+                    'status' => $actionResult['status'] ?? 'completed',
                     'label' => $this->getActionLabel($toolName, $actionResult),
                     'data' => $actionResult,
                 ];
@@ -247,7 +304,7 @@ class GeminiChatbotService
 
             $finalReply = !empty($replyTexts)
                 ? implode("\n\n", $replyTexts)
-                : "I processed your request, but have no text reply.";
+                : "I processed your request, but received no text output.";
 
             $history[] = [
                 'role' => 'model',
@@ -268,7 +325,7 @@ class GeminiChatbotService
             ]);
 
             return [
-                'reply' => "An unexpected error occurred while communicating with Gemini AI: " . $e->getMessage(),
+                'reply' => "I encountered an error connecting to the Gemini AI service (" . $e->getMessage() . "). Please try again in a moment.",
                 'history' => $history,
                 'action_executed' => null,
             ];
@@ -276,7 +333,7 @@ class GeminiChatbotService
     }
 
     /**
-     * Provide clean function calling tool declarations adhering to Google Generative Language schema.
+     * Provide function calling tool declarations strictly adhering to standard OpenAPI types in lowercase.
      */
     public function getToolsDeclaration(): array
     {
@@ -287,27 +344,27 @@ class GeminiChatbotService
                         'name' => 'submit_claim',
                         'description' => 'Submit a new official expense claim reimbursement request for the authenticated staff user.',
                         'parameters' => [
-                            'type' => 'OBJECT',
+                            'type' => 'object',
                             'properties' => [
                                 'category' => [
-                                    'type' => 'STRING',
+                                    'type' => 'string',
                                     'description' => 'Expense category (e.g., Meals & Entertainment, Office Supplies, Travel, Accommodations, Fuel / Automotive, Utilities).',
                                 ],
                                 'amount' => [
-                                    'type' => 'NUMBER',
+                                    'type' => 'number',
                                     'description' => 'The numeric total amount of the claim in Malaysian Ringgit (MYR / RM).',
                                 ],
                                 'merchant_name' => [
-                                    'type' => 'STRING',
-                                    'description' => 'The merchant, shop, or vendor name where the transaction took place.',
+                                    'type' => 'string',
+                                    'description' => 'The merchant, vendor, or store name where the transaction occurred.',
                                 ],
                                 'receipt_date' => [
-                                    'type' => 'STRING',
-                                    'description' => 'The transaction date in YYYY-MM-DD format.',
+                                    'type' => 'string',
+                                    'description' => 'The transaction date formatted as YYYY-MM-DD.',
                                 ],
                                 'description' => [
-                                    'type' => 'STRING',
-                                    'description' => 'Business purpose or explanation for the expenditure.',
+                                    'type' => 'string',
+                                    'description' => 'Business purpose or justification for the expenditure.',
                                 ],
                             ],
                             'required' => ['category', 'amount', 'merchant_name', 'description'],
@@ -317,10 +374,10 @@ class GeminiChatbotService
                         'name' => 'check_claim_status',
                         'description' => 'Check the status and details of expense claims. Staff can check their own submissions. Finance and Managers can inspect any claim by ID or view recent submissions.',
                         'parameters' => [
-                            'type' => 'OBJECT',
+                            'type' => 'object',
                             'properties' => [
                                 'claim_id' => [
-                                    'type' => 'STRING',
+                                    'type' => 'string',
                                     'description' => 'Optional numeric ID of the claim voucher (e.g., 14 or CLM-14). If omitted, retrieves recent claims.',
                                 ],
                             ],
@@ -330,14 +387,14 @@ class GeminiChatbotService
                         'name' => 'pre_approve_claim',
                         'description' => 'Finance role action: Audit and pre-approve a pending claim, escalating it to executive management for final sign-off.',
                         'parameters' => [
-                            'type' => 'OBJECT',
+                            'type' => 'object',
                             'properties' => [
                                 'claim_id' => [
-                                    'type' => 'STRING',
+                                    'type' => 'string',
                                     'description' => 'The numeric ID of the claim to pre-approve (e.g., 14 or CLM-14).',
                                 ],
                                 'audit_notes' => [
-                                    'type' => 'STRING',
+                                    'type' => 'string',
                                     'description' => 'Audit remarks or verification notes from the Finance desk.',
                                 ],
                             ],
@@ -348,14 +405,14 @@ class GeminiChatbotService
                         'name' => 'final_approve_claim',
                         'description' => 'Manager role action: Grant final executive authorization on a claim voucher for finance disbursement.',
                         'parameters' => [
-                            'type' => 'OBJECT',
+                            'type' => 'object',
                             'properties' => [
                                 'claim_id' => [
-                                    'type' => 'STRING',
+                                    'type' => 'string',
                                     'description' => 'The numeric ID of the claim to approve (e.g., 14 or CLM-14).',
                                 ],
                                 'approval_remarks' => [
-                                    'type' => 'STRING',
+                                    'type' => 'string',
                                     'description' => 'Executive approval comments or remarks.',
                                 ],
                             ],
@@ -376,27 +433,26 @@ class GeminiChatbotService
         $userRole = $user ? strtolower(trim($user->role ?? 'staff')) : 'staff';
 
         $roleSpecificGuidance = match ($userRole) {
-            'manager' => "- You are assisting an Executive Manager ({$userName}). They have authority to execute `final_approve_claim` and view all claims with `check_claim_status`. Prioritize concise financial summaries, risk scores, and approval actions.",
-            'finance', 'fin' => "- You are assisting a Finance Officer ({$userName}). They have authority to audit and execute `pre_approve_claim` on pending claims and inspect all records with `check_claim_status`.",
-            default => "- You are assisting a Staff Employee ({$userName}). They can submit claims via `submit_claim` and check their personal claim statuses with `check_claim_status`. When receipts are provided, extract merchant, date, amount, and category, and ask or submit on their behalf.",
+            'manager' => "- Assisting Executive Manager ({$userName}). They have authority to execute `final_approve_claim` and view all claims with `check_claim_status`. Prioritize financial summaries and approval actions.",
+            'finance', 'fin' => "- Assisting Finance Officer ({$userName}). They have authority to execute `pre_approve_claim` on pending claims and inspect all records with `check_claim_status`.",
+            default => "- Assisting Staff Employee ({$userName}). They can submit claims via `submit_claim` and check personal claim statuses with `check_claim_status`. When receipts are provided, extract merchant, date, amount, and category, then ask or submit on their behalf.",
         };
 
         return <<<TEXT
-You are the SmartClaim AI Conversational Assistant, an intelligent expense management agent for SmartClaim.
+You are the SmartClaim Assistant, an enterprise-grade AI expense assistant.
 Operating Context:
 - Currency: Malaysian Ringgit (MYR / RM). Always format amounts like "RM 45.50".
 - Current User: {$userName} (Role: {$userRole}).
 {$roleSpecificGuidance}
 
-Guidelines:
-1. Always maintain a professional, helpful, and concise demeanor.
-2. For multimodal receipt images: Extract the vendor/merchant name, transaction date (YYYY-MM-DD), total amount, and recommended category (Meals & Entertainment, Office Supplies, Travel, Accommodations, Fuel / Automotive, Utilities).
-3. If the user explicitly asks to submit a claim or asks you to file an analyzed receipt, invoke the `submit_claim` function immediately.
-4. If a Finance officer asks to pre-approve or verify a claim voucher, invoke `pre_approve_claim`.
-5. If a Manager asks to approve a claim voucher, invoke `final_approve_claim`.
-6. If the user asks about the status of claims or a specific claim, invoke `check_claim_status`.
-7. Never invent fictitious claim IDs. If an action fails with an error or access restriction, explain the policy rule clearly and politely to the user.
-8. Answer all conversational questions in English.
+Instructions:
+1. Provide concise, clear, and professional responses in English.
+2. For multimodal receipt images: Extract vendor name, transaction date (YYYY-MM-DD), total amount, and recommended category (Meals & Entertainment, Office Supplies, Travel, Accommodations, Fuel / Automotive, Utilities).
+3. If requested to submit a claim, invoke `submit_claim`.
+4. If a Finance officer requests to audit or pre-approve a claim, invoke `pre_approve_claim`.
+5. If a Manager requests to approve a claim, invoke `final_approve_claim`.
+6. If the user asks about claim status, invoke `check_claim_status`.
+7. Never fabricate claim IDs. Explain any policy constraints cleanly.
 TEXT;
     }
 
@@ -427,22 +483,35 @@ TEXT;
                     }
                 } elseif (isset($part['functionCall']) || isset($part['function_call'])) {
                     $call = $part['functionCall'] ?? $part['function_call'];
-                    $cleanParts[] = [
+                    $cleanCallPart = [
                         'functionCall' => [
                             'name' => $call['name'],
                             'args' => (object) ($call['args'] ?? []),
                         ],
                     ];
+                    if (!empty($call['id'])) {
+                        $cleanCallPart['functionCall']['id'] = $call['id'];
+                    }
+                    if (!empty($part['thoughtSignature'])) {
+                        $cleanCallPart['thoughtSignature'] = $part['thoughtSignature'];
+                    } elseif (!empty($part['thought_signature'])) {
+                        $cleanCallPart['thoughtSignature'] = $part['thought_signature'];
+                    }
+                    $cleanParts[] = $cleanCallPart;
                 } elseif (isset($part['functionResponse']) || isset($part['function_response'])) {
                     $resp = $part['functionResponse'] ?? $part['function_response'];
-                    $cleanParts[] = [
-                        'functionResponse' => [
+                    $cleanResp = [
+                        'name' => $resp['name'],
+                        'response' => [
                             'name' => $resp['name'],
-                            'response' => [
-                                'name' => $resp['name'],
-                                'content' => $resp['response']['content'] ?? $resp['response'] ?? [],
-                            ],
+                            'content' => $resp['response']['content'] ?? $resp['response'] ?? [],
                         ],
+                    ];
+                    if (!empty($resp['id'])) {
+                        $cleanResp['id'] = $resp['id'];
+                    }
+                    $cleanParts[] = [
+                        'functionResponse' => $cleanResp,
                     ];
                 }
             }
@@ -459,22 +528,24 @@ TEXT;
     }
 
     /**
-     * Produce human-friendly status label for the action status chip badge.
+     * Produce clean, minimalist status label for action badge pill.
      */
     protected function getActionLabel(string $toolName, array $result): string
     {
         $status = $result['status'] ?? 'completed';
 
         if ($status !== 'success') {
-            return "Action Failed: " . ($result['message'] ?? 'Execution error');
+            return "Failed: " . ($result['message'] ?? 'Execution error');
         }
 
+        $voucher = $result['voucher_no'] ?? (!empty($result['claim_id']) ? "CLM-{$result['claim_id']}" : '');
+
         return match ($toolName) {
-            'submit_claim' => "Action Executed: Claim Submitted #" . ($result['voucher_no'] ?? $result['claim_id'] ?? ''),
-            'check_claim_status' => "Action Executed: Claims Checked",
-            'pre_approve_claim' => "Action Executed: Pre-Approved #" . ($result['voucher_no'] ?? $result['claim_id'] ?? ''),
-            'final_approve_claim' => "Action Executed: Final Approved #" . ($result['voucher_no'] ?? $result['claim_id'] ?? ''),
-            default => "Action Executed: {$toolName}",
+            'submit_claim' => ($voucher ? "{$voucher} " : "") . "submitted for audit",
+            'check_claim_status' => "Claim status verified",
+            'pre_approve_claim' => ($voucher ? "{$voucher} " : "") . "pre-approved by Finance",
+            'final_approve_claim' => ($voucher ? "{$voucher} " : "") . "approved by Management",
+            default => "Action executed: {$toolName}",
         };
     }
 }

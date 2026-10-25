@@ -49,46 +49,65 @@ class ChatbotController extends Controller
         $receiptAttachment = null;
 
         if ($receiptFile) {
-            // Cryptographic SHA-256 binary hash generation per fraud prevention guardrails
-            $realPath = $receiptFile->getRealPath();
-            $receiptHash = hash_file('sha256', $realPath);
+            try {
+                // Cryptographic SHA-256 binary hash generation per fraud prevention guardrails
+                $realPath = $receiptFile->getRealPath();
+                $receiptHash = hash_file('sha256', $realPath);
 
-            // Store receipt binary safely in private disk storage
-            $storedPath = $receiptFile->store('receipts', 'private');
+                // Store receipt binary safely in private disk storage
+                $storedPath = $receiptFile->store('receipts', 'private');
 
-            $mimeType = $receiptFile->getMimeType();
-            $base64Data = base64_encode(file_get_contents($realPath));
+                $mimeType = $receiptFile->getMimeType();
+                $base64Data = base64_encode(file_get_contents($realPath));
 
-            $receiptAttachment = [
-                'mime_type' => $mimeType,
-                'base64_data' => $base64Data,
-                'path' => $storedPath,
-                'hash' => $receiptHash,
-                'original_name' => $receiptFile->getClientOriginalName(),
-            ];
+                $receiptAttachment = [
+                    'mime_type' => $mimeType,
+                    'base64_data' => $base64Data,
+                    'path' => $storedPath,
+                    'hash' => $receiptHash,
+                    'original_name' => $receiptFile->getClientOriginalName(),
+                ];
 
-            // Cache in session so follow-up confirmations can utilize the uploaded receipt
-            session(['chatbot_last_receipt' => $receiptAttachment]);
+                // Cache in session so follow-up confirmations can utilize the uploaded receipt
+                session(['chatbot_last_receipt' => $receiptAttachment]);
+            } catch (\Throwable $fileEx) {
+                Log::error('Chatbot receipt processing failed: ' . $fileEx->getMessage());
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to process receipt image: ' . $fileEx->getMessage(),
+                ], 200);
+            }
         }
 
         $history = session('chatbot_history', []);
         $sessionReceipt = session('chatbot_last_receipt');
 
-        $result = $this->geminiService->chat(
-            $history,
-            $userMessage,
-            $receiptAttachment,
-            $sessionReceipt
-        );
+        try {
+            $result = $this->geminiService->chat(
+                $history,
+                $userMessage,
+                $receiptAttachment,
+                $sessionReceipt
+            );
 
-        // Retain sanitized conversation history in session
-        session(['chatbot_history' => $result['history']]);
+            // Retain sanitized conversation history in session
+            session(['chatbot_history' => $result['history']]);
 
-        return response()->json([
-            'status' => 'success',
-            'reply' => $result['reply'],
-            'action_executed' => $result['action_executed'],
-        ]);
+            return response()->json([
+                'status' => 'success',
+                'reply' => $result['reply'],
+                'action_executed' => $result['action_executed'],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('ChatbotController chat invocation exception: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 200);
+        }
     }
 
     /**

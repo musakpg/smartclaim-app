@@ -60,7 +60,7 @@ return [
     'engine' => null,
     'options' => extension_loaded('pdo_mysql') ? array_filter([
         // Gunakan laluan sijil CA dari fail .env jika wujud
-        PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+        PDO::MYSQL_ATTR_SSL_CA => (env('MYSQL_ATTR_SSL_CA') && file_exists(env('MYSQL_ATTR_SSL_CA'))) ? env('MYSQL_ATTR_SSL_CA') : (file_exists(base_path('isrgrootx1.pem')) ? base_path('isrgrootx1.pem') : env('MYSQL_ATTR_SSL_CA')),
         PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
     ]) : [],
 ],

@@ -29,7 +29,7 @@
 @endphp
 
 <!-- Reusable Role-Based Mobile Bottom Navigation Bar with Elevated Center Floating Action Button -->
-<nav aria-label="Mobile Navigation" class="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl px-2 py-1 flex items-end justify-around">
+<nav aria-label="Mobile Navigation" class="fixed bottom-0 inset-x-0 z-50 md:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl px-2 py-1 flex items-end justify-around">
     @foreach ($navItems as $item)
         @if (!empty($item['is_fab']))
             <a href="{{ route($item['route']) }}" 

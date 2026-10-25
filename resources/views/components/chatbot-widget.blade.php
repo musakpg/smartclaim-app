@@ -9,6 +9,7 @@
         'finance', 'fin' => 'Finance Auditor',
         default => 'Staff Assistant',
     };
+    $activeModel = config('services.gemini.model', 'gemini-3.8-flash');
 @endphp
 
 <div 
@@ -20,97 +21,130 @@
         messageUrl: '{{ route('chatbot.message') }}',
         resetUrl: '{{ route('chatbot.reset') }}'
     })"
-    class="relative z-50"
+    class="relative z-50 font-sans"
     id="smartclaim-ai-chatbot-root"
 >
-    <!-- Floating Action Button (FAB) -->
+    <!-- Scoped Custom Minimalist Scrollbars (Linear / Stripe aesthetic) -->
+    <style>
+        .smartclaim-chat-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(148, 163, 184, 0.28) transparent;
+        }
+        .smartclaim-chat-scroll::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .smartclaim-chat-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .smartclaim-chat-scroll::-webkit-scrollbar-thumb {
+            background-color: rgba(148, 163, 184, 0.28);
+            border-radius: 9999px;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .smartclaim-chat-scroll:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(100, 116, 139, 0.55);
+        }
+        .dark .smartclaim-chat-scroll {
+            scrollbar-color: rgba(71, 85, 105, 0.4) transparent;
+        }
+        .dark .smartclaim-chat-scroll::-webkit-scrollbar-thumb {
+            background-color: rgba(71, 85, 105, 0.4);
+        }
+        .dark .smartclaim-chat-scroll:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(100, 116, 139, 0.7);
+        }
+    </style>
+
+    <!-- Floating Action Button (FAB) - Utilitarian & Solid Minimalist Design -->
     <div class="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40">
         <button 
             type="button"
             @click="toggleOpen()"
-            class="group relative flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 text-white shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-300 dark:focus:ring-indigo-800"
+            class="group relative flex items-center justify-center w-13 h-13 rounded-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-lg border border-slate-800 dark:border-slate-200 hover:scale-105 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-600"
             :class="{ 'rotate-90': isOpen }"
-            aria-label="SmartClaim AI Assistant"
-            title="SmartClaim AI Assistant"
+            aria-label="SmartClaim Assistant"
+            title="SmartClaim Assistant"
         >
-            <!-- Chat / Sparkle Icon when Closed -->
-            <span x-show="!isOpen" class="flex items-center justify-center transition-transform duration-300">
-                <i class="fa-solid fa-wand-magic-sparkles text-xl"></i>
+            <!-- Chat icon when closed -->
+            <span x-show="!isOpen" class="flex items-center justify-center transition-transform duration-200">
+                <i class="fa-regular fa-comment-dots text-lg"></i>
             </span>
 
-            <!-- Close Icon when Open -->
-            <span x-show="isOpen" x-cloak class="flex items-center justify-center transition-transform duration-300">
-                <i class="fa-solid fa-xmark text-2xl"></i>
+            <!-- Close icon when open -->
+            <span x-show="isOpen" x-cloak class="flex items-center justify-center transition-transform duration-200">
+                <i class="fa-solid fa-xmark text-xl"></i>
             </span>
 
-            <!-- Unread Badge Indicator -->
+            <!-- Minimalist Unread Badge -->
             <span 
                 x-show="unreadCount > 0 && !isOpen" 
                 x-cloak 
                 x-text="unreadCount"
-                class="absolute -top-1 -right-1 flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[11px] font-bold shadow-md animate-pulse"
+                class="absolute -top-1 -right-1 flex items-center justify-center min-w-4.5 h-4.5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-semibold shadow-sm"
             ></span>
 
-            <!-- Subtle Online Ping Dot -->
+            <!-- Active Status Ping Dot -->
             <span 
                 x-show="!isOpen && unreadCount === 0" 
-                class="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900"
+                class="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900"
             ></span>
         </button>
     </div>
 
-    <!-- Chat Modal Window Drawer -->
+    <!-- Chat Modal Window Drawer (Stripe / Linear Utilitarian Styling) -->
     <div 
         x-show="isOpen"
         x-cloak
-        x-transition:enter="transition ease-out duration-300 transform"
-        x-transition:enter-start="opacity-0 translate-y-6 scale-95"
+        x-transition:enter="transition ease-out duration-250 transform"
+        x-transition:enter-start="opacity-0 translate-y-4 scale-98"
         x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-        x-transition:leave="transition ease-in duration-200 transform"
+        x-transition:leave="transition ease-in duration-150 transform"
         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-        x-transition:leave-end="opacity-0 translate-y-6 scale-95"
+        x-transition:leave-end="opacity-0 translate-y-4 scale-98"
         @keydown.escape.window="isOpen = false"
-        class="fixed bottom-20 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-22 z-50 w-auto sm:w-[420px] max-h-[82vh] h-[580px] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/90 dark:border-slate-800 overflow-hidden"
+        class="fixed bottom-20 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-22 z-50 w-auto sm:w-[410px] max-h-[80vh] h-[560px] flex flex-col bg-white dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
     >
-        <!-- Header Bar -->
-        <div class="px-4 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white flex items-center justify-between shrink-0 shadow-sm">
+        <!-- Clean Slate Header Bar -->
+        <div class="px-4 py-3 bg-slate-900 dark:bg-slate-950 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
             <div class="flex items-center space-x-2.5">
-                <div class="relative w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-white shadow-inner">
-                    <i class="fa-solid fa-robot text-lg"></i>
-                    <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-indigo-700"></span>
+                <div class="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700/80 flex items-center justify-center text-slate-300">
+                    <i class="fa-solid fa-bolt-lightning text-xs"></i>
                 </div>
                 <div>
-                    <div class="flex items-center space-x-1.5">
-                        <h3 class="text-sm font-bold tracking-tight text-white leading-none">SmartClaim AI</h3>
-                        <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/20 text-blue-100">
+                    <div class="flex items-center space-x-2">
+                        <h3 class="text-xs font-semibold tracking-tight text-white">SmartClaim Assistant</h3>
+                        <!-- Role Badge in soft muted tones -->
+                        <span class="text-[9px] font-medium tracking-wide uppercase px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-300 border border-slate-700/60">
                             {{ $roleBadge }}
                         </span>
                     </div>
-                    <p class="text-[11px] text-blue-100/90 flex items-center space-x-1 mt-0.5">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                        <span>Gemini 2.5 Flash • Multimodal</span>
+                    <!-- Dynamic Model Tag with Green Indicator -->
+                    <p class="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5 font-mono">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+                        <span>{{ $activeModel }}</span>
                     </p>
                 </div>
             </div>
 
             <div class="flex items-center space-x-1">
-                <!-- Reset Conversation Button -->
+                <!-- Reset Chat -->
                 <button 
                     type="button" 
                     @click="resetChat()" 
-                    title="Reset Conversation"
-                    class="p-1.5 rounded-lg text-blue-100 hover:text-white hover:bg-white/10 transition-colors focus:outline-none"
+                    title="Reset Session"
+                    class="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none"
                     aria-label="Reset Conversation"
                 >
                     <i class="fa-solid fa-arrow-rotate-right text-xs"></i>
                 </button>
 
-                <!-- Close Modal Button -->
+                <!-- Close Modal -->
                 <button 
                     type="button" 
                     @click="isOpen = false" 
-                    title="Close Chat"
-                    class="p-1.5 rounded-lg text-blue-100 hover:text-white hover:bg-white/10 transition-colors focus:outline-none"
+                    title="Close"
+                    class="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none"
                     aria-label="Close Chat"
                 >
                     <i class="fa-solid fa-xmark text-sm"></i>
@@ -118,10 +152,10 @@
             </div>
         </div>
 
-        <!-- Conversation Scroll Area -->
+        <!-- Conversation Scroll Area with Minimalist Scrollbar -->
         <div 
             x-ref="chatScroll" 
-            class="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/60 dark:bg-slate-950/40 scroll-smooth"
+            class="smartclaim-chat-scroll flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50 dark:bg-slate-950/60 scroll-smooth"
         >
             <!-- Message Items Feed -->
             <template x-for="(msg, index) in messages" :key="msg.id || index">
@@ -129,80 +163,78 @@
                     <!-- User Message Bubble (Right Aligned) -->
                     <template x-if="msg.sender === 'user'">
                         <div class="flex flex-col items-end space-y-1">
-                            <div class="max-w-[85%] rounded-2xl rounded-tr-xs bg-blue-600 text-white px-3.5 py-2.5 shadow-sm text-xs sm:text-sm">
+                            <div class="max-w-[85%] rounded-2xl rounded-tr-sm bg-slate-900 dark:bg-blue-600 text-white px-3.5 py-2.5 shadow-2xs text-xs sm:text-[13px] leading-relaxed">
                                 <!-- Uploaded Image Thumbnail Preview -->
                                 <template x-if="msg.image_preview">
                                     <div class="mb-2 rounded-lg overflow-hidden border border-white/20 bg-black/10">
                                         <img :src="msg.image_preview" alt="Receipt preview" class="max-h-36 w-full object-cover rounded-md" />
                                     </div>
                                 </template>
-                                <p class="whitespace-pre-wrap leading-relaxed" x-text="msg.text"></p>
+                                <p class="whitespace-pre-wrap" x-text="msg.text"></p>
                             </div>
-                            <span class="text-[10px] text-slate-400 dark:text-slate-500 pr-1" x-text="msg.timestamp"></span>
+                            <span class="text-[10px] text-slate-400 dark:text-slate-500 pr-1 font-mono" x-text="msg.timestamp"></span>
                         </div>
                     </template>
 
-                    <!-- Bot Message Bubble (Left Aligned) -->
+                    <!-- Assistant Message Bubble (Left Aligned) -->
                     <template x-if="msg.sender === 'bot'">
                         <div class="flex items-start space-x-2">
-                            <div class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
-                                <i class="fa-solid fa-robot text-xs"></i>
+                            <div class="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 mt-0.5 text-[11px] font-semibold border border-slate-300/40 dark:border-slate-700/50">
+                                <i class="fa-solid fa-microchip"></i>
                             </div>
                             <div class="flex flex-col items-start space-y-1 max-w-[85%]">
                                 <div 
-                                    class="rounded-2xl rounded-tl-xs px-3.5 py-2.5 text-xs sm:text-sm shadow-sm border whitespace-pre-wrap leading-relaxed"
+                                    class="rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-xs sm:text-[13px] shadow-2xs border whitespace-pre-wrap leading-relaxed"
                                     :class="msg.is_error 
-                                        ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800' 
-                                        : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200/80 dark:border-slate-700/80'"
+                                        ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800/80' 
+                                        : 'bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 border-slate-200/60 dark:border-slate-700/60'"
                                 >
                                     <p x-text="msg.text"></p>
 
-                                    <!-- Distinct Tool Execution Badge Chip -->
+                                    <!-- Minimalist Compact Status Pill Tag -->
                                     <template x-if="msg.action">
-                                        <div 
-                                            class="mt-2.5 p-2 rounded-xl text-xs flex items-center space-x-2 shadow-2xs border"
-                                            :class="msg.action.status === 'success' 
-                                                ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800/80 text-emerald-800 dark:text-emerald-200' 
-                                                : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-200'"
-                                        >
-                                            <i 
-                                                class="text-sm shrink-0" 
-                                                :class="msg.action.status === 'success' ? 'fa-solid fa-circle-check text-emerald-500' : 'fa-solid fa-triangle-exclamation text-rose-500'"
-                                            ></i>
-                                            <span class="font-semibold" x-text="msg.action.label"></span>
+                                        <div class="mt-2.5 flex items-center">
+                                            <span 
+                                                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border"
+                                                :class="msg.action.status === 'success' 
+                                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60' 
+                                                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60'"
+                                            >
+                                                <i :class="msg.action.status === 'success' ? 'fa-solid fa-check text-emerald-600 dark:text-emerald-400' : 'fa-solid fa-xmark text-rose-600 dark:text-rose-400'"></i>
+                                                <span x-text="msg.action.label"></span>
+                                            </span>
                                         </div>
                                     </template>
                                 </div>
-                                <span class="text-[10px] text-slate-400 dark:text-slate-500 pl-1" x-text="msg.timestamp"></span>
+                                <span class="text-[10px] text-slate-400 dark:text-slate-500 pl-1 font-mono" x-text="msg.timestamp"></span>
                             </div>
                         </div>
                     </template>
                 </div>
             </template>
 
-            <!-- Loading / Thinking Wave Pulse State -->
+            <!-- Loading Thinking State -->
             <div x-show="isLoading" x-cloak class="flex items-start space-x-2">
-                <div class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300 flex items-center justify-center shrink-0 mt-0.5">
-                    <i class="fa-solid fa-robot text-xs"></i>
+                <div class="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 mt-0.5 text-[11px] border border-slate-300/40 dark:border-slate-700/50">
+                    <i class="fa-solid fa-microchip"></i>
                 </div>
-                <div class="rounded-2xl rounded-tl-xs px-3.5 py-3 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shadow-sm flex items-center space-x-1.5">
-                    <span class="text-xs text-slate-500 dark:text-slate-400 font-medium mr-1">Thinking</span>
-                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.3s]"></span>
-                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.15s]"></span>
-                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce"></span>
+                <div class="rounded-2xl rounded-tl-sm px-3 py-2 bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs flex items-center space-x-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500 animate-bounce [animation-delay:-0.3s]"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500 animate-bounce [animation-delay:-0.15s]"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500 animate-bounce"></span>
                 </div>
             </div>
 
-            <!-- Role-Specific Quick Suggestion Chips (shown when only initial message exists) -->
+            <!-- Role-Specific Quick Suggestion Chips (Minimalist Border Buttons) -->
             <template x-if="messages.length <= 1">
                 <div class="pt-2 flex flex-wrap gap-1.5">
                     <template x-for="chip in quickChips" :key="chip.label">
                         <button 
                             type="button"
                             @click="sendQuickPrompt(chip.prompt)"
-                            class="text-[11px] font-medium px-2.5 py-1 rounded-full bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-2xs"
+                            class="text-[11px] font-medium px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 transition-colors shadow-2xs flex items-center gap-1.5"
                         >
-                            <i :class="chip.icon" class="mr-1 text-indigo-500"></i>
+                            <i :class="chip.icon" class="text-slate-400 dark:text-slate-500 text-[10px]"></i>
                             <span x-text="chip.label"></span>
                         </button>
                     </template>
@@ -212,14 +244,14 @@
 
         <!-- Receipt Image Preview Chip (if selected) -->
         <template x-if="selectedFile">
-            <div class="px-4 py-2 bg-indigo-50 dark:bg-slate-800 border-t border-indigo-100 dark:border-slate-700 flex items-center justify-between text-xs">
+            <div class="px-3.5 py-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
                 <div class="flex items-center space-x-2 truncate">
                     <template x-if="imagePreview">
-                        <img :src="imagePreview" alt="Attachment" class="w-8 h-8 rounded object-cover border border-slate-200 dark:border-slate-700 shrink-0" />
+                        <img :src="imagePreview" alt="Attachment" class="w-7 h-7 rounded object-cover border border-slate-200 dark:border-slate-700 shrink-0" />
                     </template>
                     <div class="truncate">
-                        <p class="font-semibold text-slate-800 dark:text-slate-200 truncate" x-text="selectedFile.name"></p>
-                        <p class="text-[10px] text-slate-500" x-text="(selectedFile.size / 1024).toFixed(1) + ' KB'"></p>
+                        <p class="font-medium text-slate-800 dark:text-slate-200 truncate text-[11px]" x-text="selectedFile.name"></p>
+                        <p class="text-[9px] text-slate-400 font-mono" x-text="(selectedFile.size / 1024).toFixed(1) + ' KB'"></p>
                     </div>
                 </div>
                 <button 
@@ -228,13 +260,13 @@
                     class="p-1 rounded text-slate-400 hover:text-rose-500 transition-colors"
                     title="Remove receipt"
                 >
-                    <i class="fa-solid fa-xmark text-sm"></i>
+                    <i class="fa-solid fa-xmark text-xs"></i>
                 </button>
             </div>
         </template>
 
         <!-- Message Input Footer -->
-        <div class="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+        <div class="p-3 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 shrink-0">
             <form @submit.prevent="sendMessage()" class="flex items-end space-x-2">
                 <!-- Hidden Receipt File Input -->
                 <input 
@@ -249,22 +281,22 @@
                 <button 
                     type="button" 
                     @click="$refs.fileInput.click()" 
-                    title="Attach Receipt Image or PDF"
-                    class="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none shrink-0"
+                    title="Attach Receipt (Image / PDF)"
+                    class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors focus:outline-none shrink-0"
                     aria-label="Attach Receipt"
                 >
-                    <i class="fa-solid fa-paperclip text-base"></i>
+                    <i class="fa-solid fa-paperclip text-sm"></i>
                 </button>
 
-                <!-- Textarea / Input -->
+                <!-- Textarea Input -->
                 <div class="relative flex-1">
                     <textarea 
                         x-ref="messageInput"
                         x-model="userInput"
                         @keydown.enter.exact.prevent="sendMessage()"
                         rows="1"
-                        placeholder="Ask AI or attach receipt..."
-                        class="w-full resize-none max-h-24 py-2 px-3 text-xs sm:text-sm rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border border-transparent focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all placeholder-slate-400"
+                        placeholder="Ask assistant or upload a receipt..."
+                        class="w-full resize-none max-h-24 py-2 px-3 text-xs sm:text-[13px] rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-slate-400 dark:focus:border-slate-600 focus:bg-white dark:focus:bg-slate-950 focus:outline-none transition-all placeholder-slate-400 dark:placeholder-slate-500"
                     ></textarea>
                 </div>
 
@@ -272,15 +304,15 @@
                 <button 
                     type="submit" 
                     :disabled="isLoading || (!userInput.trim() && !selectedFile)"
-                    class="p-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-400 shrink-0"
+                    class="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-2xs focus:outline-none shrink-0"
                     aria-label="Send Message"
                 >
-                    <i class="fa-solid fa-paper-plane text-xs sm:text-sm"></i>
+                    <i class="fa-solid fa-arrow-up text-xs sm:text-sm"></i>
                 </button>
             </form>
-            <div class="mt-1 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 px-1">
-                <span>Enter to send • Shift+Enter for newline</span>
-                <span>Powered by Gemini</span>
+            <div class="mt-1 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 px-1 font-mono">
+                <span>Enter ↵ to send</span>
+                <span>{{ $activeModel }}</span>
             </div>
         </div>
     </div>
@@ -312,11 +344,11 @@ function chatbotWidget(config) {
         setupInitialGreeting() {
             let greetingText = '';
             if (this.role === 'manager') {
-                greetingText = `👋 Hello Manager ${this.userName}! I am your SmartClaim Executive Assistant. I can check pending claim submissions, highlight budget violations, and execute final approvals on verified claims.`;
+                greetingText = `Hello ${this.userName}. I can summarize pending claims, evaluate budget caps, and execute executive approvals on verified vouchers.`;
             } else if (this.role === 'finance' || this.role === 'fin') {
-                greetingText = `👋 Hello ${this.userName}! I am your SmartClaim Finance Auditor. I can verify receipt hashes, search claims by voucher ID, and execute claim pre-approvals directly for you.`;
+                greetingText = `Hello ${this.userName}. I can query claim vouchers, inspect receipt hashes for duplicates, and execute claim pre-approvals.`;
             } else {
-                greetingText = `👋 Hi ${this.userName}! I am your SmartClaim AI Assistant. Upload a receipt image or let me know what you'd like to claim, and I'll extract the details, check policies, and submit the voucher for you.`;
+                greetingText = `Hello ${this.userName}. You can attach an expense receipt or ask me to check your claim submission status.`;
             }
 
             this.messages = [
@@ -333,7 +365,7 @@ function chatbotWidget(config) {
         setupQuickChips() {
             if (this.role === 'manager') {
                 this.quickChips = [
-                    { label: 'Pending Approvals', prompt: 'List recent claims awaiting manager approval.', icon: 'fa-solid fa-clock' },
+                    { label: 'Pending Approvals', prompt: 'List recent claims awaiting manager approval.', icon: 'fa-regular fa-clock' },
                     { label: 'Check Claim #CLM-1', prompt: 'Check the status and details of claim #CLM-1.', icon: 'fa-solid fa-magnifying-glass' }
                 ];
             } else if (this.role === 'finance' || this.role === 'fin') {
@@ -343,7 +375,7 @@ function chatbotWidget(config) {
                 ];
             } else {
                 this.quickChips = [
-                    { label: 'My Recent Claims', prompt: 'What is the status of my recent claims?', icon: 'fa-solid fa-list' },
+                    { label: 'My Recent Claims', prompt: 'What is the status of my recent claims?', icon: 'fa-solid fa-list-ul' },
                     { label: 'Check Claim #CLM-1', prompt: 'Check the status of claim #CLM-1.', icon: 'fa-solid fa-magnifying-glass' }
                 ];
             }
@@ -411,7 +443,7 @@ function chatbotWidget(config) {
             this.messages.push({
                 id: Date.now(),
                 sender: 'user',
-                text: text || (file ? `[Attached Receipt: ${file.name}]` : ''),
+                text: text || (file ? `[Attached: ${file.name}]` : ''),
                 timestamp: this.formatTime(new Date()),
                 image_preview: previewSnapshot
             });
@@ -452,7 +484,7 @@ function chatbotWidget(config) {
                     this.messages.push({
                         id: Date.now() + 1,
                         sender: 'bot',
-                        text: data.message || 'I encountered an error processing your request.',
+                        text: data.message || (data.reply ?? 'Unable to process the request at this time.'),
                         timestamp: this.formatTime(new Date()),
                         action: null,
                         is_error: true
@@ -467,7 +499,7 @@ function chatbotWidget(config) {
                 this.messages.push({
                     id: Date.now() + 1,
                     sender: 'bot',
-                    text: 'Unable to connect to SmartClaim AI service. Please check your network connection.',
+                    text: 'Connection error while communicating with the assistant. Please try again.',
                     timestamp: this.formatTime(new Date()),
                     action: null,
                     is_error: true
@@ -479,7 +511,7 @@ function chatbotWidget(config) {
         },
 
         async resetChat() {
-            if (!confirm('Clear chatbot history and start a fresh conversation?')) {
+            if (!confirm('Clear chatbot history and reset the session?')) {
                 return;
             }
 
