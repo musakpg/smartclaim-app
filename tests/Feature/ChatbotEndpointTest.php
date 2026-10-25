@@ -466,4 +466,86 @@ class ChatbotEndpointTest extends TestCase
         $this->assertStringContainsString('Tuntutan Resit Perbelanjaan', $instruction);
         $this->assertStringContainsString('Tuntutan Elaun Perjalanan (Mileage)', $instruction);
     }
+
+    public function test_chatbot_system_instruction_injects_live_server_temporal_operating_context(): void
+    {
+        $user = User::factory()->create(['role' => 'Staff']);
+        $service = app(GeminiChatbotService::class);
+        $reflection = new \ReflectionClass($service);
+        $method = $reflection->getMethod('buildSystemInstruction');
+        $method->setAccessible(true);
+        $instruction = $method->invoke($service, $user);
+
+        $now = now()->timezone('Asia/Kuala_Lumpur');
+        $currentDateMalay = $now->locale('ms')->translatedFormat('l, d F Y');
+        $currentDateEn = $now->format('l, F j, Y');
+
+        $this->assertStringContainsString('Temporal Operating Context (LIVE SERVER CLOCK):', $instruction);
+        $this->assertStringContainsString('(Asia/Kuala_Lumpur)', $instruction);
+        $this->assertStringContainsString($currentDateMalay, $instruction);
+        $this->assertStringContainsString($currentDateEn, $instruction);
+        $this->assertStringContainsString('Zone 1 (Core In-Scope)', $instruction);
+        $this->assertStringContainsString('Zone 2 (Office Small Talk & Temporal Context)', $instruction);
+        $this->assertStringContainsString('Zone 3 (Out-of-Scope Rejection)', $instruction);
+    }
+
+    public function test_out_of_scope_query_triggers_early_backend_interception_without_gemini_call(): void
+    {
+        \Illuminate\Support\Facades\Http::fake();
+
+        $user = User::factory()->create(['role' => 'Staff']);
+        $this->actingAs($user);
+
+        $outOfScopeQueries = [
+            'resepi rendang tok sedap',
+            'write python code to solve leetcode two sum',
+            'siapa presiden amerika sekarang?',
+            'tulis puisi cinta untuk saya',
+            'harga crypto bitcoin hari ini berapa',
+        ];
+
+        foreach ($outOfScopeQueries as $query) {
+            $response = $this->postJson(route('chatbot.message'), [
+                'message' => $query,
+            ]);
+
+            $response->assertStatus(200);
+            $response->assertJson([
+                'status' => 'success',
+            ]);
+
+            $reply = $response->json('reply');
+            $this->assertStringContainsString('Maaf, saya ialah SmartClaim Assistant', $reply);
+            $this->assertStringContainsString('⚡ Tindakan: Semak status tuntutan saya', $reply);
+            $this->assertStringContainsString('⚡ Tindakan: Saya mahu hantar tuntutan resit perbelanjaan', $reply);
+            $this->assertStringContainsString('⚡ Tindakan: Saya mahu buat tuntutan elaun perjalanan (mileage)', $reply);
+        }
+
+        // Verify zero outgoing HTTP calls were made to Gemini API
+        \Illuminate\Support\Facades\Http::assertNothingSent();
+    }
+
+    public function test_explicitly_out_of_scope_helper_method_logic(): void
+    {
+        $service = app(GeminiChatbotService::class);
+
+        // Explicitly out of scope
+        $this->assertTrue($service->isExplicitlyOutOfScope('cara masak rendang'));
+        $this->assertTrue($service->isExplicitlyOutOfScope('write python code to reverse a string'));
+        $this->assertTrue($service->isExplicitlyOutOfScope('lirik lagu negaraku'));
+
+        // Always allows image receipt attachment even if text seems off
+        $this->assertFalse($service->isExplicitlyOutOfScope('cara masak rendang', true));
+
+        // In-scope queries must never be intercepted
+        $this->assertFalse($service->isExplicitlyOutOfScope('Saya nak claim petrol'));
+        $this->assertFalse($service->isExplicitlyOutOfScope('Semak status tuntutan saya'));
+        $this->assertFalse($service->isExplicitlyOutOfScope('Berapa baki bajet saya'));
+
+        // Office small talk and date queries must pass to Zone 2
+        $this->assertFalse($service->isExplicitlyOutOfScope('Hai selamat pagi'));
+        $this->assertFalse($service->isExplicitlyOutOfScope('Esok hari apa?'));
+        $this->assertFalse($service->isExplicitlyOutOfScope('Tarikh hari ini'));
+        $this->assertFalse($service->isExplicitlyOutOfScope('Terima kasih'));
+    }
 }

@@ -92,6 +92,34 @@ class ChatbotController extends Controller
             'action' => null,
         ];
 
+        // Early Out-of-Scope Backend Interception (<50ms, zero AI tokens spent)
+        if ($this->geminiService->isExplicitlyOutOfScope($userMessage ?? '', !empty($receiptAttachment))) {
+            $refusal = "Maaf, saya ialah SmartClaim Assistant yang dikhususkan untuk urusan tuntutan perbelanjaan, semakan resit, elaun perjalanan (mileage), dan audit syarikat sahaja. Saya tidak dapat menjawab topik di luar skop sistem ini. Ada sebarang urusan tuntutan yang boleh saya bantu?
+
+⚡ Tindakan: Semak status tuntutan saya
+⚡ Tindakan: Saya mahu hantar tuntutan resit perbelanjaan
+⚡ Tindakan: Saya mahu buat tuntutan elaun perjalanan (mileage)";
+
+            $botUiMessage = [
+                'id' => (int) (microtime(true) * 1000) + 1,
+                'sender' => 'bot',
+                'text' => $refusal,
+                'timestamp' => now()->format('h:i A'),
+                'action' => null,
+                'is_error' => false,
+            ];
+
+            $uiMessages[] = $userUiMessage;
+            $uiMessages[] = $botUiMessage;
+            session(['chatbot_ui_messages' => $uiMessages]);
+
+            return response()->json([
+                'status' => 'success',
+                'reply' => $refusal,
+                'action_executed' => null,
+            ]);
+        }
+
         try {
             $result = $this->geminiService->chat(
                 $history,

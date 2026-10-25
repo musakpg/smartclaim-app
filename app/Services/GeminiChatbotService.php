@@ -36,6 +36,21 @@ class GeminiChatbotService
      */
     public function chat(array $history, ?string $userMessage, ?array $receiptAttachment = null, ?array $sessionReceipt = null): array
     {
+        // Early Out-of-Scope Interception (Token-saving <50ms response)
+        if ($this->isExplicitlyOutOfScope($userMessage ?? '', !empty($receiptAttachment))) {
+            $refusal = "Maaf, saya ialah SmartClaim Assistant yang dikhususkan untuk urusan tuntutan perbelanjaan, semakan resit, elaun perjalanan (mileage), dan audit syarikat sahaja. Saya tidak dapat menjawab topik di luar skop sistem ini. Ada sebarang urusan tuntutan yang boleh saya bantu?
+
+⚡ Tindakan: Semak status tuntutan saya
+⚡ Tindakan: Saya mahu hantar tuntutan resit perbelanjaan
+⚡ Tindakan: Saya mahu buat tuntutan elaun perjalanan (mileage)";
+
+            return [
+                'reply' => $refusal,
+                'history' => $history,
+                'action_executed' => null,
+            ];
+        }
+
         if (empty($this->apiKey)) {
             return [
                 'reply' => "The Gemini API key is not configured in the system environment (`GEMINI_API_KEY`). Please contact your system administrator or set the key in `.env`.",
@@ -71,6 +86,17 @@ class GeminiChatbotService
         if (empty($userParts)) {
             return [
                 'reply' => 'Please provide a message or attach a receipt image to proceed.',
+                'history' => $history,
+                'action_executed' => null,
+            ];
+        }
+
+        // Early Out-of-Scope Interception (Token-saving <50ms response)
+        if ($this->isExplicitlyOutOfScope($userMessage ?? '', !empty($receiptAttachment))) {
+            $refusal = "Maaf, saya ialah SmartClaim Assistant yang dikhususkan untuk urusan tuntutan perbelanjaan, semakan resit, elaun perjalanan (mileage), dan audit syarikat sahaja. Saya tidak dapat menjawab topik di luar skop sistem ini. Ada sebarang urusan tuntutan yang boleh saya bantu?\n\n⚡ Tindakan: Semak status tuntutan saya\n⚡ Tindakan: Saya mahu hantar tuntutan resit perbelanjaan\n⚡ Tindakan: Saya mahu buat tuntutan elaun perjalanan (mileage)";
+
+            return [
+                'reply' => $refusal,
                 'history' => $history,
                 'action_executed' => null,
             ];
@@ -350,6 +376,63 @@ class GeminiChatbotService
      * Only gemini-3.8-flash and gemini-3.1-flash-lite strictly belong to Gemini 3 Flash models supporting thinkingBudget: 0.
      * Non-3 or models like gemini-3.5-flash-lite / gemini-2.5-flash reject thinkingConfig with HTTP 400.
      */
+    /**
+     * Check if a user message is blatantly outside the scope of expense claims,
+     * receipt scanning, mileage allowance, and corporate operations.
+     *
+     * @param string $message
+     * @param bool $hasImage
+     * @return bool
+     */
+    public function isExplicitlyOutOfScope(string $message, bool $hasImage = false): bool
+    {
+        if ($hasImage) {
+            return false; // Always process receipt images
+        }
+
+        $trimmed = trim($message);
+        if ($trimmed === '') {
+            return false;
+        }
+
+        // Never intercept messages containing core claim / expense terminology
+        $claimKeywordsPattern = '/\b(claim|tuntut|tuntutan|resit|receipt|mileage|elaun|perjalanan|bajet|budget|petrol|fuel|refuel|minyak|kenderaan|vehicle|plate|kereta|car|motor|van|lulus|approve|approval|audit|semak|check|status|clm|voucher|disburse|reimburse|rm|biaya|expense|perbelanjaan)\b/i';
+        if (preg_match($claimKeywordsPattern, $trimmed)) {
+            return false;
+        }
+
+        // 1. Coding / Programming requests
+        $codingPatterns = [
+            '/\b(write|create|buat|tulis|generate|solve|kod|coding|code)\b.*\b(python|javascript|typescript|php|java|c\+\+|c#|ruby|golang|rust|leetcode|algorithm|function|script|regex|sql query|html|css)\b/i',
+            '/\b(python|javascript|typescript|php|java|c\+\+|leetcode|algorithm)\b.*\b(code|function|solve|script|programming)\b/i',
+            '/\b(write python code|buat function javascript|solve leetcode|debug this code|coding tutorial)\b/i',
+        ];
+
+        // 2. General recipes / cooking
+        $cookingPatterns = [
+            '/\b(resepi|recipe|cara masak|how to cook|resep|bahan masakan|cara buat kuih|resepi rendang|resepi kek|cara buat kek|menu masakan)\b/i',
+        ];
+
+        // 3. Trivia, politics, gaming, sports, crypto, creative writing
+        $triviaPatterns = [
+            '/\b(siapa presiden|who is the president|perdana menteri|prime minister|who won|siapa menang)\b/i',
+            '/\b(crypto price|harga crypto|harga bitcoin|bitcoin price|ethereum|dogecoin|crypto market)\b/i',
+            '/\b(lirik lagu|song lyrics|chord gitar|chord guitar)\b/i',
+            '/\b(tulis puisi|tulis sajak|skrip drama|write a poem|write a story|cerita dongeng|teka-teki|cerita lawak|tell me a joke)\b/i',
+            '/\b(skor bola|football score|premier league|jadual perlawanan|main game|cheat code)\b/i',
+        ];
+
+        $allOutOfScopePatterns = array_merge($codingPatterns, $cookingPatterns, $triviaPatterns);
+
+        foreach ($allOutOfScopePatterns as $pattern) {
+            if (preg_match($pattern, $trimmed)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function buildGenerationConfig(string $model): array
     {
         $config = [
@@ -514,6 +597,11 @@ class GeminiChatbotService
         $userName = $user ? $user->name : 'Valued Employee';
         $userRole = $user ? strtolower(trim($user->role ?? 'staff')) : 'staff';
 
+        $now = now()->timezone('Asia/Kuala_Lumpur');
+        $currentDateMalay = $now->locale('ms')->translatedFormat('l, d F Y');
+        $currentDateEn = $now->format('l, F j, Y');
+        $currentTime = $now->format('h:i A');
+
         $personalVehicles = ($user && method_exists($user, 'vehicles'))
             ? $user->vehicles()->personal()->get()
             : collect();
@@ -542,8 +630,14 @@ class GeminiChatbotService
         };
 
         return <<<TEXT
-You are the SmartClaim Assistant, an enterprise-grade AI expense assistant.
+Temporal Operating Context (LIVE SERVER CLOCK):
+- Current System Time: {$currentTime} (Asia/Kuala_Lumpur)
+- Current Date & Day (Bahasa Melayu): {$currentDateMalay}
+- Current Date & Day (English): {$currentDateEn}
+- Use this exact timeline to answer relative date questions (e.g. "hari ini", "esok", "semalam", "hari apa") and to audit receipt backdating compliance accurately. NEVER guess the current day or date.
+
 Operating Context:
+- System: SmartClaim (Automated Expense Claim Management System).
 - Currency: Malaysian Ringgit (MYR / RM). Always format amounts like "RM 45.50".
 - Current User: {$userName} (Role: {$userRole}).
 {$roleSpecificGuidance}
@@ -558,6 +652,27 @@ Registered Vehicles Registry:
 Language Policy (STRICT):
 - Strictly communicate ONLY in standard Bahasa Melayu (BM) or English. Match whichever language the user initiates with.
 - ABSOLUTELY FORBIDDEN: NEVER use Bahasa Indonesia. Do NOT use Indonesian vocabulary or phrasing (e.g. NEVER say "Tentu, saya bisa membantu Anda...", "Toko", "Tanggal", "Bisa", "Anda", "Struk", "Unggah", "Kembali", "Gimana"). In Bahasa Melayu, use standard terms: "Tentu, saya boleh bantu", "Kedai/Peniaga", "Tarikh", "Boleh", "Resit", "Muat naik", "Awak/Tuan/Puan".
+
+Conversational Scope & 3-Zone Guardrails:
+
+Zone 1 (Core In-Scope):
+- Expense claims, receipts, corporate fleet fuel, mileage allowance, status lookups, policy limits, and financial audits.
+- Process normally using function calling, structured extraction, and claim workflows.
+
+Zone 2 (Office Small Talk & Temporal Context):
+- Greetings ("hai", "hello", "selamat pagi"), polite remarks ("terima kasih", "sama-sama"), and date/calendar questions ("esok hari apa", "tarikh hari ini", "semalam hari apa").
+- Answer directly and concisely in 1 sentence using the Live Server Temporal Context, then smoothly bridge back to expense claims.
+- Example: If asked "esok hari apa", calculate based on the server clock (e.g., "Hari ini hari Ahad, jadi esok ialah hari Isnin, 26 Oktober 2026. Ada sebarang resit atau tuntutan yang ingin anda kemukakan?") and output action chips.
+
+Zone 3 (Out-of-Scope Rejection):
+- For queries outside expense claims, receipt management, mileage allowance, and office greetings that slipped past backend regex (e.g. general recipes, coding help, trivia, creative writing):
+- Politely decline, clarify role as SmartClaim Assistant, and redirect with claim action chips:
+  In BM: "Maaf, saya ialah SmartClaim Assistant yang dikhususkan untuk urusan tuntutan perbelanjaan, semakan resit, elaun perjalanan (mileage), dan audit syarikat sahaja. Saya tidak dapat menjawab topik di luar skop sistem ini. Ada sebarang urusan tuntutan yang boleh saya bantu?"
+  In English: "I apologize, but I am the SmartClaim Assistant dedicated exclusively to corporate expense claims, receipt scanning, mileage allowance, and company audits. I cannot assist with topics outside this scope. Is there any expense claim I can assist you with?"
+  Include Action Chips:
+  ⚡ Tindakan: Semak status tuntutan saya
+  ⚡ Tindakan: Saya mahu hantar tuntutan resit perbelanjaan
+  ⚡ Tindakan: Saya mahu buat tuntutan elaun perjalanan (mileage)
 
 Claim Categorization & Conversational Workflows (STRICT):
 

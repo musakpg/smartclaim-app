@@ -55,6 +55,24 @@
         .dark .smartclaim-chat-scroll:hover::-webkit-scrollbar-thumb {
             background-color: rgba(100, 116, 139, 0.7);
         }
+        /* Custom thin scrollbar for textarea */
+        .chatbot-input-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+        }
+        .chatbot-input-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .chatbot-input-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chatbot-input-scroll::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.4);
+            border-radius: 9999px;
+        }
+        .chatbot-input-scroll::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(156, 163, 175, 0.7);
+        }
     </style>
 
     <!-- Floating Action Button (FAB) - Utilitarian & Solid Minimalist Design -->
@@ -372,15 +390,16 @@
                     <i class="fa-solid fa-paperclip text-sm"></i>
                 </button>
 
-                <!-- Textarea Input -->
+                <!-- Textarea Input (Dynamic Auto-Resize with Custom Scrollbar) -->
                 <div class="relative flex-1">
                     <textarea 
                         x-ref="messageInput"
                         x-model="userInput"
-                        @keydown.enter.exact.prevent="sendMessage()"
+                        @input="autoResizeInput($el)"
+                        @keydown.enter.prevent="if (!$event.shiftKey) { sendMessage(); resetInputHeight($el); }"
                         rows="1"
                         placeholder="Ask assistant or upload a receipt..."
-                        class="w-full resize-none max-h-24 py-2 px-3 text-xs sm:text-[13px] rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-slate-400 dark:focus:border-slate-600 focus:bg-white dark:focus:bg-slate-950 focus:outline-none transition-all placeholder-slate-400 dark:placeholder-slate-500"
+                        class="w-full resize-none overflow-y-auto max-h-[120px] py-2 px-3 text-xs sm:text-[13px] rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 focus:border-slate-400 dark:focus:border-slate-600 focus:bg-white dark:focus:bg-slate-950 focus:outline-none transition-all placeholder-slate-400 dark:placeholder-slate-500 scrollbar-thin chatbot-input-scroll"
                     ></textarea>
                 </div>
 
@@ -511,6 +530,19 @@ function chatbotWidget(config) {
             }
         },
 
+        autoResizeInput(el) {
+            if (!el) return;
+            el.style.height = 'auto';
+            const maxHeight = 120; // Maximum height in pixels (~4 to 5 lines)
+            el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px';
+        },
+
+        resetInputHeight(el) {
+            if (el) {
+                el.style.height = 'auto';
+            }
+        },
+
         toggleOpen() {
             this.isOpen = !this.isOpen;
             sessionStorage.setItem('smartclaim_chatbot_open', this.isOpen ? 'true' : 'false');
@@ -591,6 +623,7 @@ function chatbotWidget(config) {
 
             // Reset input fields
             this.userInput = '';
+            this.resetInputHeight(this.$refs.messageInput);
             this.removeSelectedFile();
             this.isLoading = true;
             this.scrollToBottom();
