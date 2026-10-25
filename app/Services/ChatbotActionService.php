@@ -168,6 +168,8 @@ class ChatbotActionService
             'transaction_date' => $claim->transaction_date ? $claim->transaction_date->format('Y-m-d') : $targetDate,
             'is_policy_violation' => (bool) $claim->is_policy_violation,
             'policy_reason' => $claim->policy_violation_reason,
+            'receipt_path' => $claim->receipt_image_path,
+            'receipt_preview' => !empty($sessionReceipt['base64_data']) ? "data:{$sessionReceipt['mime_type']};base64,{$sessionReceipt['base64_data']}" : null,
             'message' => "Claim voucher #CLM-{$claim->claim_id} for RM " . number_format($amount, 2) . " at {$merchantName} has been successfully created and submitted for audit.",
         ];
     }

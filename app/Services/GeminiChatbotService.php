@@ -88,6 +88,9 @@ class GeminiChatbotService
         $tools = $this->getToolsDeclaration();
 
         $activeModel = $this->model;
+        if (!empty($this->fallbackModel) && \Illuminate\Support\Facades\Cache::has('gemini_quota_exhausted_' . $this->model)) {
+            $activeModel = $this->fallbackModel;
+        }
         $url = "{$this->endpoint}/{$activeModel}:generateContent?key={$this->apiKey}";
 
         $payload = [
@@ -99,13 +102,16 @@ class GeminiChatbotService
             ],
             'tools' => $tools,
             'generationConfig' => [
-                'temperature' => 0.2,
-                'maxOutputTokens' => 2048,
+                'temperature' => 0.1,
+                'maxOutputTokens' => 1024,
+                'thinkingConfig' => [
+                    'thinkingBudget' => 0,
+                ],
             ],
         ];
 
         try {
-            $response = Http::timeout(60)
+            $response = Http::timeout(15)
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
@@ -117,10 +123,13 @@ class GeminiChatbotService
 
             // Resilient Fallback: If primary model hits 429 quota or 503 high-demand, attempt fallback model
             if ($response->failed() && in_array($response->status(), [429, 503]) && !empty($this->fallbackModel) && $this->fallbackModel !== $activeModel) {
+                if ($response->status() === 429) {
+                    \Illuminate\Support\Facades\Cache::put('gemini_quota_exhausted_' . $activeModel, true, now()->addMinutes(15));
+                }
                 Log::warning("Gemini primary model '{$activeModel}' returned HTTP {$response->status()}. Attempting resilient fallback to '{$this->fallbackModel}'. Error: " . $response->body());
                 $activeModel = $this->fallbackModel;
                 $url = "{$this->endpoint}/{$activeModel}:generateContent?key={$this->apiKey}";
-                $response = Http::timeout(60)
+                $response = Http::timeout(15)
                     ->withHeaders([
                         'Content-Type' => 'application/json',
                         'Accept' => 'application/json',
@@ -235,12 +244,15 @@ class GeminiChatbotService
                     ],
                     'tools' => $tools,
                     'generationConfig' => [
-                        'temperature' => 0.2,
-                        'maxOutputTokens' => 2048,
+                        'temperature' => 0.1,
+                        'maxOutputTokens' => 1024,
+                        'thinkingConfig' => [
+                            'thinkingBudget' => 0,
+                        ],
                     ],
                 ];
 
-                $secondResponse = Http::timeout(60)
+                $secondResponse = Http::timeout(15)
                     ->withHeaders([
                         'Content-Type' => 'application/json',
                         'Accept' => 'application/json',
@@ -445,14 +457,29 @@ Operating Context:
 - Current User: {$userName} (Role: {$userRole}).
 {$roleSpecificGuidance}
 
-Instructions:
-1. Provide concise, clear, and professional responses in English.
-2. For multimodal receipt images: Extract vendor name, transaction date (YYYY-MM-DD), total amount, and recommended category (Meals & Entertainment, Office Supplies, Travel, Accommodations, Fuel / Automotive, Utilities).
-3. If requested to submit a claim, invoke `submit_claim`.
+Language Policy (STRICT):
+- Strictly communicate ONLY in standard Bahasa Melayu (BM) or English. Match whichever language the user initiates with.
+- ABSOLUTELY FORBIDDEN: NEVER use Bahasa Indonesia. Do NOT use Indonesian vocabulary or phrasing (e.g. NEVER say "Tentu, saya bisa membantu Anda...", "Toko", "Tanggal", "Bisa", "Anda", "Struk", "Unggah", "Kembali", "Gimana"). In Bahasa Melayu, use standard terms: "Tentu, saya boleh bantu", "Kedai/Peniaga", "Tarikh", "Boleh", "Resit", "Muat naik", "Awak/Tuan/Puan".
+
+Receipt & Claim Submission Workflow:
+1. If the user asks to create or submit a claim WITHOUT attaching a receipt image, explicitly prompt them to attach or upload their receipt image using the paperclip button first.
+2. When a receipt image IS provided or analyzed, extract the details and output them in this EXACT structured review format:
+Merchant: [Extracted Merchant Name]
+Date: [YYYY-MM-DD]
+Amount: RM [0.00]
+Category: [Recommended Category]
+Purpose: [Suggested Business Purpose]
+
+Then ask the user to verify these details before submission.
+3. If the user confirms (e.g. "Yes", "Proceed", "Submit this claim", or clicks Proceed & Submit), invoke `submit_claim` with the verified parameters.
 4. If a Finance officer requests to audit or pre-approve a claim, invoke `pre_approve_claim`.
 5. If a Manager requests to approve a claim, invoke `final_approve_claim`.
 6. If the user asks about claim status, invoke `check_claim_status`.
 7. Never fabricate claim IDs. Explain any policy constraints cleanly.
+
+Proactive Follow-Up Suggestions:
+- At the end of every response, append 1 or 2 relevant follow-up suggestions (e.g., "Would you like me to check your remaining monthly budget?" or "Do you want to submit another claim?").
+- Format each follow-up suggestion on its own line prefixed with "💡 Suggestion: " (or "💡 Cadangan: " in BM).
 TEXT;
     }
 

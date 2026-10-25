@@ -103,7 +103,7 @@
         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
         x-transition:leave-end="opacity-0 translate-y-4 scale-98"
         @keydown.escape.window="isOpen = false"
-        class="fixed bottom-20 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-22 z-50 w-auto sm:w-[410px] max-h-[80vh] h-[560px] flex flex-col bg-white dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+        class="fixed bottom-20 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-22 z-50 w-auto sm:w-[420px] max-h-[82vh] h-[580px] flex flex-col bg-white dark:bg-slate-950 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
     >
         <!-- Clean Slate Header Bar -->
         <div class="px-4 py-3 bg-slate-900 dark:bg-slate-950 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
@@ -155,7 +155,7 @@
         <!-- Conversation Scroll Area with Minimalist Scrollbar -->
         <div 
             x-ref="chatScroll" 
-            class="smartclaim-chat-scroll flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50 dark:bg-slate-950/60 scroll-smooth"
+            class="smartclaim-chat-scroll flex-1 overflow-y-auto p-3.5 space-y-3 bg-slate-50/50 dark:bg-slate-950/60 scroll-smooth"
         >
             <!-- Message Items Feed -->
             <template x-for="(msg, index) in messages" :key="msg.id || index">
@@ -163,14 +163,14 @@
                     <!-- User Message Bubble (Right Aligned) -->
                     <template x-if="msg.sender === 'user'">
                         <div class="flex flex-col items-end space-y-1">
-                            <div class="max-w-[85%] rounded-2xl rounded-tr-sm bg-slate-900 dark:bg-blue-600 text-white px-3.5 py-2.5 shadow-2xs text-xs sm:text-[13px] leading-relaxed">
+                            <div class="max-w-[85%] rounded-2xl rounded-tr-sm bg-slate-900 dark:bg-blue-600 text-white py-2 px-3 shadow-2xs text-xs sm:text-[13px] leading-normal">
                                 <!-- Uploaded Image Thumbnail Preview -->
                                 <template x-if="msg.image_preview">
-                                    <div class="mb-2 rounded-lg overflow-hidden border border-white/20 bg-black/10">
-                                        <img :src="msg.image_preview" alt="Receipt preview" class="max-h-36 w-full object-cover rounded-md" />
+                                    <div class="mb-1.5 rounded-lg overflow-hidden border border-white/20 bg-black/10">
+                                        <img :src="msg.image_preview" alt="Receipt preview" class="max-h-32 w-full object-cover rounded-md" />
                                     </div>
                                 </template>
-                                <p class="whitespace-pre-wrap" x-text="msg.text"></p>
+                                <div class="leading-normal" x-html="formatMarkdown(msg.text)"></div>
                             </div>
                             <span class="text-[10px] text-slate-400 dark:text-slate-500 pr-1 font-mono" x-text="msg.timestamp"></span>
                         </div>
@@ -182,17 +182,82 @@
                             <div class="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 mt-0.5 text-[11px] font-semibold border border-slate-300/40 dark:border-slate-700/50">
                                 <i class="fa-solid fa-microchip"></i>
                             </div>
-                            <div class="flex flex-col items-start space-y-1 max-w-[85%]">
+                            <div class="flex flex-col items-start space-y-1 max-w-[88%]">
                                 <div 
-                                    class="rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-xs sm:text-[13px] shadow-2xs border whitespace-pre-wrap leading-relaxed"
+                                    class="rounded-2xl rounded-tl-sm py-2 px-3 text-xs sm:text-[13px] shadow-2xs border leading-normal w-full"
                                     :class="msg.is_error 
                                         ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800/80' 
                                         : 'bg-slate-100 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 border-slate-200/60 dark:border-slate-700/60'"
                                 >
-                                    <p x-text="msg.text"></p>
+                                    <div class="leading-normal" x-html="formatMarkdown(msg.text)"></div>
 
-                                    <!-- Minimalist Compact Status Pill Tag -->
-                                    <template x-if="msg.action">
+                                    <!-- Interactive Review: Shortcut Confirmation & Edit Details Buttons -->
+                                    <template x-if="hasStructuredDetails(msg.text) && (!msg.action || msg.action.status !== 'success')">
+                                        <div class="mt-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 flex flex-wrap items-center gap-1.5">
+                                            <button 
+                                                type="button"
+                                                @click="sendQuickPrompt('Yes, proceed and submit this claim')"
+                                                :disabled="isLoading"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold shadow-xs transition cursor-pointer disabled:opacity-40"
+                                            >
+                                                <i class="fa-solid fa-check text-[10px]"></i>
+                                                <span>Proceed & Submit Claim</span>
+                                            </button>
+
+                                            <button 
+                                                type="button"
+                                                @click="editDetails(msg.text)"
+                                                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition cursor-pointer shadow-2xs"
+                                                title="Pre-fill details into input to edit"
+                                            >
+                                                <i class="fa-solid fa-pen-to-square text-[10px] text-slate-500"></i>
+                                                <span>Edit Details</span>
+                                            </button>
+                                        </div>
+                                    </template>
+
+                                    <!-- Post-Submission Rich Voucher Card -->
+                                    <template x-if="msg.action && msg.action.tool === 'submit_claim' && msg.action.status === 'success'">
+                                        <div class="mt-2.5 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5 w-full">
+                                            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                                    <span class="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded">
+                                                        Pending Audit
+                                                    </span>
+                                                </div>
+                                                <span class="text-[11px] font-mono font-bold text-slate-800 dark:text-slate-200" x-text="'#' + (msg.action.data.voucher_no || ('CLM-' + msg.action.data.claim_id))"></span>
+                                            </div>
+                                            
+                                            <div class="flex items-center gap-2.5">
+                                                <!-- Receipt Thumbnail -->
+                                                <template x-if="msg.action.data.receipt_preview || sessionReceiptPreview">
+                                                    <div class="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 shrink-0">
+                                                        <img :src="msg.action.data.receipt_preview || sessionReceiptPreview" alt="Receipt Thumbnail" class="w-full h-full object-cover" />
+                                                    </div>
+                                                </template>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-xs font-semibold text-slate-900 dark:text-white truncate" x-text="msg.action.data.merchant_name || 'Expense Claim'"></p>
+                                                    <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400" x-text="'RM ' + (parseFloat(msg.action.data.amount || 0).toFixed(2))"></p>
+                                                    <p class="text-[10px] text-slate-400 dark:text-slate-500 truncate" x-text="msg.action.data.category || ''"></p>
+                                                </div>
+                                            </div>
+
+                                            <div class="pt-1.5 flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80">
+                                                <span class="text-[10px] text-slate-400">Submitted for Finance audit</span>
+                                                <a 
+                                                    href="{{ route('claims.history') }}" 
+                                                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition"
+                                                >
+                                                    <span>View Claims History</span>
+                                                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <!-- Standard Action Pill Tag (for check_claim_status, pre_approve, final_approve) -->
+                                    <template x-if="msg.action && msg.action.tool !== 'submit_claim'">
                                         <div class="mt-2.5 flex items-center">
                                             <span 
                                                 class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border"
@@ -206,6 +271,24 @@
                                         </div>
                                     </template>
                                 </div>
+
+                                <!-- Proactive Follow-Up Suggestion Chips -->
+                                <template x-if="getSuggestions(msg.text).length > 0">
+                                    <div class="mt-1 flex flex-wrap gap-1.5 pl-0.5">
+                                        <template x-for="(sug, sIdx) in getSuggestions(msg.text)" :key="sIdx">
+                                            <button 
+                                                type="button" 
+                                                @click="sendQuickPrompt(sug)"
+                                                :disabled="isLoading"
+                                                class="text-[11px] font-medium px-2.5 py-1 rounded-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                                            >
+                                                <i class="fa-regular fa-lightbulb text-[10px] text-amber-500"></i>
+                                                <span x-text="sug"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </template>
+
                                 <span class="text-[10px] text-slate-400 dark:text-slate-500 pl-1 font-mono" x-text="msg.timestamp"></span>
                             </div>
                         </div>
@@ -282,7 +365,7 @@
                     type="button" 
                     @click="$refs.fileInput.click()" 
                     title="Attach Receipt (Image / PDF)"
-                    class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors focus:outline-none shrink-0"
+                    class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors focus:outline-none shrink-0 cursor-pointer"
                     aria-label="Attach Receipt"
                 >
                     <i class="fa-solid fa-paperclip text-sm"></i>
@@ -304,7 +387,7 @@
                 <button 
                     type="submit" 
                     :disabled="isLoading || (!userInput.trim() && !selectedFile)"
-                    class="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-2xs focus:outline-none shrink-0"
+                    class="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-2xs focus:outline-none shrink-0 cursor-pointer"
                     aria-label="Send Message"
                 >
                     <i class="fa-solid fa-arrow-up text-xs sm:text-sm"></i>
@@ -327,6 +410,7 @@ function chatbotWidget(config) {
         userInput: '',
         selectedFile: null,
         imagePreview: null,
+        sessionReceiptPreview: null,
         isLoading: false,
         role: config.role || 'staff',
         userName: config.userName || 'User',
@@ -344,11 +428,11 @@ function chatbotWidget(config) {
         setupInitialGreeting() {
             let greetingText = '';
             if (this.role === 'manager') {
-                greetingText = `Hello ${this.userName}. I can summarize pending claims, evaluate budget caps, and execute executive approvals on verified vouchers.`;
+                greetingText = `Hello ${this.userName}. I can summarize pending claims, evaluate budget caps, and execute executive approvals on verified vouchers.\n\n💡 Suggestion: List recent claims awaiting manager approval.\n💡 Suggestion: Check the status of claim #CLM-1.`;
             } else if (this.role === 'finance' || this.role === 'fin') {
-                greetingText = `Hello ${this.userName}. I can query claim vouchers, inspect receipt hashes for duplicates, and execute claim pre-approvals.`;
+                greetingText = `Hello ${this.userName}. I can query claim vouchers, inspect receipt hashes for duplicates, and execute claim pre-approvals.\n\n💡 Suggestion: Show recent pending claims awaiting audit.\n💡 Suggestion: Check the details and risk score for claim #CLM-1.`;
             } else {
-                greetingText = `Hello ${this.userName}. You can attach an expense receipt or ask me to check your claim submission status.`;
+                greetingText = `Hello ${this.userName}. You can attach an expense receipt image or check your claim status.\n\n💡 Suggestion: What is the status of my recent claims?\n💡 Suggestion: I want to submit a new claim.`;
             }
 
             this.messages = [
@@ -410,6 +494,7 @@ function chatbotWidget(config) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     this.imagePreview = e.target.result;
+                    this.sessionReceiptPreview = e.target.result;
                 };
                 reader.readAsDataURL(file);
             } else {
@@ -438,6 +523,9 @@ function chatbotWidget(config) {
             if (this.isLoading) return;
 
             const previewSnapshot = this.imagePreview;
+            if (previewSnapshot) {
+                this.sessionReceiptPreview = previewSnapshot;
+            }
 
             // Push User Message to Feed
             this.messages.push({
@@ -529,6 +617,7 @@ function chatbotWidget(config) {
 
             this.setupInitialGreeting();
             this.removeSelectedFile();
+            this.sessionReceiptPreview = null;
             this.unreadCount = 0;
             this.scrollToBottom();
         },
@@ -544,6 +633,98 @@ function chatbotWidget(config) {
 
         formatTime(date) {
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        },
+
+        formatMarkdown(rawText) {
+            if (!rawText) return '';
+
+            let safe = String(rawText)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            // Bold
+            safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            // Italic
+            safe = safe.replace(/(^|[^\*])\*([^\*]+)\*([^\*]|$)/g, '$1<em>$2</em>$3');
+
+            // Headings
+            safe = safe.replace(/^### (.*$)/gim, '<p class="font-bold text-slate-900 dark:text-white mt-1.5 mb-0.5">$1</p>');
+            safe = safe.replace(/^## (.*$)/gim, '<p class="font-bold text-slate-900 dark:text-white mt-2 mb-1">$1</p>');
+            safe = safe.replace(/^# (.*$)/gim, '<p class="font-bold text-slate-900 dark:text-white mt-2 mb-1">$1</p>');
+
+            let lines = safe.split('\n');
+            let inList = false;
+            let formatted = [];
+
+            for (let line of lines) {
+                let trimmed = line.trim();
+
+                // Suggestions are extracted and rendered as interactive buttons below
+                if (/^💡\s*(?:Suggestion|Cadangan):/i.test(trimmed)) {
+                    continue;
+                }
+
+                if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+                    if (!inList) {
+                        inList = true;
+                        formatted.push('<ul class="my-1 space-y-0.5 pl-4 list-disc list-outside">');
+                    }
+                    formatted.push('<li class="leading-snug">' + trimmed.substring(2) + '</li>');
+                } else {
+                    if (inList) {
+                        inList = false;
+                        formatted.push('</ul>');
+                    }
+                    if (trimmed.length > 0) {
+                        if (/^(Merchant|Date|Amount|Category|Purpose|Peniaga|Tarikh|Jumlah|Kategori|Tujuan):/i.test(trimmed)) {
+                            formatted.push('<p class="font-mono text-[11px] leading-tight py-0.5 text-slate-700 dark:text-slate-300 font-medium">' + trimmed + '</p>');
+                        } else {
+                            formatted.push('<p class="mb-1 last:mb-0 leading-normal">' + trimmed + '</p>');
+                        }
+                    }
+                }
+            }
+
+            if (inList) {
+                formatted.push('</ul>');
+            }
+
+            return formatted.join('');
+        },
+
+        getSuggestions(text) {
+            if (!text) return [];
+            const suggestions = [];
+            const lines = String(text).split('\n');
+            for (let line of lines) {
+                const trimmed = line.trim();
+                const match = trimmed.match(/^💡\s*(?:Suggestion|Cadangan):\s*(.+)$/i);
+                if (match) {
+                    suggestions.push(match[1].trim());
+                }
+            }
+            return suggestions;
+        },
+
+        hasStructuredDetails(text) {
+            if (!text) return false;
+            return /(?:Merchant|Peniaga|Kedai):\s*[^\n]+/i.test(text) &&
+                   /(?:Amount|Jumlah):\s*RM\s*[\d\.]+/i.test(text);
+        },
+
+        editDetails(text) {
+            const lines = String(text).split('\n').filter(l => /^(Merchant|Date|Amount|Category|Purpose|Peniaga|Tarikh|Jumlah|Kategori|Tujuan):/i.test(l.trim()));
+            if (lines.length > 0) {
+                this.userInput = 'Please submit this claim with the following details:\n' + lines.map(l => l.trim()).join('\n');
+            } else {
+                this.userInput = text;
+            }
+            this.$nextTick(() => {
+                if (this.$refs.messageInput) {
+                    this.$refs.messageInput.focus();
+                }
+            });
         }
     };
 }
