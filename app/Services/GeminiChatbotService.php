@@ -102,13 +102,7 @@ class GeminiChatbotService
                 ],
             ],
             'tools' => $tools,
-            'generationConfig' => [
-                'temperature' => 0.1,
-                'maxOutputTokens' => 1024,
-                'thinkingConfig' => [
-                    'thinkingBudget' => 0,
-                ],
-            ],
+            'generationConfig' => $this->buildGenerationConfig($activeModel),
         ];
 
         try {
@@ -130,6 +124,7 @@ class GeminiChatbotService
                 Log::warning("Gemini primary model '{$activeModel}' returned HTTP {$response->status()}. Attempting resilient fallback to '{$this->fallbackModel}'. Error: " . $response->body());
                 $activeModel = $this->fallbackModel;
                 $url = "{$this->endpoint}/{$activeModel}:generateContent?key={$this->apiKey}";
+                $payload['generationConfig'] = $this->buildGenerationConfig($activeModel);
                 $response = Http::timeout(45)
                     ->withHeaders([
                         'Content-Type' => 'application/json',
@@ -139,12 +134,15 @@ class GeminiChatbotService
                         'curl' => [CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4]
                     ])
                     ->post($url, $payload);
+
+                if ($response->failed()) {
+                    $this->logApiError('Gemini API Fallback Error', $response);
+                }
             }
 
             if ($response->failed()) {
                 $statusCode = $response->status();
-                $rawBody = $response->body();
-                Log::error("Gemini API Error [{$statusCode}]: {$rawBody}");
+                $this->logApiError('Gemini API Error', $response);
 
                 $errorData = $response->json();
                 $apiErrorMsg = $errorData['error']['message'] ?? null;
@@ -244,13 +242,7 @@ class GeminiChatbotService
                         ],
                     ],
                     'tools' => $tools,
-                    'generationConfig' => [
-                        'temperature' => 0.1,
-                        'maxOutputTokens' => 1024,
-                        'thinkingConfig' => [
-                            'thinkingBudget' => 0,
-                        ],
-                    ],
+                    'generationConfig' => $this->buildGenerationConfig($activeModel),
                 ];
 
                 $secondResponse = Http::timeout(45)
@@ -279,7 +271,7 @@ class GeminiChatbotService
                         }
                     }
                 } else {
-                    Log::error("Gemini Second Turn Error [{$secondResponse->status()}]: " . $secondResponse->body());
+                    $this->logApiError('Gemini Second Turn Error', $secondResponse);
                     if (!empty($actionResult['message'])) {
                         $conversationalReply = $actionResult['message'];
                     }
@@ -354,6 +346,67 @@ class GeminiChatbotService
     }
 
     /**
+     * Build generationConfig payload conditionally based on active model support.
+     * Only gemini-3.8-flash and gemini-3.1-flash-lite strictly belong to Gemini 3 Flash models supporting thinkingBudget: 0.
+     * Non-3 or models like gemini-3.5-flash-lite / gemini-2.5-flash reject thinkingConfig with HTTP 400.
+     */
+    public function buildGenerationConfig(string $model): array
+    {
+        $config = [
+            'temperature' => 0.1,
+            'maxOutputTokens' => 1024,
+        ];
+
+        $supportedThinkingModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+        if (in_array(strtolower(trim($model)), $supportedThinkingModels, true)) {
+            $config['thinkingConfig'] = [
+                'thinkingBudget' => 0,
+            ];
+        }
+
+        return $config;
+    }
+
+    /**
+     * Log API errors with enhanced field-level diagnostics for HTTP 400 Bad Request responses.
+     */
+    protected function logApiError(string $context, \Illuminate\Http\Client\Response $response): void
+    {
+        $statusCode = $response->status();
+        $rawBody = $response->body();
+        $errorData = $response->json();
+
+        if ($statusCode === 400 && !empty($errorData['error'])) {
+            $failedFields = [];
+            $details = $errorData['error']['details'] ?? [];
+
+            if (is_array($details)) {
+                foreach ($details as $detail) {
+                    if (!empty($detail['fieldViolations']) && is_array($detail['fieldViolations'])) {
+                        foreach ($detail['fieldViolations'] as $violation) {
+                            $field = $violation['field'] ?? 'unknown_field';
+                            $desc = $violation['description'] ?? 'invalid argument';
+                            $failedFields[] = "{$field} ({$desc})";
+                        }
+                    } elseif (!empty($detail['description'])) {
+                        $failedFields[] = $detail['description'];
+                    }
+                }
+            }
+
+            $errorMessage = $errorData['error']['message'] ?? 'Invalid argument';
+            if (empty($failedFields)) {
+                $failedFields[] = $errorMessage;
+            }
+
+            $failedFieldsStr = implode(', ', $failedFields);
+            Log::error("{$context} [HTTP 400 Invalid Argument] - Field(s) failed: [{$failedFieldsStr}]. Response: {$rawBody}");
+        } else {
+            Log::error("{$context} [{$statusCode}]: {$rawBody}");
+        }
+    }
+
+    /**
      * Provide function calling tool declarations strictly adhering to standard OpenAPI types in lowercase.
      */
     public function getToolsDeclaration(): array
@@ -392,7 +445,7 @@ class GeminiChatbotService
                                     'description' => 'Vehicle registration plate number for Fuel / Automotive / Mileage expenses (e.g., "JKE 1234" or "VCE 2024"). Required for fuel and fleet claims.',
                                 ],
                                 'vehicle_id' => [
-                                    'type' => 'integer',
+                                    'type' => 'number',
                                     'description' => 'Optional numeric ID of the registered vehicle.',
                                 ],
                             ],

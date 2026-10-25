@@ -234,4 +234,93 @@ class ChatbotEndpointTest extends TestCase
         $this->assertEquals('WXY 9999', $resultSuccess['vehicle_plate']);
         $this->assertEquals($vehicle->vehicle_id, $resultSuccess['vehicle_id']);
     }
+
+    public function test_thinking_config_is_conditionally_included_for_supported_models_only(): void
+    {
+        $service = app(GeminiChatbotService::class);
+
+        // Models that support thinkingConfig
+        $cfg38 = $service->buildGenerationConfig('gemini-3.8-flash');
+        $this->assertArrayHasKey('thinkingConfig', $cfg38);
+        $this->assertEquals(0, $cfg38['thinkingConfig']['thinkingBudget']);
+
+        $cfg31 = $service->buildGenerationConfig('gemini-3.1-flash-lite');
+        $this->assertArrayHasKey('thinkingConfig', $cfg31);
+        $this->assertEquals(0, $cfg31['thinkingConfig']['thinkingBudget']);
+
+        // Models that DO NOT support thinkingConfig and reject with HTTP 400
+        $cfg35 = $service->buildGenerationConfig('gemini-3.5-flash-lite');
+        $this->assertArrayNotHasKey('thinkingConfig', $cfg35);
+
+        $cfg25 = $service->buildGenerationConfig('gemini-2.5-flash');
+        $this->assertArrayNotHasKey('thinkingConfig', $cfg25);
+    }
+
+    public function test_tool_declarations_use_valid_openapi_types_and_no_integer(): void
+    {
+        $service = app(GeminiChatbotService::class);
+        $tools = $service->getToolsDeclaration();
+
+        $this->assertNotEmpty($tools);
+        $validOpenApiTypes = ['string', 'number', 'object', 'boolean', 'array'];
+
+        foreach ($tools as $toolGroup) {
+            foreach ($toolGroup['functionDeclarations'] as $func) {
+                if (isset($func['parameters']['properties'])) {
+                    foreach ($func['parameters']['properties'] as $propName => $propDef) {
+                        $this->assertArrayHasKey('type', $propDef);
+                        $this->assertContains($propDef['type'], $validOpenApiTypes, "Property {$propName} in {$func['name']} has invalid type: {$propDef['type']}");
+                        $this->assertNotEquals('integer', $propDef['type'], "Property {$propName} should use 'number', not 'integer'");
+                    }
+                }
+            }
+        }
+
+        // Verify submit_claim specifics
+        $submitClaim = collect($tools[0]['functionDeclarations'])->firstWhere('name', 'submit_claim');
+        $this->assertNotNull($submitClaim);
+        $this->assertEquals('number', $submitClaim['parameters']['properties']['vehicle_id']['type']);
+        $this->assertEquals(
+            ['category', 'amount', 'merchant_name', 'description'],
+            $submitClaim['parameters']['required']
+        );
+    }
+
+    public function test_gemini_chatbot_logs_detailed_field_errors_on_http_400(): void
+    {
+        config(['services.gemini.api_key' => 'test-key']);
+
+        \Illuminate\Support\Facades\Http::fake([
+            '*' => \Illuminate\Support\Facades\Http::response([
+                'error' => [
+                    'code' => 400,
+                    'message' => 'Request contains an invalid argument.',
+                    'status' => 'INVALID_ARGUMENT',
+                    'details' => [
+                        [
+                            '@type' => 'type.googleapis.com/google.rpc.BadRequest',
+                            'fieldViolations' => [
+                                [
+                                    'field' => 'generation_config.thinking_config',
+                                    'description' => 'thinking_budget is not supported for this model',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 400),
+        ]);
+
+        \Illuminate\Support\Facades\Log::shouldReceive('error')
+            ->once()
+            ->withArgs(function ($message) {
+                return str_contains($message, 'generation_config.thinking_config')
+                    && str_contains($message, 'HTTP 400 Invalid Argument');
+            });
+
+        $service = app(GeminiChatbotService::class);
+        $result = $service->chat([], 'Hello');
+
+        $this->assertStringContainsString('Request format issue with Gemini AI', $result['reply']);
+    }
 }
