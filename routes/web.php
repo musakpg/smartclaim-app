@@ -58,6 +58,9 @@ use NotificationChannels\WebPush\PushSubscription;
 |--------------------------------------------------------------------------
 */
 Route::get('/', [AuthController::class, 'showLogin'])->name('login');
+Route::get('login/process', function () {
+    return redirect()->route('login');
+});
 Route::post('/login/process', [AuthController::class, 'processLogin'])->name('login.process');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 

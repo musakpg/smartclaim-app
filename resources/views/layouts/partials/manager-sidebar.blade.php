@@ -22,24 +22,33 @@
     x-transition:leave="transition-opacity ease-linear duration-150" 
     x-transition:leave-start="opacity-100"
     x-transition:leave-end="opacity-0" 
-    class="fixed inset-0 bg-slate-900/80 z-30 lg:hidden backdrop-blur-sm" 
+    class="fixed inset-0 bg-black/50 z-50 lg:hidden backdrop-blur-sm" 
     @click="isMobileSidebarOpen = false"></div>
 
 <!-- Manager Sidebar Navigation -->
 <aside x-cloak
-    class="w-64 bg-[#0d1527] text-slate-300 min-h-screen flex flex-col border-r border-slate-800 shrink-0 font-sans select-none fixed lg:static top-0 bottom-0 left-0 z-40 lg:z-30 transform transition-transform duration-200 ease-in-out -translate-x-full lg:translate-x-0"
+    class="fixed inset-y-0 left-0 z-50 lg:z-30 w-64 h-[100dvh] bg-[#0d1527] text-slate-300 flex flex-col justify-between border-r border-slate-800 shrink-0 font-sans select-none transform transition-transform duration-200 ease-in-out -translate-x-full lg:translate-x-0 lg:static lg:h-screen lg:sticky lg:top-0"
     :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
 
     <!-- Brand Header -->
-    <div class="px-6 py-5 border-b border-slate-800/80 flex items-center gap-3 shrink-0">
-        <div
-            class="w-9 h-9 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 shrink-0 shadow-inner">
-            <i class="fa-solid fa-crown text-base"></i>
+    <div class="px-6 py-5 border-b border-slate-800/80 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <div
+                class="w-9 h-9 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 shrink-0 shadow-inner">
+                <i class="fa-solid fa-crown text-base"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-white text-base tracking-tight leading-tight">SmartClaim</h1>
+                <p class="text-[10px] font-bold text-emerald-400 tracking-wider uppercase">Aero Art Manager Portal</p>
+            </div>
         </div>
-        <div>
-            <h1 class="font-extrabold text-white text-base tracking-tight leading-tight">SmartClaim</h1>
-            <p class="text-[10px] font-bold text-emerald-400 tracking-wider uppercase">Aero Art Manager Portal</p>
-        </div>
+
+        <!-- Mobile Drawer Close Button -->
+        <button type="button" @click="isMobileSidebarOpen = false"
+            class="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            aria-label="Close navigation menu">
+            <i class="fa-solid fa-xmark text-base"></i>
+        </button>
     </div>
 
     <!-- Navigation Menu (Persistent Scrollbar Gutter to Prevent Width Jumps) -->
@@ -216,9 +225,9 @@
     </nav>
 
     <!-- Bottom Actions -->
-    <div class="p-4 border-t border-slate-800/80 space-y-1 text-xs font-semibold shrink-0">
+    <div class="p-4 pb-6 border-t border-slate-800/80 space-y-1.5 text-xs font-semibold shrink-0">
         <a href="{{ route('manager.profile') }}"
-            class="flex items-center gap-3 px-3.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors {{ request()->routeIs('manager.profile') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors {{ request()->routeIs('manager.profile') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
             <i class="fa-solid fa-user-gear text-sm w-4 text-center"></i>
             <span>My Profile</span>
         </a>
@@ -226,9 +235,9 @@
         <form method="POST" action="{{ route('logout') }}" class="w-full">
             @csrf
             <button type="submit"
-                class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors text-left font-semibold text-xs cursor-pointer">
-                <i class="fa-solid fa-right-from-bracket text-sm w-4 text-center"></i>
-                <span>Sign Out</span>
+                class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-300 border border-rose-500/20 transition-colors text-left font-semibold text-xs cursor-pointer active:scale-[0.99]">
+                <i class="fa-solid fa-right-from-bracket text-sm w-4 text-center text-rose-400"></i>
+                <span>Logout</span>
             </button>
         </form>
     </div>

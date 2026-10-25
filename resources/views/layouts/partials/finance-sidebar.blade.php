@@ -17,15 +17,19 @@
 </div>
 
 <!-- Mobile Backdrop -->
-<div x-show="isMobileSidebarOpen" x-cloak x-transition:enter="transition-opacity ease-linear duration-200"
-    x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-    x-transition:leave="transition-opacity ease-linear duration-150" x-transition:leave-start="opacity-100"
-    x-transition:leave-end="opacity-0" @click="isMobileSidebarOpen = false"
-    class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-30 lg:hidden">
+<div x-show="isMobileSidebarOpen" x-cloak 
+    x-transition:enter="transition-opacity ease-linear duration-200"
+    x-transition:enter-start="opacity-0" 
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition-opacity ease-linear duration-150" 
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0" 
+    @click="isMobileSidebarOpen = false"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 lg:hidden">
 </div>
 
 <aside x-cloak :class="isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
-    class="fixed inset-y-0 left-0 z-40 lg:z-30 w-64 bg-[#0d1527] border-r border-slate-800 text-slate-300 flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 font-sans select-none -translate-x-full lg:translate-x-0 lg:static lg:h-screen lg:sticky lg:top-0"
+    class="fixed inset-y-0 left-0 z-50 lg:z-30 w-64 h-[100dvh] bg-[#0d1527] border-r border-slate-800 text-slate-300 flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 font-sans select-none -translate-x-full lg:translate-x-0 lg:static lg:h-screen lg:sticky lg:top-0"
     x-data="{ 
         activeDropdown: '{{ request()->routeIs('finance.auditing*') ? 'auditing' : '' }}',
         toggle(menu) {
@@ -46,7 +50,8 @@
         </div>
 
         <button type="button" @click="isMobileSidebarOpen = false"
-            class="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer">
+            class="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+            aria-label="Close navigation menu">
             <i class="fa-solid fa-xmark text-base"></i>
         </button>
     </div>
@@ -132,9 +137,9 @@
         </a>
     </nav>
 
-    <div class="p-4 border-t border-slate-800/80 space-y-1 text-xs font-semibold shrink-0">
+    <div class="p-4 pb-6 border-t border-slate-800/80 space-y-1.5 text-xs font-semibold shrink-0">
         <a href="{{ route('finance.profile') }}"
-            class="flex items-center gap-3 px-3.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors {{ request()->routeIs('finance.profile') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
+            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors {{ request()->routeIs('finance.profile') ? 'text-emerald-400 font-bold bg-emerald-500/10' : '' }}">
             <i class="fa-solid fa-user-shield text-sm w-4 text-center"></i>
             <span>My Profile</span>
         </a>
@@ -142,9 +147,9 @@
         <form method="POST" action="{{ route('logout') }}" class="w-full">
             @csrf
             <button type="submit"
-                class="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors text-left font-semibold text-xs">
-                <i class="fa-solid fa-right-from-bracket text-sm w-4 text-center"></i>
-                <span>Sign Out</span>
+                class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 hover:text-rose-300 border border-rose-500/20 transition-colors text-left font-semibold text-xs cursor-pointer active:scale-[0.99]">
+                <i class="fa-solid fa-right-from-bracket text-sm w-4 text-center text-rose-400"></i>
+                <span>Logout</span>
             </button>
         </form>
     </div>

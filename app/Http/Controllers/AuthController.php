@@ -70,18 +70,18 @@ class AuthController extends Controller
 
             // 👑 TIER 1 EXECUTIVE GATEWAY: Redirects authenticated users matching the Manager role pattern
             if ($normalizedRole === 'manager') {
-                return redirect()->route('manager.dashboard')
+                return redirect()->intended(route('manager.dashboard'))
                     ->with('success', 'Executive management session initialized. Welcome back, Manager!');
             }
 
             // 🔍 TIER 2 AUDITOR GATEWAY: Matches shortened or standard role mappings for Finance accounts
             if ($normalizedRole === 'finance' || $normalizedRole === 'fin') {
-                return redirect()->route('finance.dashboard')
+                return redirect()->intended(route('finance.dashboard'))
                     ->with('success', 'Finance portal active. Welcome back, Auditor Officer!');
             }
 
             // Default fallback routing handler for standard Aero Art staff accounts
-            return redirect()->route('dashboard')
+            return redirect()->intended(route('dashboard'))
                 ->with('success', 'Authentication handshake verified. Welcome back, ' . $user->name . '!');
         }
 
