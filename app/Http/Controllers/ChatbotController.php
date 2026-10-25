@@ -126,10 +126,17 @@ class ChatbotController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
+            $isTimeout = $e instanceof \Illuminate\Http\Client\ConnectionException
+                || str_contains(strtolower($e->getMessage()), 'curl error 28');
+
+            $errorMessage = $isTimeout
+                ? 'The AI service took a little too long to respond while processing your request. Please try sending your message again.'
+                : 'I encountered an error connecting to the Gemini AI service (' . $e->getMessage() . '). Please try again in a moment.';
+
             $botUiMessage = [
                 'id' => (int) (microtime(true) * 1000) + 1,
                 'sender' => 'bot',
-                'text' => 'I encountered an error connecting to the Gemini AI service (' . $e->getMessage() . '). Please try again in a moment.',
+                'text' => $errorMessage,
                 'timestamp' => now()->format('h:i A'),
                 'action' => null,
                 'is_error' => true,
@@ -141,7 +148,7 @@ class ChatbotController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => $e->getMessage(),
+                'message' => $isTimeout ? $errorMessage : $e->getMessage(),
             ], 200);
         }
     }

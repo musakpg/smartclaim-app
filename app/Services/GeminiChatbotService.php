@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -111,7 +112,7 @@ class GeminiChatbotService
         ];
 
         try {
-            $response = Http::timeout(15)
+            $response = Http::timeout(45)
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
@@ -129,7 +130,7 @@ class GeminiChatbotService
                 Log::warning("Gemini primary model '{$activeModel}' returned HTTP {$response->status()}. Attempting resilient fallback to '{$this->fallbackModel}'. Error: " . $response->body());
                 $activeModel = $this->fallbackModel;
                 $url = "{$this->endpoint}/{$activeModel}:generateContent?key={$this->apiKey}";
-                $response = Http::timeout(15)
+                $response = Http::timeout(45)
                     ->withHeaders([
                         'Content-Type' => 'application/json',
                         'Accept' => 'application/json',
@@ -252,7 +253,7 @@ class GeminiChatbotService
                     ],
                 ];
 
-                $secondResponse = Http::timeout(15)
+                $secondResponse = Http::timeout(45)
                     ->withHeaders([
                         'Content-Type' => 'application/json',
                         'Accept' => 'application/json',
@@ -336,8 +337,16 @@ class GeminiChatbotService
                 'trace' => $e->getTraceAsString(),
             ]);
 
+            $isTimeout = $e instanceof ConnectionException
+                || str_contains(strtolower($e->getMessage()), 'curl error 28')
+                || str_contains(strtolower($e->getMessage()), 'timed out');
+
+            $errorMessage = $isTimeout
+                ? "The AI service took a little too long to respond while processing your request. Please try sending your message again."
+                : "I encountered an error connecting to the Gemini AI service (" . $e->getMessage() . "). Please try again in a moment.";
+
             return [
-                'reply' => "I encountered an error connecting to the Gemini AI service (" . $e->getMessage() . "). Please try again in a moment.",
+                'reply' => $errorMessage,
                 'history' => $history,
                 'action_executed' => null,
             ];
@@ -518,6 +527,13 @@ Safe Edit-Review Confirmation Cycle:
   2. Output the updated structured review summary with all details.
   3. Ask the user for their final confirmation (e.g. 'Please confirm if these updated details look correct, or click Proceed & Submit Claim.').
   4. Only call `submit_claim` when the user explicitly clicks 'Proceed & Submit Claim' or says 'Confirm and submit' or 'Yes, proceed'.
+
+Claim List Layout & Presentation (STRICT):
+- STRICT PROHIBITION ON PIPE TABLES: NEVER format claim records or queries using ASCII/Markdown pipe tables (| Column | Column |). The chat drawer is too narrow for tabular layouts.
+- UNIFIED BULLET LIST FORMAT: Whenever displaying a list of claims (for Staff, Finance, or Manager), ALWAYS output them as a clean bulleted list using this uniform structure:
+  * **CLM-[ID]**: RM [Amount] at [Merchant] ([Date]) — **[Status]** [Include Applicant Name if Finance/Manager]
+  Example:
+  * **CLM-298374**: RM 90.00 at Optima DNA Enterprise (2026-03-29) — **Pending** (Ahmad Faiz)
 
 Follow-up Questions & User Action Chips:
 - At the end of your response, you may naturally ask 1 helpful follow-up question directly in your text (e.g., "Would you like me to guide you through submitting a new receipt?" or "Adakah anda ingin saya semak baki had bajet bulanan anda?").

@@ -97,6 +97,55 @@ class ChatbotEndpointTest extends TestCase
             'message' => 'Gemini API timeout simulation',
         ]);
     }
+
+    public function test_chatbot_controller_catches_timeout_connection_exception_gracefully(): void
+    {
+        $user = User::factory()->create(['role' => 'Staff']);
+
+        $mockService = $this->createMock(GeminiChatbotService::class);
+        $mockService->expects($this->once())
+            ->method('chat')
+            ->willThrowException(new \Illuminate\Http\Client\ConnectionException('cURL error 28: Operation timed out'));
+
+        $this->app->instance(GeminiChatbotService::class, $mockService);
+
+        $response = $this->actingAs($user)->postJson(route('chatbot.message'), [
+            'message' => 'Check my claims',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'status' => 'error',
+            'message' => 'The AI service took a little too long to respond while processing your request. Please try sending your message again.',
+        ]);
+
+        $historyResponse = $this->actingAs($user)->getJson(route('chatbot.history'));
+        $historyResponse->assertStatus(200);
+        $historyResponse->assertJsonFragment([
+            'sender' => 'bot',
+            'text' => 'The AI service took a little too long to respond while processing your request. Please try sending your message again.',
+            'is_error' => true,
+        ]);
+    }
+
+    public function test_gemini_chatbot_service_returns_helpful_message_on_timeout(): void
+    {
+        config(['services.gemini.api_key' => 'test-api-key']);
+
+        \Illuminate\Support\Facades\Http::fake([
+            '*' => function () {
+                throw new \Illuminate\Http\Client\ConnectionException('cURL error 28: Operation timed out after 45000 milliseconds');
+            },
+        ]);
+
+        $service = app(GeminiChatbotService::class);
+        $result = $service->chat([], 'Hello');
+
+        $this->assertEquals(
+            'The AI service took a little too long to respond while processing your request. Please try sending your message again.',
+            $result['reply']
+        );
+    }
     public function test_authenticated_user_can_retrieve_chat_history_and_persist_messages(): void
     {
         $user = User::factory()->create(['role' => 'Staff']);

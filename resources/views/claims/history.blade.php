@@ -147,7 +147,7 @@
 
     <!-- Modal Detail Claim (Teleported to root body) -->
     <template x-teleport="body">
-        <div x-show="isModalOpen || isDetailOpen || isOpen" x-cloak
+        <div x-show="isModalOpen || isDetailOpen || isOpen || showDetailModal" x-cloak
             class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 p-4 sm:p-6"
             style="display: none;"
             @keydown.escape.window="closeModal()">
@@ -555,19 +555,21 @@
                     isModalOpen: false,
                     isDetailOpen: false,
                     isOpen: false,
+                    showDetailModal: false,
                     imageFailed: false,
                     activeClaim: {},
                     isHistoryModalOpen: false,
                     modalPreviewSrc: '',
                     init() {
                         const urlParams = new URLSearchParams(window.location.search);
-                        const targetClaimId = urlParams.get('claim_id');
-                        if (targetClaimId) {
-                            if (this.claimsById && this.claimsById[targetClaimId]) {
+                        const rawClaimId = urlParams.get('claim_id');
+                        if (rawClaimId) {
+                            const targetClaimId = String(rawClaimId).replace(/\D+/g, '');
+                            if (targetClaimId && this.claimsById && this.claimsById[targetClaimId]) {
                                 this.$nextTick(() => {
                                     this.openDetailModal(targetClaimId);
                                 });
-                            } else {
+                            } else if (targetClaimId) {
                                 fetch('{{ route("claims.history") }}', {
                                     headers: { 'Accept': 'application/json' }
                                 })
@@ -617,6 +619,7 @@
                         this.isModalOpen = true;
                         this.isDetailOpen = true;
                         this.isOpen = true;
+                        this.showDetailModal = true;
                     },
                     openModal(claimOrId) {
                         this.openDetailModal(claimOrId);
@@ -625,6 +628,7 @@
                         this.isModalOpen = false;
                         this.isDetailOpen = false;
                         this.isOpen = false;
+                        this.showDetailModal = false;
                     }
                 });
 

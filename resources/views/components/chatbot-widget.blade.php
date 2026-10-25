@@ -698,6 +698,11 @@ function chatbotWidget(config) {
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;');
 
+            // Linkify Claim IDs (e.g. CLM-298374, #CLM-3) into clickable badges
+            safe = safe.replace(/(?:#|\b)CLM-?(\d+)\b/gi, (match, id) => {
+                return `<a href="{{ route('claims.history') }}?claim_id=${id}" class="inline-flex items-center gap-1 font-mono font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/40 px-1.5 py-0.5 rounded border border-blue-200/80 dark:border-blue-800 transition text-[11px] underline underline-offset-2" title="Click to view voucher details in history"><span>CLM-${id}</span> <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>`;
+            });
+
             // Bold
             safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             // Italic
@@ -718,6 +723,21 @@ function chatbotWidget(config) {
                 // Actions and suggestions are extracted and rendered as interactive buttons below
                 if (/^(?:⚡\s*(?:Action|Tindakan):|💡\s*(?:Suggestion|Cadangan):)/i.test(trimmed)) {
                     continue;
+                }
+
+                // Sanitize and flatten any Markdown pipe table lines (| Col | Col |)
+                if (/^\|(?:\s*:?-+:?\s*\|)+$/.test(trimmed)) {
+                    continue; // Skip table header separator |---|---|
+                }
+                if (trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.length > 2) {
+                    let cells = trimmed.slice(1, -1).split('|').map(c => c.trim()).filter(c => c.length > 0);
+                    // Skip table header label rows
+                    if (cells.length > 0 && /^(?:id|no|claim|amount|jumlah|date|tarikh|merchant|peniaga|status)/i.test(cells[0])) {
+                        continue;
+                    }
+                    if (cells.length > 0) {
+                        trimmed = '* ' + cells.join(' — ');
+                    }
                 }
 
                 if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
