@@ -272,18 +272,18 @@
                                     </template>
                                 </div>
 
-                                <!-- Proactive Follow-Up Suggestion Chips -->
-                                <template x-if="getSuggestions(msg.text).length > 0">
-                                    <div class="mt-1 flex flex-wrap gap-1.5 pl-0.5">
-                                        <template x-for="(sug, sIdx) in getSuggestions(msg.text)" :key="sIdx">
+                                <!-- First-Person User Action Command Chips -->
+                                <template x-if="getActions(msg.text).length > 0">
+                                    <div class="mt-1.5 flex flex-wrap gap-1.5 pl-0.5">
+                                        <template x-for="(actionItem, aIdx) in getActions(msg.text)" :key="aIdx">
                                             <button 
                                                 type="button" 
-                                                @click="sendQuickPrompt(sug)"
+                                                @click="sendQuickPrompt(actionItem)"
                                                 :disabled="isLoading"
-                                                class="text-[11px] font-medium px-2.5 py-1 rounded-full bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                                                class="text-[11px] font-medium px-2.5 py-1 rounded-full bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-200/90 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-40 group"
                                             >
-                                                <i class="fa-regular fa-lightbulb text-[10px] text-amber-500"></i>
-                                                <span x-text="sug"></span>
+                                                <i class="fa-solid fa-bolt text-[10px] text-indigo-500 dark:text-indigo-400 group-hover:scale-110 transition-transform"></i>
+                                                <span x-text="actionItem"></span>
                                             </button>
                                         </template>
                                     </div>
@@ -428,11 +428,11 @@ function chatbotWidget(config) {
         setupInitialGreeting() {
             let greetingText = '';
             if (this.role === 'manager') {
-                greetingText = `Hello ${this.userName}. I can summarize pending claims, evaluate budget caps, and execute executive approvals on verified vouchers.\n\n💡 Suggestion: List recent claims awaiting manager approval.\n💡 Suggestion: Check the status of claim #CLM-1.`;
+                greetingText = `Hello ${this.userName}. I can evaluate budget limits and grant executive approvals on audited claims.\n\n⚡ Action: List recent claims awaiting manager approval\n⚡ Action: Check claim status for #CLM-1`;
             } else if (this.role === 'finance' || this.role === 'fin') {
-                greetingText = `Hello ${this.userName}. I can query claim vouchers, inspect receipt hashes for duplicates, and execute claim pre-approvals.\n\n💡 Suggestion: Show recent pending claims awaiting audit.\n💡 Suggestion: Check the details and risk score for claim #CLM-1.`;
+                greetingText = `Hello ${this.userName}. I can inspect claim vouchers, verify receipt hashes, and pre-approve pending claims.\n\n⚡ Action: Show recent pending claims awaiting audit\n⚡ Action: Check details for claim #CLM-1`;
             } else {
-                greetingText = `Hello ${this.userName}. You can attach an expense receipt image or check your claim status.\n\n💡 Suggestion: What is the status of my recent claims?\n💡 Suggestion: I want to submit a new claim.`;
+                greetingText = `Hello ${this.userName}. You can attach an expense receipt image or check your claim status. What would you like to do?\n\n⚡ Action: What is the status of my recent claims?\n⚡ Action: I want to submit a new receipt claim`;
             }
 
             this.messages = [
@@ -660,8 +660,8 @@ function chatbotWidget(config) {
             for (let line of lines) {
                 let trimmed = line.trim();
 
-                // Suggestions are extracted and rendered as interactive buttons below
-                if (/^💡\s*(?:Suggestion|Cadangan):/i.test(trimmed)) {
+                // Actions and suggestions are extracted and rendered as interactive buttons below
+                if (/^(?:⚡\s*(?:Action|Tindakan):|💡\s*(?:Suggestion|Cadangan):)/i.test(trimmed)) {
                     continue;
                 }
 
@@ -693,18 +693,62 @@ function chatbotWidget(config) {
             return formatted.join('');
         },
 
-        getSuggestions(text) {
+        getActions(text) {
             if (!text) return [];
-            const suggestions = [];
+            const actions = [];
             const lines = String(text).split('\n');
             for (let line of lines) {
                 const trimmed = line.trim();
-                const match = trimmed.match(/^💡\s*(?:Suggestion|Cadangan):\s*(.+)$/i);
-                if (match) {
-                    suggestions.push(match[1].trim());
+                const actionMatch = trimmed.match(/^⚡\s*(?:Action|Tindakan):\s*(.+)$/i);
+                if (actionMatch) {
+                    let act = this.normalizeActionText(actionMatch[1].trim());
+                    if (act) actions.push(act);
+                    continue;
+                }
+
+                const suggMatch = trimmed.match(/^💡\s*(?:Suggestion|Cadangan):\s*(.+)$/i);
+                if (suggMatch) {
+                    let act = this.normalizeActionText(suggMatch[1].trim());
+                    if (act) actions.push(act);
                 }
             }
-            return suggestions;
+            return actions;
+        },
+
+        normalizeActionText(text) {
+            if (!text) return '';
+            let str = text.trim();
+
+            if (str.endsWith('?')) {
+                if (/^would you like (?:me )?to submit a new (?:receipt )?claim/i.test(str) || /^do you want to submit (?:a )?new claim/i.test(str) || /^do you have a receipt ready to submit/i.test(str)) {
+                    return 'I want to submit a new receipt claim';
+                }
+                if (/^would you like (?:me )?to check (?:the status of )?(?:your )?recent claims/i.test(str)) {
+                    return 'What is the status of my recent claims?';
+                }
+                if (/^would you like (?:me )?to check your (?:remaining )?monthly budget/i.test(str)) {
+                    return 'Check my monthly budget balance';
+                }
+                if (/^adakah anda (?:ingin|mahu) (?:membuat|menghantar) tuntutan baharu/i.test(str) || /^adakah anda mempunyai resit/i.test(str)) {
+                    return 'Saya mahu hantar tuntutan resit baharu';
+                }
+                if (/^adakah anda (?:ingin|mahu) (?:saya )?menyemak (?:status )?tuntutan/i.test(str)) {
+                    return 'Semak status tuntutan terkini saya';
+                }
+                if (/^adakah anda (?:ingin|mahu) (?:saya )?menyemak (?:baki )?bajet/i.test(str)) {
+                    return 'Semak baki had bajet bulanan saya';
+                }
+
+                str = str.replace(/^(Would you like to |Do you want to |Would you like me to )/i, '')
+                         .replace(/^(Adakah anda ingin |Adakah anda mahu )/i, '')
+                         .replace(/\?+$/, '')
+                         .trim();
+                if (str.length > 0) {
+                    str = str.charAt(0).toUpperCase() + str.slice(1);
+                }
+            }
+
+            return str;
         },
 
         hasStructuredDetails(text) {

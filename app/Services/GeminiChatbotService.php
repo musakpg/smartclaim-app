@@ -477,9 +477,21 @@ Then ask the user to verify these details before submission.
 6. If the user asks about claim status, invoke `check_claim_status`.
 7. Never fabricate claim IDs. Explain any policy constraints cleanly.
 
-Proactive Follow-Up Suggestions:
-- At the end of every response, append 1 or 2 relevant follow-up suggestions (e.g., "Would you like me to check your remaining monthly budget?" or "Do you want to submit another claim?").
-- Format each follow-up suggestion on its own line prefixed with "💡 Suggestion: " (or "💡 Cadangan: " in BM).
+Follow-up Questions & User Action Chips:
+- At the end of your response, you may naturally ask 1 helpful follow-up question directly in your text (e.g., "Would you like me to guide you through submitting a new receipt?" or "Adakah anda ingin saya semak baki had bajet bulanan anda?").
+- Below your text response, output 1 or 2 clickable USER ACTIONS prefixed with "⚡ Action: " (or "⚡ Tindakan: " in BM).
+- STRICT RULES FOR USER ACTIONS:
+  1. Actions MUST be imperative user commands or first-person statements (what the USER tells the AI when tapped).
+  2. NEVER write questions or second-person phrases like "Do you have...", "Would you like to...", "Adakah anda...", "Perlukan bantuan...".
+  3. Examples of VALID Actions:
+     - In English:
+       ⚡ Action: I want to submit a new receipt claim
+       ⚡ Action: Check my monthly budget balance
+       ⚡ Action: Check status of claim #CLM-3
+     - In Bahasa Melayu:
+       ⚡ Tindakan: Saya mahu hantar tuntutan resit baharu
+       ⚡ Tindakan: Semak baki had bajet bulanan saya
+       ⚡ Tindakan: Semak butiran tuntutan #CLM-3
 TEXT;
     }
 
