@@ -186,6 +186,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [StaffDashboardController::class, 'index'])->name('dashboard');
     Route::get('/claims/create', [ClaimSubmissionController::class, 'create'])->name('claims.create');
     Route::get('/claims/history', [ClaimSubmissionController::class, 'history'])->name('claims.history');
+    Route::get('/claims/{id}', function ($id) {
+        return redirect()->route('claims.history', ['claim_id' => $id]);
+    })->name('claims.show');
     Route::get('/claims/{id}/edit', [ClaimSubmissionController::class, 'edit'])->name('claims.edit');
     Route::put('/claims/{id}/resubmit', [ClaimSubmissionController::class, 'resubmit'])->name('claims.resubmit');
     Route::post('/claims/{id}/withdraw', [ClaimSubmissionController::class, 'withdraw'])->name('claims.withdraw');

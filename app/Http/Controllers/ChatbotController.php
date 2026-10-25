@@ -57,6 +57,52 @@ class ChatbotController extends Controller
                 $realPath = $receiptFile->getRealPath();
                 $receiptHash = hash_file('sha256', $realPath);
 
+                // Early Receipt Duplicate Fraud Detection on Upload (<30ms, save OCR & AI tokens)
+                $duplicateClaim = Claim::where('receipt_image_hash', $receiptHash)->first();
+                if ($duplicateClaim) {
+                    $history = session('chatbot_history', []);
+                    $recentHistoryText = collect($history)->pluck('parts')->flatten()->pluck('text')->implode(' ');
+                    $fullContext = ($userMessage ?? '') . ' ' . $recentHistoryText;
+                    $isMalay = (bool) preg_match('/(?:saya|nak|buat|tuntutan|resit|elaun|perjalanan|tindakan|terima|kasih|mohon|semak|bantu|petrol|tarikh)/i', $fullContext);
+
+                    $claimUrl = route('claims.show', $duplicateClaim->claim_id);
+
+                    $bmRefusal = "Untuk makluman anda, imej resit ini telah pun dihantar sebelum ini dan direkodkan di bawah baucar tuntutan [CLM-{$duplicateClaim->claim_id}]({$claimUrl}). Sistem pencegahan penipuan tidak membenarkan penghantaran semula resit yang sama bagi mengelakkan pertindihan tuntutan.\n\n⚡ Tindakan: Semak status tuntutan saya\n⚡ Tindakan: Saya mahu hantar tuntutan resit perbelanjaan";
+
+                    $enRefusal = "Fraud Prevention Alert: This exact receipt image was already submitted under claim voucher [CLM-{$duplicateClaim->claim_id}]({$claimUrl}). Resubmission of duplicate receipts is prohibited by company audit policies.\n\n⚡ Action: What is the status of my recent claims?\n⚡ Action: I want to submit an expense receipt claim";
+
+                    $refusal = $isMalay ? $bmRefusal : $enRefusal;
+
+                    $mimeType = $receiptFile->getMimeType();
+                    $base64Data = base64_encode(file_get_contents($realPath));
+
+                    $uiMessages = session('chatbot_ui_messages', []);
+                    $uiMessages[] = [
+                        'id' => (int) (microtime(true) * 1000),
+                        'sender' => 'user',
+                        'text' => $userMessage ?? 'Uploaded receipt image',
+                        'timestamp' => now()->format('h:i A'),
+                        'image_preview' => "data:{$mimeType};base64,{$base64Data}",
+                        'action' => null,
+                    ];
+                    $uiMessages[] = [
+                        'id' => (int) (microtime(true) * 1000) + 1,
+                        'sender' => 'bot',
+                        'text' => $refusal,
+                        'timestamp' => now()->format('h:i A'),
+                        'action' => null,
+                        'is_error' => false,
+                    ];
+                    session(['chatbot_ui_messages' => $uiMessages]);
+
+                    return response()->json([
+                        'status' => 'success',
+                        'reply' => $refusal,
+                        'duplicate_detected' => true,
+                        'action_executed' => null,
+                    ]);
+                }
+
                 // Store receipt binary safely in private disk storage
                 $storedPath = $receiptFile->store('receipts', 'private');
 

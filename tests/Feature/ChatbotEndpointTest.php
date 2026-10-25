@@ -805,4 +805,105 @@ class ChatbotEndpointTest extends TestCase
             'amount' => 289.20,
         ]);
     }
+
+    public function test_early_receipt_duplicate_detection_blocks_upload_immediately_without_calling_gemini_or_ocr(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('private');
+        \Illuminate\Support\Facades\Http::fake();
+
+        $user = User::factory()->create(['role' => 'Staff']);
+        $this->actingAs($user);
+
+        $fakeContent = 'identical-duplicate-receipt-content-bytes-12345';
+        $imageHash = hash('sha256', $fakeContent);
+
+        $existingClaim = \App\Models\Claim::create([
+            'user_id' => $user->user_id ?? $user->id,
+            'claim_type' => 'Receipt',
+            'title' => 'Office Stationery Receipt',
+            'amount' => 45.50,
+            'status' => 'Pending',
+            'receipt_image_hash' => $imageHash,
+            'receipt_image_path' => 'receipts/existing_test.jpg',
+        ]);
+
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('receipt.jpg', $fakeContent);
+
+        // 1. English prompt upload
+        $responseEn = $this->post(route('chatbot.message'), [
+            'message' => 'Please process my expense receipt',
+            'receipt' => $file,
+        ], ['Accept' => 'application/json']);
+
+        $responseEn->assertStatus(200);
+        $responseEn->assertJson([
+            'status' => 'success',
+            'duplicate_detected' => true,
+            'action_executed' => null,
+        ]);
+        $this->assertStringContainsString('Fraud Prevention Alert', $responseEn->json('reply'));
+        $this->assertStringContainsString("CLM-{$existingClaim->claim_id}", $responseEn->json('reply'));
+        $this->assertStringContainsString(route('claims.show', $existingClaim->claim_id), $responseEn->json('reply'));
+
+        // Assert no external AI or OCR calls were dispatched
+        \Illuminate\Support\Facades\Http::assertNothingSent();
+
+        // 2. Malay prompt upload triggers standard Malay fraud refusal
+        $responseBm = $this->post(route('chatbot.message'), [
+            'message' => 'Saya ingin hantar resit tuntutan ini',
+            'receipt' => $file,
+        ], ['Accept' => 'application/json']);
+
+        $responseBm->assertStatus(200);
+        $responseBm->assertJson([
+            'status' => 'success',
+            'duplicate_detected' => true,
+        ]);
+        $this->assertStringContainsString('Untuk makluman anda, imej resit ini telah pun dihantar sebelum ini', $responseBm->json('reply'));
+        $this->assertStringContainsString("CLM-{$existingClaim->claim_id}", $responseBm->json('reply'));
+        $this->assertStringContainsString('Sistem pencegahan penipuan tidak membenarkan penghantaran semula resit yang sama', $responseBm->json('reply'));
+    }
+
+    public function test_chatbot_widget_enforces_strict_vehicle_segregation(): void
+    {
+        $user = User::factory()->create(['role' => 'Staff']);
+        $this->actingAs($user);
+
+        $fleetCar = Vehicle::create([
+            'plate_number' => 'WA 8888 A',
+            'brand_model' => 'Proton X70',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'company',
+            'status' => 'Active',
+            'approval_status' => 'Approved',
+        ]);
+
+        $personalCar = Vehicle::create([
+            'user_id' => $user->user_id ?? $user->id,
+            'plate_number' => 'JKE 1234',
+            'brand_model' => 'Perodua Myvi',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'personal',
+            'status' => 'Active',
+            'approval_status' => 'Approved',
+        ]);
+
+        $view = $this->blade('<x-chatbot-widget />');
+
+        // Fuel dropdown loops over companyFleet only
+        $view->assertSee('WA 8888 A');
+        $view->assertSee('-- Select Company Fleet Vehicle --');
+        $view->assertSee('-- Select Personal Vehicle --');
+        // Manual / custom plate options should be completely removed
+        $view->assertDontSee('Other / Specify manual plate');
+        $view->assertDontSee('Other / Custom plate');
+    }
+
+    public function test_mileage_claims_compute_payout_at_standard_rate(): void
+    {
+        $distanceKm = 48.5;
+        $rate = 0.60;
+        $expectedPayout = number_format($distanceKm * $rate, 2, '.', '');
+        $this->assertEquals('29.10', $expectedPayout);
+    }
 }

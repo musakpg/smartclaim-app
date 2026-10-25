@@ -33,6 +33,7 @@
             'vehicle_id' => $v->vehicle_id,
             'plate_number' => $v->plate_number,
             'brand_model' => $v->brand_model,
+            'vehicle_type' => $v->vehicle_type ?? 'Car',
         ])->toArray()
         : [];
 @endphp
@@ -46,6 +47,7 @@
         messageUrl: '{{ route('chatbot.message') }}',
         historyUrl: '{{ route('chatbot.history') }}',
         resetUrl: '{{ route('chatbot.reset') }}',
+        googleMapsApiKey: '{{ config('services.google.maps_api_key') ?? config('services.google_maps.api_key') }}',
         categories: {{ \Illuminate\Support\Js::from($categories) }},
         companyFleet: {{ \Illuminate\Support\Js::from($companyFleetVehicles) }},
         personalVehicles: {{ \Illuminate\Support\Js::from($personalVehicles) }}
@@ -100,6 +102,15 @@
         }
         .chatbot-input-scroll::-webkit-scrollbar-thumb:hover {
             background-color: rgba(156, 163, 175, 0.7);
+        }
+
+        /* Google Places Autocomplete dropdown z-index elevation above modal */
+        .pac-container {
+            z-index: 99999 !important;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            font-family: inherit;
         }
     </style>
 
@@ -542,242 +553,226 @@
             </div>
         </div>
 
-        <!-- Interactive Edit Details Modal (Option A: Clean Dual Dropdowns) -->
+    </div>
+
+    <!-- Modal Overlay -->
+    <div 
+        x-show="editModalOpen" 
+        x-cloak 
+        class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80"
+        @keydown.escape.window="editModalOpen = false"
+    >
         <div 
             x-show="editModalOpen"
-            x-cloak
-            class="absolute inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex flex-col justify-end sm:justify-center p-3 sm:p-4"
+            x-transition:enter="transition ease-out duration-150"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-100"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="relative w-full max-w-sm sm:max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[88vh] overflow-hidden"
+            @click.away="editModalOpen = false"
         >
-            <div 
-                x-show="editModalOpen"
-                x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0 translate-y-4"
-                x-transition:enter-end="opacity-100 translate-y-0"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100 translate-y-0"
-                x-transition:leave-end="opacity-0 translate-y-4"
-                class="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[92%] overflow-hidden"
-                @click.away="editModalOpen = false"
-            >
-                <!-- Modal Header -->
-                <div class="px-3.5 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950 shrink-0">
-                    <div class="flex items-center gap-2">
-                        <span class="w-6 h-6 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </span>
-                        <h4 class="text-xs font-semibold text-slate-900 dark:text-white" x-text="draftClaim.is_mileage ? 'Edit Journey Details' : 'Edit Claim Details'">Edit Claim Details</h4>
-                    </div>
-                    <button 
-                        type="button" 
-                        @click="editModalOpen = false" 
-                        class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 cursor-pointer"
-                    >
-                        <i class="fa-solid fa-xmark text-sm"></i>
-                    </button>
+            <!-- Modal Header -->
+            <div class="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950 shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </span>
+                    <h4 class="text-xs font-semibold text-slate-900 dark:text-white" x-text="draftClaim.is_mileage ? 'Edit Journey Details' : 'Edit Claim Details'">Edit Claim Details</h4>
                 </div>
+                <button 
+                    type="button" 
+                    @click="editModalOpen = false" 
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 cursor-pointer transition"
+                >
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
 
-                <!-- Modal Form Body -->
-                <div class="p-3.5 space-y-2.5 overflow-y-auto smartclaim-chat-scroll text-xs">
-                    <!-- Journey Details Form (when is_mileage) -->
-                    <template x-if="draftClaim.is_mileage">
-                        <div class="space-y-2.5">
+            <!-- Modal Form Body -->
+            <div class="p-4 space-y-3 overflow-y-auto smartclaim-chat-scroll text-xs">
+                <!-- Journey Details Form (when is_mileage) -->
+                <template x-if="draftClaim.is_mileage">
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Origin / Lokasi Berlepas</label>
+                            <input 
+                                type="text" 
+                                x-ref="modalOriginInput"
+                                x-model="draftClaim.origin" 
+                                @change="calculateDistance()"
+                                placeholder="Search origin location via Google Places..."
+                                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Destination / Lokasi Destinasi</label>
+                            <input 
+                                type="text" 
+                                x-ref="modalDestInput"
+                                x-model="draftClaim.destination" 
+                                @change="calculateDistance()"
+                                placeholder="Search destination address via Google Places..."
+                                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            >
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Origin / Lokasi Berlepas</label>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Distance / Jarak (KM)</label>
                                 <input 
-                                    type="text" 
-                                    x-model="draftClaim.origin" 
-                                    placeholder="e.g. UTHM Pagoh (Pendidikan)"
-                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                    type="number" 
+                                    step="0.1" 
+                                    x-model="draftClaim.distance_km" 
+                                    @input="updateMileagePayout()"
+                                    placeholder="e.g. 48.5"
+                                    class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                 >
                             </div>
                             <div>
-                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Destination / Lokasi Destinasi</label>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Calculated Payout (RM 0.60/KM)</label>
                                 <input 
                                     type="text" 
-                                    x-model="draftClaim.destination" 
-                                    placeholder="e.g. UiTM Machang"
-                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                                    :value="'RM ' + (parseFloat(draftClaim.amount || 0).toFixed(2))" 
+                                    readonly
+                                    class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-600 dark:text-slate-400 focus:outline-none cursor-not-allowed font-semibold"
                                 >
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Distance / Jarak (KM)</label>
-                                    <input 
-                                        type="number" 
-                                        step="0.1" 
-                                        x-model="draftClaim.distance_km" 
-                                        @input="if (draftClaim.distance_km) draftClaim.amount = (parseFloat(draftClaim.distance_km) * 0.60).toFixed(2)"
-                                        placeholder="e.g. 482"
-                                        class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                                    >
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Calculated Payout (RM)</label>
-                                    <input 
-                                        type="text" 
-                                        :value="'RM ' + (parseFloat(draftClaim.amount || 0).toFixed(2))" 
-                                        readonly
-                                        class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 text-xs focus:outline-none cursor-not-allowed font-semibold"
-                                    >
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Personal Vehicle Plate</label>
-                                    <select 
-                                        x-model="draftClaim.vehicle_plate"
-                                        class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                                    >
-                                        <option value="">-- Select Personal Vehicle --</option>
-                                        <template x-for="v in personalVehicles" :key="'pveh-' + v.plate_number">
-                                            <option :value="v.plate_number" x-text="v.plate_number + ' (' + (v.brand_model || v.vehicle_type) + ')'"></option>
-                                        </template>
-                                        <option value="__custom__">Other / Custom plate</option>
-                                    </select>
-                                    <div x-show="draftClaim.vehicle_plate === '__custom__'" x-cloak class="pt-1">
-                                        <input 
-                                            type="text" 
-                                            x-model="draftClaim.custom_plate" 
-                                            placeholder="Enter plate number (e.g. JKE 1234)"
-                                            class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs uppercase"
-                                        >
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Date of Journey</label>
-                                    <input 
-                                        type="text" 
-                                        x-model="draftClaim.date" 
-                                        placeholder="e.g. 26/10/2026"
-                                        class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                                    >
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Corporate Purpose / Tujuan</label>
-                                <textarea 
-                                    x-model="draftClaim.description" 
-                                    rows="2"
-                                    placeholder="Brief description of official journey..."
-                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none"
-                                ></textarea>
                             </div>
                         </div>
-                    </template>
-
-                    <!-- Standard Receipt Claim Form (when not is_mileage) -->
-                    <template x-if="!draftClaim.is_mileage">
-                        <div class="space-y-2.5">
-                            <!-- Merchant -->
+                        <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Merchant / Peniaga</label>
-                                <input 
-                                    type="text" 
-                                    x-model="draftClaim.merchant_name" 
-                                    placeholder="e.g. Petronas, McDonald's"
-                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                                >
-                            </div>
-
-                            <!-- Date & Amount (Row) -->
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Date / Tarikh</label>
-                                    <input 
-                                        type="date" 
-                                        x-model="draftClaim.date" 
-                                        class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                                    >
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Amount (RM)</label>
-                                    <input 
-                                        type="number" 
-                                        step="0.01" 
-                                        x-model="draftClaim.amount" 
-                                        placeholder="0.00"
-                                        class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                                    >
-                                </div>
-                            </div>
-
-                            <!-- Expense Category (Dropdown) -->
-                            <div>
-                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Expense Category</label>
-                                <select 
-                                    x-model="draftClaim.category"
-                                    class="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                                >
-                                    <template x-for="cat in categories" :key="cat">
-                                        <option :value="cat" x-text="cat" :selected="draftClaim.category === cat"></option>
-                                    </template>
-                                </select>
-                            </div>
-
-                            <!-- Vehicle Plate (Conditional on Fuel Category) -->
-                            <div x-show="isFuelCategory(draftClaim.category)" x-cloak class="space-y-1.5 p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60">
-                                <div class="flex items-center justify-between">
-                                    <label class="block text-[11px] font-semibold text-amber-900 dark:text-amber-300">
-                                        <i class="fa-solid fa-gas-pump mr-1"></i> Company Fleet Vehicle <span class="text-rose-500">*</span>
-                                    </label>
-                                    <span class="text-[9px] uppercase tracking-wider text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.2 rounded">Required</span>
-                                </div>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Personal Vehicle Plate</label>
                                 <select 
                                     x-model="draftClaim.vehicle_plate"
-                                    class="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                                    class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                 >
-                                    <option value="">-- Select Company Fleet Vehicle --</option>
-                                    <template x-for="v in companyFleet" :key="v.plate_number">
-                                        <option :value="v.plate_number" x-text="v.plate_number + ' - ' + v.brand_model"></option>
+                                    <option value="">-- Select Personal Vehicle --</option>
+                                    <template x-for="v in personalVehicles" :key="'pveh-' + v.plate_number">
+                                        <option :value="v.plate_number" x-text="v.plate_number + ' (' + (v.brand_model || v.vehicle_type || 'Car') + ')'"></option>
                                     </template>
-                                    <template x-for="v in personalVehicles" :key="'pers-' + v.plate_number">
-                                        <option :value="v.plate_number" x-text="'Personal: ' + v.plate_number + ' - ' + v.brand_model"></option>
-                                    </template>
-                                    <option value="__custom__">Other / Specify manual plate</option>
                                 </select>
-                                
-                                <div x-show="draftClaim.vehicle_plate === '__custom__'" x-cloak class="pt-1">
-                                    <input 
-                                        type="text" 
-                                        x-model="draftClaim.custom_plate" 
-                                        placeholder="Enter plate number (e.g. JKE 1234)"
-                                        class="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs uppercase"
-                                    >
-                                </div>
                             </div>
-
-                            <!-- Purpose -->
                             <div>
-                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Business Purpose / Description</label>
-                                <textarea 
-                                    x-model="draftClaim.description" 
-                                    rows="2"
-                                    placeholder="Brief reason for expense..."
-                                    class="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none"
-                                ></textarea>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Date of Journey</label>
+                                <input 
+                                    type="text" 
+                                    x-model="draftClaim.date" 
+                                    placeholder="YYYY-MM-DD"
+                                    class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                >
                             </div>
                         </div>
-                    </template>
-                </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Corporate Purpose / Tujuan</label>
+                            <textarea 
+                                x-model="draftClaim.description" 
+                                rows="2"
+                                placeholder="Brief description of official journey..."
+                                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                            ></textarea>
+                        </div>
+                    </div>
+                </template>
 
-                <!-- Modal Footer -->
-                <div class="px-3.5 py-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 bg-slate-50 dark:bg-slate-950 shrink-0">
-                    <button 
-                        type="button" 
-                        @click="editModalOpen = false" 
-                        class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 text-xs font-medium transition cursor-pointer"
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        type="button" 
-                        @click="saveEditedDetails()" 
-                        class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer flex items-center gap-1.5"
-                    >
-                        <i class="fa-solid fa-check text-[10px]"></i>
-                        <span>Save & Update Details</span>
-                    </button>
-                </div>
+                <!-- Standard Receipt Claim Form (when not is_mileage) -->
+                <template x-if="!draftClaim.is_mileage">
+                    <div class="space-y-3">
+                        <!-- Merchant -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Merchant / Peniaga</label>
+                            <input 
+                                type="text" 
+                                x-model="draftClaim.merchant_name" 
+                                placeholder="e.g. Petronas, McDonald's"
+                                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            >
+                        </div>
+
+                        <!-- Date & Amount (Row) -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Date / Tarikh</label>
+                                <input 
+                                    type="date" 
+                                    x-model="draftClaim.date" 
+                                    class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                >
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Amount (RM)</label>
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    x-model="draftClaim.amount" 
+                                    placeholder="0.00"
+                                    class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                >
+                            </div>
+                        </div>
+
+                        <!-- Expense Category (Dropdown) -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Expense Category</label>
+                            <select 
+                                x-model="draftClaim.category"
+                                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            >
+                                <template x-for="cat in categories" :key="cat">
+                                    <option :value="cat" x-text="cat" :selected="draftClaim.category === cat"></option>
+                                </template>
+                            </select>
+                        </div>
+
+                        <!-- Vehicle Plate (Conditional on Fuel Category) -->
+                        <div x-show="isFuelCategory(draftClaim.category)" x-cloak class="space-y-1.5 p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-[11px] font-semibold text-amber-900 dark:text-amber-300">
+                                    <i class="fa-solid fa-gas-pump mr-1"></i> Company Fleet Vehicle <span class="text-rose-500">*</span>
+                                </label>
+                                <span class="text-[9px] uppercase tracking-wider text-amber-700 dark:text-amber-400 font-bold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.2 rounded">Required</span>
+                            </div>
+                            <select 
+                                x-model="draftClaim.vehicle_plate"
+                                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            >
+                                <option value="">-- Select Company Fleet Vehicle --</option>
+                                <template x-for="v in companyFleet" :key="'fleet-' + v.plate_number">
+                                    <option :value="v.plate_number" x-text="v.plate_number + ' - ' + v.brand_model"></option>
+                                </template>
+                            </select>
+                        </div>
+
+                        <!-- Purpose -->
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Business Purpose / Description</label>
+                            <textarea 
+                                x-model="draftClaim.description" 
+                                rows="2"
+                                placeholder="Brief reason for expense..."
+                                class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                            ></textarea>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2 bg-slate-50 dark:bg-slate-950 shrink-0">
+                <button 
+                    type="button" 
+                    @click="editModalOpen = false" 
+                    class="px-3.5 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 text-xs font-medium transition cursor-pointer"
+                >
+                    Cancel
+                </button>
+                <button 
+                    type="button" 
+                    @click="saveEditedDetails()" 
+                    class="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                >
+                    <i class="fa-solid fa-check text-[10px]"></i>
+                    <span>Save & Update Details</span>
+                </button>
             </div>
         </div>
     </div>
@@ -805,6 +800,9 @@ function chatbotWidget(config) {
         categories: config.categories || [],
         companyFleet: config.companyFleet || [],
         personalVehicles: config.personalVehicles || [],
+        googleMapsApiKey: config.googleMapsApiKey || '',
+        originAutocomplete: null,
+        destAutocomplete: null,
         editModalOpen: false,
         draftClaim: {
             is_mileage: false,
@@ -816,7 +814,6 @@ function chatbotWidget(config) {
             amount: '',
             category: '',
             vehicle_plate: '',
-            custom_plate: '',
             description: ''
         },
 
@@ -1281,6 +1278,92 @@ function chatbotWidget(config) {
             return plateVal.toLowerCase() === 'unspecified' || plateVal === '-' || plateVal === '';
         },
 
+        ensureGoogleMapsLoaded(callback) {
+            if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                callback();
+                return;
+            }
+            if (window.googleMapsScriptLoading) {
+                window.addEventListener('google-maps-loaded', callback, { once: true });
+                return;
+            }
+            if (document.getElementById('google-maps-script')) {
+                window.addEventListener('google-maps-loaded', callback, { once: true });
+                return;
+            }
+            if (!this.googleMapsApiKey) {
+                return;
+            }
+            window.googleMapsScriptLoading = true;
+            const existingCallback = window.initGoogleMapsCallback;
+            window.initGoogleMapsCallback = function() {
+                if (typeof existingCallback === 'function') existingCallback();
+                window.dispatchEvent(new Event('google-maps-loaded'));
+                callback();
+            };
+            const script = document.createElement('script');
+            script.id = 'google-maps-script';
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${this.googleMapsApiKey}&libraries=places,geometry&callback=initGoogleMapsCallback`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        },
+
+        initPlacesAutocomplete() {
+            this.ensureGoogleMapsLoaded(() => {
+                const originEl = this.$refs.modalOriginInput;
+                const destEl = this.$refs.modalDestInput;
+                if (!originEl || !destEl || typeof google === 'undefined' || !google.maps || !google.maps.places) return;
+
+                const options = {
+                    componentRestrictions: { country: 'my' }
+                };
+
+                if (!this.originAutocomplete) {
+                    this.originAutocomplete = new google.maps.places.Autocomplete(originEl, options);
+                    this.originAutocomplete.addListener('place_changed', () => {
+                        const place = this.originAutocomplete.getPlace();
+                        this.draftClaim.origin = place.formatted_address || place.name || originEl.value;
+                        this.calculateDistance();
+                    });
+                }
+
+                if (!this.destAutocomplete) {
+                    this.destAutocomplete = new google.maps.places.Autocomplete(destEl, options);
+                    this.destAutocomplete.addListener('place_changed', () => {
+                        const place = this.destAutocomplete.getPlace();
+                        this.draftClaim.destination = place.formatted_address || place.name || destEl.value;
+                        this.calculateDistance();
+                    });
+                }
+            });
+        },
+
+        calculateDistance() {
+            if (!this.draftClaim.origin || !this.draftClaim.destination) return;
+            if (typeof google === 'undefined' || !google.maps || !google.maps.DistanceMatrixService) return;
+
+            const service = new google.maps.DistanceMatrixService();
+            service.getDistanceMatrix({
+                origins: [this.draftClaim.origin],
+                destinations: [this.draftClaim.destination],
+                travelMode: google.maps.TravelMode.DRIVING,
+                unitSystem: google.maps.UnitSystem.METRIC,
+            }, (response, status) => {
+                if (status === 'OK' && response.rows[0]?.elements[0]?.status === 'OK') {
+                    const meters = response.rows[0].elements[0].distance.value;
+                    const km = (meters / 1000).toFixed(1);
+                    this.draftClaim.distance_km = km;
+                    this.updateMileagePayout();
+                }
+            });
+        },
+
+        updateMileagePayout() {
+            const km = parseFloat(this.draftClaim.distance_km || 0);
+            this.draftClaim.amount = (km * 0.60).toFixed(2);
+        },
+
         openEditModal(text) {
             if (this.isMileageDraft(text)) {
                 let origin = '';
@@ -1323,15 +1406,15 @@ function chatbotWidget(config) {
                     payout = (parseFloat(distance) * 0.60).toFixed(2);
                 }
 
-                let customPlate = '';
+                let matchedVehicle = '';
                 if (vehicle) {
-                    const inPersonal = this.personalVehicles.some(v => v.plate_number.toUpperCase() === vehicle.toUpperCase());
-                    if (!inPersonal) {
-                        customPlate = vehicle;
-                        vehicle = '__custom__';
+                    const found = this.personalVehicles.find(v => v.plate_number.toUpperCase() === vehicle.toUpperCase());
+                    if (found) {
+                        matchedVehicle = found.plate_number;
                     }
-                } else if (this.personalVehicles.length > 0) {
-                    vehicle = this.personalVehicles[0].plate_number;
+                }
+                if (!matchedVehicle && this.personalVehicles.length > 0) {
+                    matchedVehicle = this.personalVehicles[0].plate_number;
                 }
 
                 this.draftClaim = {
@@ -1343,12 +1426,14 @@ function chatbotWidget(config) {
                     merchant_name: origin && destination ? `Aero Art Mileage: ${origin} to ${destination}` : 'Aero Art Mileage',
                     date: journeyDate || new Date().toISOString().split('T')[0],
                     category: 'Travel & Lodging',
-                    vehicle_plate: vehicle,
-                    custom_plate: customPlate,
+                    vehicle_plate: matchedVehicle,
                     description: purpose || (origin && destination ? `Official travel from ${origin} to ${destination}` : 'Mileage Allowance'),
                 };
 
                 this.editModalOpen = true;
+                this.$nextTick(() => {
+                    this.initPlacesAutocomplete();
+                });
                 return;
             }
 
@@ -1394,18 +1479,12 @@ function chatbotWidget(config) {
                 else if (lowerCat.includes('travel') || lowerCat.includes('lodging')) matchedCat = 'Travel & Lodging';
             }
 
-            let isCustom = false;
-            let customPlate = '';
+            let matchedFleetPlate = '';
             if (vehiclePlate && vehiclePlate.toLowerCase() !== 'unspecified' && vehiclePlate !== '-') {
-                const inFleet = this.companyFleet.some(v => v.plate_number.toUpperCase() === vehiclePlate.toUpperCase());
-                const inPersonal = this.personalVehicles.some(v => v.plate_number.toUpperCase() === vehiclePlate.toUpperCase());
-                if (!inFleet && !inPersonal) {
-                    isCustom = true;
-                    customPlate = vehiclePlate;
-                    vehiclePlate = '__custom__';
+                const inFleet = this.companyFleet.find(v => v.plate_number.toUpperCase() === vehiclePlate.toUpperCase());
+                if (inFleet) {
+                    matchedFleetPlate = inFleet.plate_number;
                 }
-            } else {
-                vehiclePlate = '';
             }
 
             this.draftClaim = {
@@ -1417,8 +1496,7 @@ function chatbotWidget(config) {
                 date: date || new Date().toISOString().split('T')[0],
                 amount: amount,
                 category: matchedCat,
-                vehicle_plate: vehiclePlate,
-                custom_plate: customPlate,
+                vehicle_plate: matchedFleetPlate,
                 description: description || 'Expense submitted via SmartClaim AI Assistant',
             };
 
@@ -1431,10 +1509,7 @@ function chatbotWidget(config) {
 
         saveEditedDetails() {
             this.editModalOpen = false;
-            let plate = this.draftClaim.vehicle_plate;
-            if (plate === '__custom__') {
-                plate = (this.draftClaim.custom_plate || '').trim();
-            }
+            const plate = (this.draftClaim.vehicle_plate || '').trim();
 
             if (this.draftClaim.is_mileage) {
                 const dist = parseFloat(this.draftClaim.distance_km || 0);
