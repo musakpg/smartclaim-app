@@ -235,6 +235,11 @@ class ComprehensiveDemoSeeder extends Seeder
             'ownership_type' => 'company', 'approval_status' => 'Approved',
             'roadtax_expiry' => Carbon::now()->addMonths(10)->format('Y-m-d')
         ]);
+        $fleet2 = Vehicle::firstOrCreate(['plate_number' => 'BKA 8821'], [
+            'user_id' => $manager->user_id, 'vehicle_type' => 'Car', 'brand_model' => 'Toyota Hiace Van',
+            'ownership_type' => 'company', 'status' => 'Active', 'approval_status' => 'Approved',
+            'roadtax_expiry' => Carbon::now()->addMonths(12)->format('Y-m-d')
+        ]);
 
         // 6. Seed Claims Representing Unified Lifecycle States
         // Lifecycle: SUBMITTED (Pending) -> PRE_APPROVED -> APPROVED -> DISBURSED (Reimbursed)

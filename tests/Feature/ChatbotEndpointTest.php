@@ -323,4 +323,147 @@ class ChatbotEndpointTest extends TestCase
 
         $this->assertStringContainsString('Request format issue with Gemini AI', $result['reply']);
     }
+
+    public function test_vehicle_scopes_properly_filter_company_fleet_and_personal_vehicles(): void
+    {
+        $user = User::factory()->create(['role' => 'Staff']);
+
+        $companyActive = Vehicle::create([
+            'plate_number' => 'FLEET-01',
+            'brand_model' => 'Toyota Hilux Fleet',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'company',
+            'status' => 'Active',
+            'approval_status' => 'Approved',
+        ]);
+
+        $companyInactive = Vehicle::create([
+            'plate_number' => 'FLEET-02',
+            'brand_model' => 'Toyota Hiace Van',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'company',
+            'status' => 'Inactive',
+            'approval_status' => 'Approved',
+        ]);
+
+        $personalActive = Vehicle::create([
+            'user_id' => $user->user_id,
+            'plate_number' => 'PERS-01',
+            'brand_model' => 'Perodua Myvi',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'personal',
+            'status' => 'Active',
+            'approval_status' => 'Approved',
+        ]);
+
+        $companyFleet = Vehicle::companyFleet()->get();
+        $this->assertTrue($companyFleet->contains('plate_number', 'FLEET-01'));
+        $this->assertFalse($companyFleet->contains('plate_number', 'FLEET-02'));
+        $this->assertFalse($companyFleet->contains('plate_number', 'PERS-01'));
+
+        $personal = Vehicle::personal()->get();
+        $this->assertTrue($personal->contains('plate_number', 'PERS-01'));
+        $this->assertFalse($personal->contains('plate_number', 'FLEET-01'));
+    }
+
+    public function test_fuel_claim_with_company_fleet_enforcement_and_matching(): void
+    {
+        $user = User::factory()->create(['role' => 'Staff']);
+        $companyVehicle = Vehicle::create([
+            'plate_number' => 'BKA 8821',
+            'brand_model' => 'Toyota Hiace Van',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'company',
+            'status' => 'Active',
+            'approval_status' => 'Approved',
+        ]);
+
+        $personalVehicle = Vehicle::create([
+            'user_id' => $user->user_id,
+            'plate_number' => 'JKE 1234',
+            'brand_model' => 'Perodua Myvi',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'personal',
+            'status' => 'Active',
+            'approval_status' => 'Approved',
+        ]);
+
+        $actionService = app(ChatbotActionService::class);
+        $this->actingAs($user);
+
+        // 1. Missing plate with active company fleet returns compliance error listing company fleet
+        $failResult = $actionService->executeAction('submit_claim', [
+            'category' => 'Fuel & Fleet Logistics (Corporate Fleet / Petrol)',
+            'amount' => 95.00,
+            'merchant_name' => 'Petronas Senai',
+            'description' => 'Fleet refuel',
+        ]);
+
+        $this->assertEquals('error', $failResult['status']);
+        $this->assertStringContainsString('Vehicle Compliance Required', $failResult['message']);
+        $this->assertStringContainsString('company fleet vehicle', $failResult['message']);
+        $this->assertStringContainsString('BKA 8821', $failResult['message']);
+
+        // 2. Supplying company fleet plate matches and links company vehicle
+        $fleetResult = $actionService->executeAction('submit_claim', [
+            'category' => 'Fuel & Fleet Logistics (Corporate Fleet / Petrol)',
+            'amount' => 95.00,
+            'merchant_name' => 'Petronas Senai',
+            'description' => 'Fleet refuel',
+            'vehicle_plate' => 'BKA 8821',
+        ]);
+
+        $this->assertEquals('success', $fleetResult['status']);
+        $this->assertEquals('BKA 8821', $fleetResult['vehicle_plate']);
+        $this->assertEquals($companyVehicle->vehicle_id, $fleetResult['vehicle_id']);
+
+        // 3. User explicitly supplying personal plate links personal vehicle
+        $personalResult = $actionService->executeAction('submit_claim', [
+            'category' => 'Fuel & Fleet Logistics (Corporate Fleet / Petrol)',
+            'amount' => 70.00,
+            'merchant_name' => 'Shell Skudai',
+            'description' => 'Personal car petrol for client site visit',
+            'vehicle_plate' => 'JKE 1234',
+        ]);
+
+        $this->assertEquals('success', $personalResult['status']);
+        $this->assertEquals('JKE 1234', $personalResult['vehicle_plate']);
+        $this->assertEquals($personalVehicle->vehicle_id, $personalResult['vehicle_id']);
+    }
+
+    public function test_chatbot_system_instruction_includes_personal_and_company_fleet_registries(): void
+    {
+        $user = User::factory()->create(['role' => 'Staff']);
+        Vehicle::create([
+            'user_id' => $user->user_id,
+            'plate_number' => 'JKE 1234',
+            'brand_model' => 'Perodua Myvi',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'personal',
+            'status' => 'Active',
+            'approval_status' => 'Approved',
+        ]);
+
+        Vehicle::create([
+            'plate_number' => 'WA 8888 A',
+            'brand_model' => 'Toyota Hilux Fleet',
+            'vehicle_type' => 'Car',
+            'ownership_type' => 'company',
+            'status' => 'Active',
+            'approval_status' => 'Approved',
+        ]);
+
+        $service = app(GeminiChatbotService::class);
+        $reflection = new \ReflectionClass($service);
+        $method = $reflection->getMethod('buildSystemInstruction');
+        $method->setAccessible(true);
+        $instruction = $method->invoke($service, $user);
+
+        $this->assertStringContainsString('Staff Personal Vehicles', $instruction);
+        $this->assertStringContainsString('JKE 1234', $instruction);
+        $this->assertStringContainsString('Company Fleet Vehicles', $instruction);
+        $this->assertStringContainsString('WA 8888 A', $instruction);
+        $this->assertStringContainsString('Tuntutan Resit Perbelanjaan', $instruction);
+        $this->assertStringContainsString('Tuntutan Elaun Perjalanan (Mileage)', $instruction);
+    }
 }

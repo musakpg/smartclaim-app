@@ -97,33 +97,61 @@ class ChatbotActionService
             $imageHash = hash('sha256', ($user->user_id ?? $user->id) . '|' . $merchantName . '|' . $amount . '|' . microtime(true));
         }
 
-        // Fuel / Automotive Vehicle Compliance Handling
+        // Fuel & Fleet Logistics Vehicle Compliance Handling
         $currentUserId = (int) ($user->user_id ?? $user->id);
         $vehiclePlate = trim($args['vehicle_plate'] ?? $args['vehicle_plate_number'] ?? '');
         $vehicleId = !empty($args['vehicle_id']) ? (int) $args['vehicle_id'] : null;
 
-        $isFuelOrAutomotive = in_array(strtolower($categoryName), ['fuel / automotive', 'fuel', 'automotive', 'petrol', 'fuel & fleet logistics (corporate fleet / petrol)'])
+        $isFuelOrAutomotive = in_array(strtolower($categoryName), [
+            'fuel / automotive',
+            'fuel',
+            'automotive',
+            'petrol',
+            'fuel & fleet logistics (corporate fleet / petrol)',
+            'fuel & fleet logistics',
+        ])
             || str_contains(strtolower($categoryName), 'fuel')
             || str_contains(strtolower($categoryName), 'petrol');
 
         if (!empty($vehiclePlate) && !$vehicleId) {
             $cleanPlate = str_replace(' ', '', strtoupper($vehiclePlate));
-            $matchedVehicle = Vehicle::whereRaw("REPLACE(UPPER(plate_number), ' ', '') = ?", [$cleanPlate])->first();
+
+            // Prefer company fleet vehicle match first
+            $matchedVehicle = Vehicle::where('status', 'Active')
+                ->where('ownership_type', 'company')
+                ->whereRaw("REPLACE(UPPER(plate_number), ' ', '') = ?", [$cleanPlate])
+                ->first();
+
+            // Fallback to any active vehicle (e.g. personal vehicle explicitly provided)
+            if (!$matchedVehicle) {
+                $matchedVehicle = Vehicle::where('status', 'Active')
+                    ->whereRaw("REPLACE(UPPER(plate_number), ' ', '') = ?", [$cleanPlate])
+                    ->first();
+            }
+
             if ($matchedVehicle) {
                 $vehicleId = $matchedVehicle->vehicle_id;
                 $vehiclePlate = $matchedVehicle->plate_number;
             }
         } elseif ($vehicleId && empty($vehiclePlate)) {
-            $matchedVehicle = Vehicle::find($vehicleId);
+            $matchedVehicle = Vehicle::where('status', 'Active')->find($vehicleId);
             if ($matchedVehicle) {
                 $vehiclePlate = $matchedVehicle->plate_number;
             }
         }
 
-        // If fuel claim and vehicle plate is missing, enforce compliance if user has registered vehicles
+        // If fuel claim and vehicle plate is missing, enforce compliance
         if ($isFuelOrAutomotive && empty($vehiclePlate) && empty($vehicleId)) {
+            $companyFleet = Vehicle::companyFleet()->get();
             $userVehicles = Vehicle::where('user_id', $currentUserId)->where('status', 'Active')->get();
-            if ($userVehicles->isNotEmpty()) {
+
+            if ($companyFleet->isNotEmpty()) {
+                $fleetPlates = $companyFleet->pluck('plate_number')->implode(', ');
+                return [
+                    'status' => 'error',
+                    'message' => "Vehicle Compliance Required: Fuel & Fleet Logistics claims must specify which company fleet vehicle was used ({$fleetPlates}).",
+                ];
+            } elseif ($userVehicles->isNotEmpty()) {
                 $platesList = $userVehicles->pluck('plate_number')->implode(', ');
                 return [
                     'status' => 'error',

@@ -69,6 +69,22 @@ class Vehicle extends Model
     }
 
     /**
+     * Scope: Active company fleet vehicles.
+     */
+    public function scopeCompanyFleet($query)
+    {
+        return $query->where('ownership_type', 'company')->where('status', 'Active');
+    }
+
+    /**
+     * Scope: Active personal staff vehicles.
+     */
+    public function scopePersonal($query)
+    {
+        return $query->where('ownership_type', 'personal')->where('status', 'Active');
+    }
+
+    /**
      * Helper: Check if roadtax is strictly expired.
      */
     public function getIsExpiredAttribute(): bool

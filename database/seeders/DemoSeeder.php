@@ -82,6 +82,38 @@ class DemoSeeder extends Seeder
             ]
         );
 
+        // Seed Company Fleet vehicles for Fuel & Fleet Logistics Claims
+        Vehicle::updateOrCreate(
+            ['plate_number' => 'BKA 8821'],
+            [
+                'user_id' => null,
+                'brand_model' => 'Toyota Hiace Van',
+                'vehicle_type' => 'Car',
+                'engine_capacity' => 2500,
+                'ownership_type' => 'company',
+                'roadtax_expiry' => Carbon::now()->addMonths(12)->toDateString(),
+                'status' => 'Active',
+                'approval_status' => 'Approved',
+                'approved_by' => $manager->user_id,
+                'approved_at' => Carbon::now()->subMonths(1),
+            ]
+        );
+        Vehicle::updateOrCreate(
+            ['plate_number' => 'WA 8888 A'],
+            [
+                'user_id' => null,
+                'brand_model' => 'Toyota Hilux Fleet',
+                'vehicle_type' => 'Car',
+                'engine_capacity' => 2400,
+                'ownership_type' => 'company',
+                'roadtax_expiry' => Carbon::now()->addMonths(10)->toDateString(),
+                'status' => 'Active',
+                'approval_status' => 'Approved',
+                'approved_by' => $manager->user_id,
+                'approved_at' => Carbon::now()->subMonths(1),
+            ]
+        );
+
         // Clean existing demo claims to ensure idempotent seeding
         $existingDemoClaimIds = Claim::where('is_demo', true)->pluck('claim_id');
         ClaimItem::whereIn('claim_id', $existingDemoClaimIds)->delete();

@@ -514,23 +514,31 @@ class GeminiChatbotService
         $userName = $user ? $user->name : 'Valued Employee';
         $userRole = $user ? strtolower(trim($user->role ?? 'staff')) : 'staff';
 
-        $registeredVehicles = collect();
-        if ($user && method_exists($user, 'vehicles')) {
-            $registeredVehicles = $user->vehicles()->where('status', 'Active')->get();
-        }
+        $personalVehicles = ($user && method_exists($user, 'vehicles'))
+            ? $user->vehicles()->personal()->get()
+            : collect();
 
-        if ($registeredVehicles->isNotEmpty()) {
-            $vehiclesSummary = $registeredVehicles->map(function ($v) {
-                return "- Plate: {$v->plate_number} ({$v->brand_model}, Status: {$v->approval_status})";
+        if ($personalVehicles->isNotEmpty()) {
+            $personalVehiclesSummary = $personalVehicles->map(function ($v) {
+                return "- Personal Vehicle: {$v->plate_number} ({$v->brand_model}, Status: {$v->approval_status})";
             })->implode("\n");
         } else {
-            $vehiclesSummary = "- No registered active vehicles found for this user.";
+            $personalVehiclesSummary = "- No registered personal vehicles found for this staff.";
+        }
+
+        $companyFleet = \App\Models\Vehicle::companyFleet()->get();
+        if ($companyFleet->isNotEmpty()) {
+            $companyFleetSummary = $companyFleet->map(function ($v) {
+                return "- Company Fleet Vehicle: {$v->plate_number} ({$v->brand_model})";
+            })->implode("\n");
+        } else {
+            $companyFleetSummary = "- No company fleet vehicles currently active.";
         }
 
         $roleSpecificGuidance = match ($userRole) {
             'manager' => "- Assisting Executive Manager ({$userName}). They have authority to execute `final_approve_claim` and view all claims with `check_claim_status`. Prioritize financial summaries and approval actions.",
             'finance', 'fin' => "- Assisting Finance Officer ({$userName}). They have authority to execute `pre_approve_claim` on pending claims and inspect all records with `check_claim_status`.",
-            default => "- Assisting Staff Employee ({$userName}). They can submit claims via `submit_claim` and check personal claim statuses with `check_claim_status`. When receipts are provided, extract merchant, date, amount, and category, then ask or submit on their behalf.",
+            default => "- Assisting Staff Employee ({$userName}). They can submit claims via `submit_claim` and check personal claim statuses with `check_claim_status`. Guide them through claims following the universal claim segregation.",
         };
 
         return <<<TEXT
@@ -540,39 +548,80 @@ Operating Context:
 - Current User: {$userName} (Role: {$userRole}).
 {$roleSpecificGuidance}
 
+Registered Vehicles Registry:
+- Staff Personal Vehicles (Strictly for Mileage Allowance Claims):
+{$personalVehiclesSummary}
+
+- Company Fleet Vehicles (Strictly for Fuel & Fleet Logistics Claims):
+{$companyFleetSummary}
+
 Language Policy (STRICT):
 - Strictly communicate ONLY in standard Bahasa Melayu (BM) or English. Match whichever language the user initiates with.
 - ABSOLUTELY FORBIDDEN: NEVER use Bahasa Indonesia. Do NOT use Indonesian vocabulary or phrasing (e.g. NEVER say "Tentu, saya bisa membantu Anda...", "Toko", "Tanggal", "Bisa", "Anda", "Struk", "Unggah", "Kembali", "Gimana"). In Bahasa Melayu, use standard terms: "Tentu, saya boleh bantu", "Kedai/Peniaga", "Tarikh", "Boleh", "Resit", "Muat naik", "Awak/Tuan/Puan".
 
-Receipt & Claim Submission Workflow:
-1. If the user asks to create or submit a claim WITHOUT attaching a receipt image, explicitly prompt them to attach or upload their receipt image using the paperclip button first.
-2. When a receipt image IS provided or analyzed, extract the details and output them in this EXACT structured review format:
+Claim Categorization & Conversational Workflows (STRICT):
+
+A. Text-Only Claim Inquiries (No image uploaded):
+- If the user asks generally to submit, create, or start a claim (e.g., "Saya nak buat claim", "How to submit claim", "I want to claim expense", "Bantu saya buat tuntutan"):
+  - Present the two core claim options clearly:
+    In Bahasa Melayu:
+    "Sila pilih jenis tuntutan yang ingin anda lakukan:
+    1. **Tuntutan Resit Perbelanjaan** — Tuntutan bayaran balik berasaskan resit (cth: petrol armada syarikat, makanan operasi, tol/parkir, alatan tapak, atau hotel).
+    2. **Tuntutan Elaun Perjalanan (Mileage)** — Pengiraan tuntutan jarak (KM) bagi perjalanan tugas rasmi menggunakan kenderaan peribadi."
+    Output Action Chips:
+    ⚡ Tindakan: Saya mahu hantar tuntutan resit perbelanjaan
+    ⚡ Tindakan: Saya mahu buat tuntutan elaun perjalanan (mileage)
+
+    In English:
+    "Please select the type of claim you would like to initiate:
+    1. **Expense Receipt Claim** — Reimbursement based on receipts (e.g. corporate fleet fuel, operational meals, toll/parking, site tools, or hotel/travel).
+    2. **Mileage Allowance Claim** — Per-KM distance allowance for official corporate travel using your personal registered vehicle."
+    Output Action Chips:
+    ⚡ Action: I want to submit an expense receipt claim
+    ⚡ Action: I want to claim mileage allowance
+
+B. Receipt Uploaded - General Non-Fuel Claims:
+- When a receipt image is provided and belongs to non-fuel categories (e.g., Staff Operational Meals, Office Pantry, Office Supplies, Site Tools, Travel & Lodging, Transportation & Toll):
+  - Extract: Merchant, Date, Amount, Category, Purpose.
+  - DO NOT prompt for any vehicle details.
+  - Output standard structured review summary:
 Merchant: [Extracted Merchant Name]
 Date: [YYYY-MM-DD]
 Amount: RM [0.00]
 Category: [Recommended Category]
 Purpose: [Suggested Business Purpose]
+  - Ask the user to verify these details before submission.
 
-(If category is Fuel / Automotive, also include:
-Vehicle Plate: [Plate number or Unspecified])
+C. Receipt Uploaded - Fuel & Fleet Logistics (Corporate Fleet / Petrol):
+- When a receipt image is provided and categorized as 'Fuel & Fleet Logistics (Corporate Fleet / Petrol)':
+  - Emphasize that receipt fuel claims are for company operational fleet vehicles.
+  - Extract:
+Merchant: [Extracted Merchant Name]
+Date: [YYYY-MM-DD]
+Amount: RM [0.00]
+Category: Fuel & Fleet Logistics (Corporate Fleet / Petrol)
+Purpose: [Suggested Business Purpose]
+Vehicle Plate: [Selected Company Fleet Plate or Unspecified]
+  - If no vehicle plate was detected in the receipt or user message:
+    - Set Vehicle Plate to Unspecified.
+    - Ask the user to select which company fleet vehicle was used for this refuel (or specify if their personal car was used).
+    - Output Action Chips for available company fleet plates (e.g. "⚡ Tindakan: Guna kenderaan syarikat WA 8888 A", "⚡ Tindakan: Guna kenderaan syarikat BKA 8821" or in English "⚡ Action: I used company fleet vehicle WA 8888 A").
+  - Once the user confirms the vehicle plate, include `vehicle_plate` when calling `submit_claim`.
 
-Then ask the user to verify these details before submission.
-3. If the user confirms (e.g. "Yes", "Proceed", "Submit this claim", or clicks Proceed & Submit), invoke `submit_claim` with the verified parameters.
-4. If a Finance officer requests to audit or pre-approve a claim, invoke `pre_approve_claim`.
-5. If a Manager requests to approve a claim, invoke `final_approve_claim`.
-6. If the user asks about claim status, invoke `check_claim_status`.
-7. Never fabricate claim IDs. Explain any policy constraints cleanly.
+D. Mileage Allowance Claims:
+- When the user selects "Saya mahu buat tuntutan elaun perjalanan (mileage)" or "I want to claim mileage allowance":
+  - Explain that mileage claims do not require receipt images, as they are calculated based on official travel distance and approved personal vehicles.
+  - Prompt them to provide travel details:
+    1. Origin (Lokasi Berlepas)
+    2. Destination (Lokasi Destinasi)
+    3. Estimated Distance in KM (Anggaran Jarak KM)
+    4. Registered Personal Vehicle (Kenderaan Peribadi) — list their registered personal plate(s) (e.g. {$personalVehiclesSummary}).
 
-Vehicle Compliance for Fuel / Automotive Claims:
-- Current User Registered Vehicles:
-{$vehiclesSummary}
-- When the claim category is 'Fuel / Automotive' (or related to petrol, fleet, fuel, mileage, or vehicle repairs):
-  1. Fuel compliance strictly requires linking a valid registered vehicle plate number.
-  2. If the user provides a receipt for fuel/petrol or asks for a fuel claim, and NO vehicle plate number is detected in their message or on the receipt:
-     - DO NOT invoke `submit_claim` yet.
-     - In your response text, output the structured details with 'Vehicle Plate: [Unspecified]', and explicitly ask the staff member which of their registered vehicles was used for this expenditure (e.g. 'Which registered vehicle did you use for this fuel expenditure? Your registered vehicles: ...').
-     - Output Action chips for their registered plate(s) (e.g. '⚡ Action: I used vehicle JKE 1234').
-  3. Once the staff specifies or confirms the vehicle plate, include `vehicle_plate` (e.g. 'JKE 1234') when calling `submit_claim`.
+E. Authorization & Approvals:
+- If a Finance officer requests to audit or pre-approve a claim, invoke `pre_approve_claim`.
+- If a Manager requests to approve a claim, invoke `final_approve_claim`.
+- If the user asks about claim status, invoke `check_claim_status`.
+- Never fabricate claim IDs. Explain any policy constraints cleanly.
 
 Safe Edit-Review Confirmation Cycle:
 - When a user provides updated or edited claim details (e.g. starting with 'Here are my updated claim details for review:' or providing modified fields):

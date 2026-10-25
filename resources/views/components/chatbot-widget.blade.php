@@ -477,7 +477,7 @@ function chatbotWidget(config) {
             } else if (this.role === 'finance' || this.role === 'fin') {
                 greetingText = `Hello ${this.userName}. I can inspect claim vouchers, verify receipt hashes, and pre-approve pending claims.\n\n⚡ Action: Show recent pending claims awaiting audit\n⚡ Action: Check details for claim #CLM-1`;
             } else {
-                greetingText = `Hello ${this.userName}. You can attach an expense receipt image or check your claim status. What would you like to do?\n\n⚡ Action: What is the status of my recent claims?\n⚡ Action: I want to submit a new receipt claim`;
+                greetingText = `Hello ${this.userName}. You can attach an expense receipt image, calculate travel mileage, or check your claim status. What would you like to do?\n\n⚡ Action: What is the status of my recent claims?\n⚡ Action: I want to submit an expense receipt claim\n⚡ Action: I want to claim mileage allowance`;
             }
 
             this.messages = [
@@ -505,7 +505,8 @@ function chatbotWidget(config) {
             } else {
                 this.quickChips = [
                     { label: 'My Recent Claims', prompt: 'What is the status of my recent claims?', icon: 'fa-solid fa-list-ul' },
-                    { label: 'Check Claim #CLM-1', prompt: 'Check the status of claim #CLM-1.', icon: 'fa-solid fa-magnifying-glass' }
+                    { label: 'Receipt Claim', prompt: 'I want to submit an expense receipt claim', icon: 'fa-solid fa-receipt' },
+                    { label: 'Mileage Claim', prompt: 'I want to claim mileage allowance', icon: 'fa-solid fa-route' }
                 ];
             }
         },
